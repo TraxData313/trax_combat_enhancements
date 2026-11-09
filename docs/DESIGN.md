@@ -1775,7 +1775,7 @@ row goes to the Advanced page unless a player needs it to set up his game (CLAUD
 | `TimedRiderDismountPercent` | 30 | Step 104 (104c): a PERFECT block's knock-off ceiling x his horse's speed band (0.25 standing → 1 at a gallop, `ImpactMomentumRider*` references) x min(1, 0.5 + S(x_r)); rolled before the rear. Range 0-100. Live. |
 | `TimedRiderDismountWeaponPercent` | 50 | Step 104 (104c): a parry's share of the knock-off chance (a shield block 100 %). Range 0-100. Live. |
 | `PerfectStrikeOnHorseback` | true | Step 104 (104d): a rider's taken reel opens the perfect strike window; you may strike from horseback. Live. |
-| `PerfectStrikeHorsebackAnySide` | true | Step 104 (104d, Toni's answer 4): on horseback any landed melee swing / thrust on his body while he reels counts (strict opposites stay on foot). Live. |
+| `PerfectStrikeHorsebackAnySide` | true | Step 104 (104d, Toni's answer 4): on a RIDER reeling in the saddle any landed melee swing / thrust on his body counts, you riding or on foot, never a hit on his horse (strict opposites stay for men on foot). Live. |
 | `TimedBlockPushOutMounted` | true | Step 104 (104d): a mounted blocker's push-out = his guard's own heavy parry (no mounted bash exists). Live. |
 | `ImpactMismatchWeight` | 0.25 | Step 48: x per doubling of the mismatch R beyond the even band. Range 0-2. |
 | `ImpactEvenBandDoublings` | 0.5 | Step 48: a mismatch within ± this many doublings (×1.41) = an even match (adds 0). Range 0-3. |
@@ -3630,7 +3630,7 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     Refill: Toni's "let this be there"; the game's AI never crouches in a battle - only scripted scenes - and while off its crouch is not even read);
     never mounted. Your bar's label reads "Resting" while it refills crouched; the [athletics] first-crouch line and the [summary] "crouch rest" line
     (PLAYTEST D71). No existing default changed - no config format bump.
-93. **Timed blocks on horseback** (step 104, PROPOSED 2026-11-09; APPROVED by Toni 2026-11-09 "as suggested" - all 5 recommended answers of AI_NOTES "Step 104"; built after step 105; 104a-104c built - (f)-(h) below; at the proposal nothing built yet, no parameter rows yet - they join the
+93. **Timed blocks on horseback** (step 104, PROPOSED 2026-11-09; APPROVED by Toni 2026-11-09 "as suggested" - all 5 recommended answers of AI_NOTES "Step 104"; built after step 105; 104a-104d built - (f)-(i) below; at the proposal nothing built yet, no parameter rows yet - they join the
     Parameters table with the step that builds them. Toni 2026-11-09: "can you add the reel vs mounted troops as well somehow, like that 3rd round,
     we were on horsebacks fighting, I blocked, can you implement a similar system there?" - his mounted tournament round: 13 shield blocks, 6
     perfect, every riposte refused "a rider"; AI_NOTES "Step 104"). Why riders were refused: decision 45 / IMPACT §3.8 - "never a forced stagger
@@ -3681,6 +3681,23 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     their designed values (0.8 / 50 / 30 / 50) - no default change, no config format change; the [summary] "timed blocks on horseback - rear and
     knock-off (step 104c)" line. NOT built (Toni's open question): a HIT on a reeling rider knocking him off - step 105 still refuses "a rider".
     PLAYTEST D75.
+    (i) STEP 104d BUILT 2026-11-09 - THE PERFECT STRIKE AND THE PUSH-OUT ON HORSEBACK LIVE (AI_NOTES "104d - built"; (e) as approved): a rider's
+    reel in the saddle taken after YOUR timed block (s > 0; never after a knock-off - he is down; never on you) opens a perfect-strike window at
+    the reel's start; it stays open while he reels + `PerfectStrikeGraceSeconds`, as on foot. Your FIRST melee hit that lands on HIS BODY counts
+    from ANY side (`PerfectStrikeHorsebackAnySide` - a mounted swing is dictated by which side you pass him), x2-x3 by the block's timing, the gold
+    "PERFECT STRIKE xN" line, whether you ride or stand; a hit into his shield / a kick does not count; a hit on his HORSE never counts and does
+    not use the window (counted). Strict opposites (decision 91 (o), step 103) stay for men on foot - also when you strike them from the saddle
+    (`PerfectStrikeOnHorseback` lifts the old "never from horseback"). Player only. Gates: the perfect strike's chain (the master switch FIRST)
+    → `TimedBlocksOnHorseback` → `PerfectStrikeOnHorseback` (off mid-window = closed). A RIDING blocker (you or the AI) whose timed riposte on a
+    man on foot or whose rider's reel is accepted pushes out with his guard's own HEAVY PARRY on channel 1, short (100d's
+    `TimedBlockPushOutSeconds`), never a bash; 100d's safety unchanged (no blow - his own bash collisions ignored for the window, none of our
+    systems triggered; at the window's end our parry is cleared if still on his upper body; the pool lives in the mission's logic); no heavy
+    parry for his guard = skipped, counted apart; a man on FOOT blocking a rider gets no push-out (not built). Gates: the push-out's chain →
+    `TimedBlocksOnHorseback` → `TimedBlockPushOutMounted`. Riders still never get step 105's 80 % (decision 94 (d)); 104c's knock-off stays the
+    block's alone - the open question (a hit knocking a reeling rider off) stays NOT built. The 3 keys from 104a at their designed ON - no new
+    key, no config format change. The [summary] "perfect strike on horseback (step 104d)" line (rider windows, landed - riding / on foot -,
+    multipliers, expired unused, closed by a switch, no window after a knock-off, hits on the horse ignored, your strikes from horseback on men
+    on foot) and the push-out line's "mounted blockers" part (played, yours, skipped by reason). PLAYTEST D76.
 94. **A hit on a reeling man knocks him down** (step 105, BUILT 2026-11-09 - Toni: "when I stagger him and PERFECT STRIKE lands the NPC doesn't
     react which looks strange, but sometimes I knock him down, which looks very good and natural ... Make it so that when hitting (swing/kick/bash)
     an opponent that is staggering has 80% chance to knock him down no matter what or who caused the stagger"; built BEFORE step 104 at his request;

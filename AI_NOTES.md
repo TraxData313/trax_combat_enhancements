@@ -9678,7 +9678,7 @@ steps green.
 **Unverified until D71:** that `CrouchMode` reads true while Toni is crouched in a battle (the bar's "Resting" and the [athletics] "first crouch"
 line prove it); which direction the engine reports for his "from below" attack with each weapon (the YOU lines name it).
 
-## Step 104 (APPROVED by Toni 2026-11-09 "as suggested" - all 5 recommendations below; built after step 105; 104a + 104b + 104c built) — timed blocks on horseback: the rider reels in the saddle (research 2026-11-09)
+## Step 104 (APPROVED by Toni 2026-11-09 "as suggested" - all 5 recommendations below; built after step 105; 104a + 104b + 104c + 104d built) — timed blocks on horseback: the rider reels in the saddle (research 2026-11-09)
 
 Toni 2026-11-09, after the v1.5.0 release: "can you add the reel vs mounted troops as well somehow, like that 3rd round, we were on horsebacks
 fighting, I blocked, can you implement a similar system there?" His tournament round 3/4: both he and his opponent MOUNTED, 13 shield blocks of
@@ -10103,6 +10103,72 @@ rear Toni's horse or unhorse him). Commit 95e6da9.
 - **What 104d needs**: the PERFECT STRIKE from horseback (the window from `TimedRiderReelAccepted` once the reel is taken, any side on horseback
   per `PerfectStrikeHorsebackAnySide`; the decorator's mounted filter lifted for YOU, never a horse victim); the mounted blocker's push-out as his
   guard's heavy parry (`TimedBlockPushOutMounted`); PLAYTEST D76. A knocked-off man gets no strike window (he is down - step 54's punish covers him).
+
+### 104d - built (2026-11-09)
+
+The perfect strike and the push-out on horseback LIVE (Toni, approved "as suggested" - answer 4: any side on horseback). Commit 948e460 (code),
+then the docs / the AnySide hint. No new key - the 3 from 104a (`PerfectStrikeOnHorseback`, `PerfectStrikeHorsebackAnySide`,
+`TimedBlockPushOutMounted`) at their designed ON; no config format change (still 29); only the AnySide hint reworded (defaults.json refreshed).
+
+- **The window** (`AthleticsLogic.PerfectStrike.cs` `MaybeOpenRiderStrike`, called from `TimedRiderReelAccepted` - the tick's reel start, after
+  104c's fall / rear): YOUR timed block (score > 0), the reel not on you, `PerfectStrikeRules.MountedOn` (the perfect strike's chain - master
+  switch FIRST, Athletics + impact, TimedBlocksEnabled, PerfectStrikeEnabled - then `TimedBlocksOnHorseback`, then `PerfectStrikeOnHorseback`).
+  `p.Fell` (104c's knock-off) = NO window, counted (`RiderKnockedOffNoWindow`) - he is down. A rear keeps the window (he still reels). The
+  window is step 100g's book entry with `Rider = true` (`PerfectStrikeBook.Open(.., rider, out dropped, out droppedRider)`), open on his record's
+  `ReelingUntil` (the reel's end, re-timed at its start) + `PerfectStrikeGraceSeconds` - exactly the foot rule. His blocked direction is still
+  read (for the any-side-off case).
+- **The verdict** (`PerfectStrikeMath.Verdict(riderWindow, anySide, blocked, strike)`): a rider window with AnySide = Perfect whatever your
+  direction (even unreadable); else step 103's strict opposites. In the decorator (`IPerfectStrike.PerfectStrike`): the old `attackerMounted`
+  refusal now only when `!MountedOn` (counted `Mounted` as before) - so your strike from the saddle counts on a rider AND on a man on foot
+  (strict opposites there - DESIGN 93 (e) "strict opposites stay on foot"; 104a's shadow already noted it as `StrikeFromHorseback`). A rider
+  window with the switch off mid-window: no multiplier, the tick closes it (`RiderClosedBySwitch`). Shield / kick / blocked / 0 damage =
+  `NotOnBody` (the window kept) as on foot. Step 105 untouched: `ReelingHitMath` refuses a rider `Mounted`, the usual model gives him no reeling
+  bonus - but NOTE the x3 damage of a perfect strike is the damage the engine passes on (`InflictedDamage` → the usual model's knock-off row),
+  as on foot (step 105's note) - so a perfect strike's usual knock-off chance on a rider is that of a x3 hit; no new rule.
+- **The horse** (`DamageRandomizer.PerfectStrikeLast`): a man's melee hit whose victim IS a mount (not a missile / fall / horse charge) calls
+  `ImpactHooks.PerfectStrikeHorseHit(attacker, horse)` → `horse.RiderAgent` → `IPerfectStrike.HorseHit(attackerIndex, riderIndex)` - counted when
+  YOU hit the horse of a rider in your open rider window; never touches the damage, never uses the window (the hook then returns as before:
+  a horse victim never reaches `PerfectStrike`). Nothing done with no hook (`ImpactHooks.Perfect` null) / an empty book.
+- **The mounted push-out** (`AthleticsLogic.TimedAnim.cs`): `MaybePushOut(blocker, ev, score, now, riderReel)` - from `TimedRiposteAccepted`
+  (a riding blocker's timed riposte on a man on foot - as before, now played) AND from `TimedRiderReelAccepted` (`riderReel: true` - only a
+  RIDING blocker; a man on foot blocking a rider: nothing, uncounted - not in the brief; his bash against a passing rider was never tested).
+  Gates: `TimedPushOutMath.Decide` - `mounted && !r.PushMountedOn` = `Mounted` (`TimedAnimRules.PushMountedOn` = PushEnabled (master first) →
+  `TimedBlocksOnHorseback` → `TimedBlockPushOutMounted`); then busy / guarding as on foot (`Guarding` = channel 1's Defend / DefendParry stage).
+  The action is ALWAYS `TimedPushOutMath.MountedAction` = "parry_heavy" (`PlayPushOut(.., mounted)` forces it): his channel-1 defend name →
+  `ParryHeavyOf` (the shield's `act_defend_shield_*_parry_heavy*`, the staff's `act_defend_*_staff_parry_heavy_horseback`, 1h / 2h ones) → `Find`
+  (with the left-stance strip) → `Play(st, 1, .., speed by TimedBlockPushOutSeconds, start 0)`. Missing = `PushOutSkip.MountedNoParry` (new, last
+  in the enum; the stats arrays sized by `TimedAnimStats.SkipCount`), counted apart in `MountedSkipped`; refused = `Refused` (mounted too). Never
+  a bash on a rider (the J tool's `act_shield_bash` rider candidate stays a test). 100d's safety unchanged: `ArmPushOut` - his own ALTERNATIVE
+  attacks (bashes) are no blow for the window (a rider has none - harmless), our systems skip them; his REAL swings are never touched
+  (`PushOutBlow` asks `IsAlternativeAttack` first) - so your perfect strike right after your own push-out lands; at the window's end our parry is
+  cleared if still on channel 1 (`TickPushOuts` - `Unstuck` / `GuardsBack`); a removed man dropped with no engine call; the pool lives in the
+  logic (nothing survives the mission). The AI's mounted blocks push out too (Toni or AI, per the brief).
+- **[summary]**: `perfect strike on horseback (step 104d; ON, any side on a rider): windows on riders reeling in the saddle after your timed block
+  N (none - knocked off his horse n), PERFECT STRIKES on them N (you riding n, on foot n), mean multiplier x.. (x..-x.., mean timing ..), damage A
+  → B; rider windows expired unused n (replaced), closed by a switch; wrong side on a rider (any side off); your hits on such a rider's HORSE
+  (ignored, the window kept) n; your strikes from horseback on men on foot (strict opposites): landed n, wrong side n; hits from horseback not
+  counted (switch off)` - after the 100g line; the 100d push-out line ends `; mounted blockers (step 104d, his guard's heavy parry - on): played
+  N (yours n), skipped: <reason n, ...>`. YOU lines: `perfect strike: first window on a RIDER ...`, `YOU: PERFECT STRIKE on X ... your left swing
+  from horseback on him reeling in the saddle (any side) ...`, `perfect strike: first hit on a reeling rider's HORSE ...`, `live: first MOUNTED
+  PUSH-OUT (step 104d) ...`; "push-out: X on horseback (...)" for yours.
+- **Tests**: Step104dTests 14 (any side on a rider for every pair, strict on foot / any-side off, the multiplier x2 / x2.5 / x3, the defaults ON
+  + Describe words, the gate order with the reason named, the book's rider flag / dropped rider, the mounted push-out's gates, the heavy
+  parry for every kind + the horseback guard names, the push-out line's mounted part, step 105 still refusing a rider, the summary line ON /
+  OFF, no allocation). 1560 tests. Smoke "THE PERFECT STRIKE AND THE PUSH-OUT ON HORSEBACK (step 104d)" (Program.Step104d.cs) through the real
+  logic: both mounted - window + your heavy parry on channel 1 (nothing else played on a rider), the horse hit kept, the shield hit kept, your
+  left swing from the saddle after his blocked right swing x3, step 105 "a rider" on the same hit, the second hit normal, the gold line, the
+  push-out cleared at its window's end; you on foot vs a rider (window, no push-out); a knock-off (no window); you mounted vs a man on foot
+  (riposte + your heavy parry, wrong side then x3); the heavy parry missing (skipped, counted, nothing played); the AI's mounted block of your
+  blow (its push-out, no window); PerfectStrikeOnHorseback off / off mid-window, TimedBlockPushOutMounted off, the master switch; the summary
+  lines. 231 steps, all passed. Step 100g's smoke now turns `PerfectStrikeOnHorseback` off for its "a strike from horseback is not counted"
+  check. One earlier full smoke run showed a one-off failure in step 89's check (TIRED MEN HIT SOFTER) that did not repeat in 3 later runs
+  (steps 91 / 95 had the same kind of harness flake in 100d - AI_NOTES "Step 100").
+- **Not verified in game** (PLAYTEST D76): whether every rider guard has a heavy parry in his action set on horseback (the summary's
+  "mounted - no heavy parry for his guard" answers - the item_usage_sets.xml list in §1 says the staff has horseback ones and the shield / 1h /
+  2h use the foot defends upper-body); how the heavy parry reads on a horse; whether 1.5 s + 0.15 s is enough to turn and land a hit on a
+  passing rider (expired unused vs landed); whether `horse.RiderAgent` is set for every mounted victim the decorator sees.
+- **Still NOT built**: a HIT knocking a reeling rider off (Toni's open question - step 105's `Mounted` refusal stays); a foot blocker's push-out
+  against a rider. **104e next**: the independent review, close step 104.
 
 ## Step 105 (BUILT 2026-11-09) — a landed hit on a reeling man knocks him down (80 %)
 
