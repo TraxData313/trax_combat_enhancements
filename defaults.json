@@ -283,6 +283,15 @@
   // (true or false)
   "PerfectStrikeEnabled": true,
 
+  // On: any swing, thrust, kick or shield bash that lands on a man on foot while he still
+  // staggers from a stagger of this mod (your timed block, a kick, a bash, a hit's stagger -
+  // whoever caused it) knocks him down 80% of the time, however fresh, skilled or armoured he
+  // is. It works on you too (times 'Against you'). A hit his shield or weapon blocks does not
+  // count; a blow that kills him just kills him. Off: the usual knockdown chances only. The
+  // chance: Advanced page, Impact.
+  // (true or false)
+  "ReelingHitKnockdownEnabled": true,
+
   // ==================== Sprinting ====================
   // Every fighter on foot has a sprint: a short burst of speed stored in seconds - the more
   // Athletics he has left, the longer (150 points = 7.5 s; empty = none). Hold the sprint key
@@ -2721,6 +2730,14 @@
   // 0.15)'. Needs the on-screen impact lines on. Off: the plain 'Your riposte - X reels' only.
   // (true or false)
   "TimedBlockShowTiming": true,
+
+  // With 'Hit a staggering man: he falls' on (the player page): the chance that a swing,
+  // thrust, kick or bash landing on a man on foot who still staggers knocks him down - whatever
+  // caused the stagger, ignoring his tiredness, skill, armour, his brace and the usual immunity
+  // after a fall. Against you times 'Against you (%)'. If the usual knockdown chance is higher,
+  // the usual one stands. 0 = only the usual chances.
+  // (range 0 to 100)
+  "ReelingHitKnockdownPercent": 80,
 
   // How much an outmatched man suffers: every doubling of the mismatch beyond the even band
   // adds this to the pressure on him (0.25: an enemy four times stronger counts as much as

@@ -55,6 +55,7 @@ public class ImpactTests
         s.Set(SettingsSchema.CorrectBlockTiredWeightPercent, 100, "test");
         s.Set(SettingsSchema.RiposteBlockerTiredPercent, 100, "test");
         s.Set(SettingsSchema.KickBraceEnabled, false, "test"); // step 65: the IMPACT §4 kicks are step 48 / 50's (the brace has its own tests - Step65Tests)
+        s.Set(SettingsSchema.ReelingHitKnockdownEnabled, false, "test"); // step 105: IMPACT §4 F is the usual model on a reeling man (step 105's roll - Step105Tests)
         tune?.Invoke(s);
         return ImpactRules.From(s);
     }
@@ -152,13 +153,14 @@ public class ImpactTests
             "TimedBlockAnimTest", "TimedBlockAnimTestKey",
             "PerfectStrikeMinMultiplier", "PerfectStrikeMaxMultiplier", "PerfectStrikeGraceSeconds", "PerfectStrikeCentreMessage", // step 100g
             "TimedBlockShowTiming", // step 100f
+            "ReelingHitKnockdownPercent", // step 105
             "ImpactMismatchWeight", "ImpactEvenBandDoublings",
             "ImpactBodyExponent", "ImpactBodyFloorPoints", "ImpactStaggeredBonus", "ImpactDamageWeight", "ImpactRefWeightKg", "ImpactWeightExponent",
             "ImpactRefSwingSpeed", "ImpactSpeedExponent", "ImpactBluntFactor", "ImpactCutFactor", "ImpactPierceFactor", "ImpactKickFactor", "ImpactBashFactor",
             "ImpactSkillMinFactor", "ImpactSkillMaxFactor", "ImpactGuardShieldRight", "ImpactGuardParry", "ImpactGuardShieldWrong", "ImpactGuardNone",
             "ImpactStaggerFrom", "ImpactShieldDropFrom", "ImpactKnockdownFrom",
         };
-        Assert.Equal(177, keys.Length); // step 101: + 10 (the riposte bonus 4, the skill window 5, the slow motion's hold / ease for its whole-ramp key); step 100f: + 1 (TimedBlockShowTiming); step 100g: + 4 (the perfect strike's numbers; its switch is on the player page); step 100d: + 16 (the push-out's 10, the recoil's 4, the test tool's 2); step 100e: + 4 (the slow motion's numbers; its switch is on the player page); step 100b: + 7 (the timed block's numbers; its switch is on the player page, not in this list); step 95: + 3 (AiBashStepIn, AiBashStepInToMetres, AiBashStepInMaxSeconds); step 91: + 1 (AiBashReachMetres); step 90: + 2 (AiKickBlockAheadMetres / AiKickBlockSideMetres); step 88: + 1 (AiNoShieldPushPercent); step 82: + 19 (the meet rows and the AI's read; the switch is on the player page, not in this list); step 81: - 14 + 3 (the shares); step 80's 2; step 68's 1; step 66's 5; step 65's 21; step 63's 2 + step 48's 60 + step 52's momentum 4 + step 53's rider momentum 3 and on-screen lines 3 + step 54's punish 4 + step 56's 2 + step 62's
+        Assert.Equal(178, keys.Length); // step 105: + 1 (ReelingHitKnockdownPercent; its switch is on the player page); step 101: + 10 (the riposte bonus 4, the skill window 5, the slow motion's hold / ease for its whole-ramp key); step 100f: + 1 (TimedBlockShowTiming); step 100g: + 4 (the perfect strike's numbers; its switch is on the player page); step 100d: + 16 (the push-out's 10, the recoil's 4, the test tool's 2); step 100e: + 4 (the slow motion's numbers; its switch is on the player page); step 100b: + 7 (the timed block's numbers; its switch is on the player page, not in this list); step 95: + 3 (AiBashStepIn, AiBashStepInToMetres, AiBashStepInMaxSeconds); step 91: + 1 (AiBashReachMetres); step 90: + 2 (AiKickBlockAheadMetres / AiKickBlockSideMetres); step 88: + 1 (AiNoShieldPushPercent); step 82: + 19 (the meet rows and the AI's read; the switch is on the player page, not in this list); step 81: - 14 + 3 (the shares); step 80's 2; step 68's 1; step 66's 5; step 65's 21; step 63's 2 + step 48's 60 + step 52's momentum 4 + step 53's rider momentum 3 and on-screen lines 3 + step 54's punish 4 + step 56's 2 + step 62's
         // Step 59: three of them on the player page - the switch and "against you" ("Staggers and knockdowns"), the on-screen lines
         // ("On screen"); the other 73 stay in this group in order.
         var player = new[] { "ImpactEnabled", "ImpactOnPlayerPercent", "ImpactShowMessages" };

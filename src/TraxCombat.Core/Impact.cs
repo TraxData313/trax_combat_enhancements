@@ -136,6 +136,9 @@ namespace TraxCombat.Core
         /// <summary>Step 62: this landed blow KILLS him (health − damage &lt; 1) - nothing is decided (he plays his death, not our fall).</summary>
         public bool Fatal;
 
+        /// <summary>Step 105: the landed weapon blow is a THRUST (the collision's strike type) - the [summary]'s hit kind only.</summary>
+        public bool Thrust;
+
         /// <summary>Step 62, TOUGHNESS in the mismatch: both men's toughness - courage's measure (step 49: armour, level, the health he has
         /// left; a looter ≈ 1.35, a legionary ≈ 5.97). 0 or less = unknown (counts as even).</summary>
         public double AttackerToughness, DefenderToughness;
@@ -201,6 +204,9 @@ namespace TraxCombat.Core
         public double DownUntil;
         public double KnockdownImmuneUntil;
 
+        /// <summary>Step 105: what set (or last lengthened) his reel - kept through the measured re-timing (<see cref="EndReel"/>).</summary>
+        public ReelCause ReelCause;
+
         private double _o0, _o1, _o2, _o3, _o4, _o5;
         private int _next;
         private int _count;
@@ -244,9 +250,16 @@ namespace TraxCombat.Core
 
         /// <summary>He reels (an impact stagger, a lengthened reel or a riposte's recoil) until <paramref name="until"/>; no new stagger until
         /// <paramref name="immunity"/> seconds after it.</summary>
-        public void Reel(double until, double immunity)
+        public void Reel(double until, double immunity) => Reel(until, immunity, ReelCause.Unknown);
+
+        /// <summary>Step 105: the same, with what made him reel (the cause kept when this reel sets or lengthens it).</summary>
+        public void Reel(double until, double immunity, ReelCause cause)
         {
-            if (until > ReelingUntil) ReelingUntil = until;
+            if (until > ReelingUntil)
+            {
+                ReelingUntil = until;
+                ReelCause = cause;
+            }
             double immune = ReelingUntil + Math.Max(0, immunity);
             if (immune > StaggerImmuneUntil) StaggerImmuneUntil = immune;
         }
@@ -398,6 +411,9 @@ namespace TraxCombat.Core
         /// his immunity after the last stagger skipped (it would have refused the roll).</summary>
         public bool TimedSkippedHalving, TimedSkippedImmunity;
 
+        /// <summary>Step 105: a landed hit on a man who reels - asked, the reeling roll (it may have replaced <see cref="Knockdown"/>), why not.</summary>
+        public ReelingHitResult ReelingHit;
+
         /// <summary>Step 101: the blocker's own perfect window and no-timing point (s) the score was read against (by his weapon skill when
         /// <c>TimedBlockSkillScales</c>; else the flat settings). NaN = not a correct block.</summary>
         public double TimedPerfect, TimedWindow;
@@ -514,10 +530,14 @@ namespace TraxCombat.Core
             Brace = KickBraceRules.From(s);
             Meet = ImpactMeetRules.From(s);
             Timed = TimedBlockRules.From(s);
+            ReelingHit = ReelingHitRules.From(s);
         }
 
         /// <summary>Step 100b: the timed block's rules (the master switch first, then TimedBlocksEnabled).</summary>
         public TimedBlockRules Timed { get; }
+
+        /// <summary>Step 105: a landed hit on a reeling man - its own switch and chance.</summary>
+        public ReelingHitRules ReelingHit { get; }
 
         /// <summary>Step 82: the meet rules (the master switch first, then ImpactMeetRulesEnabled).</summary>
         public ImpactMeetRules Meet { get; }
@@ -1277,6 +1297,11 @@ namespace TraxCombat.Core
                     down ? ImpactRefusal.Down : braced ? ImpactRefusal.Braced : defender.KnockdownImmune(now) ? ImpactRefusal.KnockdownImmune : ImpactRefusal.None, dice);
                 d.Dismount = f.DefenderMounted && d.Knockdown.Happens;
             }
+            // step 105: a LANDED hit on a man who reels - knocked down at ReelingHitKnockdownPercent whatever his tiredness, the brace, the
+            // immunity or the halving (the usual roll stands only when it came up / was higher); never a rider (step 104's seam), never down
+            d.ReelingHit = ReelingHitMath.Decide(r.ReelingHit, f.Event, f.Thrust, IsLanded(f.Event), false, reeling, defender.ReelCause, f.DefenderMounted, down,
+                f.DefenderIsPlayer, r.OnPlayer, ref d.Knockdown, dice);
+            if (d.ReelingHit.Happens && !d.ReelingHit.UsualStood) braced = false; // he fell: no brace (the knock-back not refused, no braced reel)
             // shield dropped (needs a shield in his hand; step 65: never a braced man)
             if (sdCeil > 0)
                 d.ShieldDrop = Roll(sdCeil, RawChance(sdCeil, x, r.ShieldDropFrom), n, dim * scale,
@@ -1352,7 +1377,7 @@ namespace TraxCombat.Core
                     d.ReelFactor = Math.Max(1, Lengthen(r.ReelExtra, T, r.Random, dice.NextDouble()));
                     if (!double.IsNaN(d.BraceCut)) d.ReelFactor *= d.BraceCut; // step 65: a failed brace - short fresh, the full (tired) reel empty
                 }
-                if (d.ReelFactor > 1 && !f.DefenderMounted) defender.Reel(now + VanillaReelSeconds * d.ReelFactor, r.StaggerImmunity); // a lengthened reel = an impact stagger
+                if (d.ReelFactor > 1 && !f.DefenderMounted) defender.Reel(now + VanillaReelSeconds * d.ReelFactor, r.StaggerImmunity, ReelingHitMath.CauseOfDefenderReel(f.Event)); // a lengthened reel = an impact stagger
             }
             if (d.Brace != KickBraceOutcome.NotAsked) d.Brace = KickBraceMath.Classify(braced, d.Knockdown.Happens, d.ReelFactor);
             if (IsBlock(f.Event) && blockOutcomes)
@@ -1367,7 +1392,7 @@ namespace TraxCombat.Core
             if (d.Stagger.Happens)
             {
                 d.StaggerSeconds = Math.Max(0, Math.Min(r.StaggerMax, r.StaggerBase * Lengthen(r.StaggerExtra, T, r.Random, dice.NextDouble())));
-                defender.Reel(now + d.StaggerSeconds, r.StaggerImmunity);
+                defender.Reel(now + d.StaggerSeconds, r.StaggerImmunity, ReelingHitMath.CauseOfDefenderReel(f.Event));
                 defender.NoteOutcome(now);
             }
             if (d.Riposte.Happens)
@@ -1382,7 +1407,7 @@ namespace TraxCombat.Core
                 d.RiposteStun56 = d.RiposteStunSeconds;
                 d.RiposteStunSeconds = TimedBlockMath.Length(d.RiposteStunSeconds, d.TimedScore, r.Timed.StaggerMax, r.StunCap, f.AttackerIsPlayer, r.Timed.AgainstYouMax,
                     out d.TimedCappedForYou);
-                attacker.Reel(now + d.RiposteStunSeconds, r.StaggerImmunity);
+                attacker.Reel(now + d.RiposteStunSeconds, r.StaggerImmunity, d.TimedScore > 0 ? ReelCause.TimedRiposte : ReelCause.Riposte);
                 attacker.NoteOutcome(now);
             }
             if (d.ThrownBack.Happens) // step 62: the charging attacker on the ground - his get-up by his own tiredness
@@ -1424,6 +1449,10 @@ namespace TraxCombat.Core
             if (ImpactMeetMath.AttackerAtRisk(f.Meet))
             {
                 d.MeetAttacker = true;
+                // step 105: his guard MET the kick / bash - it did not land on him (counted when he reels, never rolled)
+                var none = ImpactRoll.None;
+                d.ReelingHit = ReelingHitMath.Decide(r.ReelingHit, f.Event, f.Thrust, !f.AltBlocked, true, reeling, defender.ReelCause, f.DefenderMounted, down,
+                    f.DefenderIsPlayer, r.OnPlayer, ref none, dice);
                 if (!f.AltBlocked && !down)
                 {
                     d.Brace = KickBraceOutcome.Braced; // held: the knock-back refused, his reaction cut
@@ -1454,7 +1483,7 @@ namespace TraxCombat.Core
                 if (d.Riposte.Happens)
                 {
                     d.RiposteStunSeconds = Math.Max(0, Math.Min(r.StaggerMax, r.StaggerBase * Lengthen(r.StaggerExtra, ta, r.Random, dice.NextDouble())));
-                    attacker.Reel(now + d.RiposteStunSeconds, r.StaggerImmunity);
+                    attacker.Reel(now + d.RiposteStunSeconds, r.StaggerImmunity, ReelCause.MeetRiposte);
                     attacker.NoteOutcome(now);
                 }
                 if (d.ThrownBack.Happens)
@@ -1508,6 +1537,10 @@ namespace TraxCombat.Core
                 if (fallCeil > 0)
                     d.Knockdown = Roll(fallCeil, RawChance(fallCeil, x, r.KnockdownFrom), n, dim * scale,
                         down ? ImpactRefusal.Down : held ? ImpactRefusal.Braced : defender.KnockdownImmune(now) ? ImpactRefusal.KnockdownImmune : ImpactRefusal.None, dice);
+                // step 105: a bash / kick that LANDED on a reeling man (no correct meet) - the reeling roll, the brace ignored
+                d.ReelingHit = ReelingHitMath.Decide(r.ReelingHit, f.Event, f.Thrust, true, false, reeling, defender.ReelCause, f.DefenderMounted, down,
+                    f.DefenderIsPlayer, r.OnPlayer, ref d.Knockdown, dice);
+                if (d.ReelingHit.Happens && !d.ReelingHit.UsualStood) held = false;
                 if (dropCeil > 0)
                     d.ShieldDrop = Roll(dropCeil, RawChance(dropCeil, x, r.ShieldDropFrom), n, dim * scale,
                         down ? ImpactRefusal.Down : held ? ImpactRefusal.Braced : !f.DefenderHasShield ? ImpactRefusal.NoShield : ImpactRefusal.None, dice);
@@ -1520,7 +1553,7 @@ namespace TraxCombat.Core
                         d.ReelFactor = Math.Max(1, Lengthen(r.ReelExtra, T, r.Random, dice.NextDouble()));
                         if (!double.IsNaN(d.BraceCut)) d.ReelFactor *= d.BraceCut;
                     }
-                    if (d.ReelFactor > 1) defender.Reel(now + VanillaReelSeconds * d.ReelFactor, r.StaggerImmunity);
+                    if (d.ReelFactor > 1) defender.Reel(now + VanillaReelSeconds * d.ReelFactor, r.StaggerImmunity, ReelingHitMath.CauseOfDefenderReel(f.Event));
                 }
                 d.Brace = down ? KickBraceOutcome.NotAsked : KickBraceMath.Classify(held, d.Knockdown.Happens, d.ReelFactor);
             }
@@ -1534,7 +1567,7 @@ namespace TraxCombat.Core
             if (f.AltBlocked && d.Stagger.Happens)
             {
                 d.StaggerSeconds = Math.Max(0, Math.Min(r.StaggerMax, r.StaggerBase * Lengthen(r.StaggerExtra, T, r.Random, dice.NextDouble())));
-                defender.Reel(now + d.StaggerSeconds, r.StaggerImmunity);
+                defender.Reel(now + d.StaggerSeconds, r.StaggerImmunity, ReelingHitMath.CauseOfDefenderReel(f.Event));
                 defender.NoteOutcome(now);
             }
             return d;

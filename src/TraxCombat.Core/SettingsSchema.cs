@@ -221,6 +221,12 @@ namespace TraxCombat.Core
             "Perfect strike after your timed block",
             "When YOUR timed block staggers the attacker, your first swing from the opposite side (you blocked his attack coming at your left - swing from your right) that lands on him while he still reels does 2 to 3 times the damage (more for a better-timed block), and PERFECT STRIKE shows on screen. Strict opposites: a blocked overhead is answered by your thrust from below, a blocked thrust by your overhead. A hit from the wrong side does not use it up. Off: no perfect strikes. The numbers: Advanced page, Impact.");
 
+        // Step 105 (Toni 2026-11-09: "when hitting (swing/kick/bash) an opponent that is staggering has 80% chance to knock him down no matter what or
+        // who caused the stagger"): ReelingHitMath, DESIGN decision 94.
+        public static readonly ParamDef ReelingHitKnockdownEnabled = Bool("ReelingHitKnockdownEnabled", PlayerImpactGroup,
+            "Hit a staggering man: he falls",
+            "On: any swing, thrust, kick or shield bash that lands on a man on foot while he still staggers from a stagger of this mod (your timed block, a kick, a bash, a hit's stagger - whoever caused it) knocks him down 80% of the time, however fresh, skilled or armoured he is. It works on you too (times 'Against you'). A hit his shield or weapon blocks does not count; a blow that kills him just kills him. Off: the usual knockdown chances only. The chance: Advanced page, Impact.");
+
         // Step 33 (Anton, 2026-10-12: "a short burst of speed, meant to feel a little like a dodge, and for the AI to make charges
         // sharper"): Core SprintMath, AI_NOTES "Step 33".
         public static readonly ParamDef SprintEnabled = Bool("SprintEnabled", PlayerSprintGroup,
@@ -2049,6 +2055,11 @@ namespace TraxCombat.Core
             "Timed blocks: your timing on screen",
             "On: every right block or parry of yours shows how early your guard went up against the perfect window, and a riposte how long he reels against a perfect block's stagger - 'Your riposte - X reels 1.46 s / 2.00 (guard 0.30 s / 0.15)', 'Your parry - X holds (guard >1 s / 0.15)'. Needs the on-screen impact lines on. Off: the plain 'Your riposte - X reels' only.");
 
+        // Step 105: the knockdown chance of a landed hit on a reeling man (DESIGN decision 94).
+        public static readonly ParamDef ReelingHitKnockdownPercent = Int("ReelingHitKnockdownPercent", 0, 100, ImpactGroup,
+            "Hit on a staggering man: knockdown chance (%)",
+            "With 'Hit a staggering man: he falls' on (the player page): the chance that a swing, thrust, kick or bash landing on a man on foot who still staggers knocks him down - whatever caused the stagger, ignoring his tiredness, skill, armour, his brace and the usual immunity after a fall. Against you times 'Against you (%)'. If the usual knockdown chance is higher, the usual one stands. 0 = only the usual chances.");
+
         public static readonly ParamDef ImpactMismatchWeight = Float("ImpactMismatchWeight", 0, 2, ImpactGroup,
             "Mismatch weight (pressure per doubling)",
             "How much an outmatched man suffers: every doubling of the mismatch beyond the even band adds this to the pressure on him (0.25: an enemy four times stronger counts as much as being about a third tired). 0 = only tiredness counts.");
@@ -2676,7 +2687,7 @@ namespace TraxCombat.Core
             DamageRandomPercent, DamageReductionPercent, TiredDamageAtEmptyPercent,
             AthleticsEnabled, CostPerBlow, HeroCostMultiplier, CrouchRefillForPlayer,
             AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, ShieldWallHoldsSlots, ShieldWallStepOutMetres, ShieldWallStandFirm, ShieldWallFlanksFaceOut, SpearPreferenceEnabled, PressDontPass, RotationEnabled, RestEnabled, WarCriesEnabled, CourageEnabled, CavalryFlockEnabled, LineDisciplineForPlayer,
-            ImpactEnabled, ImpactOnPlayerPercent, ImpactMeetRulesEnabled, TimedBlocksEnabled, TimedBlockSlowMo, PerfectStrikeEnabled,
+            ImpactEnabled, ImpactOnPlayerPercent, ImpactMeetRulesEnabled, TimedBlocksEnabled, TimedBlockSlowMo, PerfectStrikeEnabled, ReelingHitKnockdownEnabled,
             SprintEnabled, SprintKey, SprintControllerKey,
             ShowPlayerBar, AltMarksEveryone, ImpactShowMessages,
             GiveTier1Shields,
@@ -2765,7 +2776,7 @@ namespace TraxCombat.Core
             TimedBlockPushOutPolearmAction, TimedBlockRecoil, TimedBlockRecoilSeconds, TimedBlockRecoilMaxPercent, TimedBlockRecoilVariant,
             TimedBlockAnimTest, TimedBlockAnimTestKey,
             PerfectStrikeMinMultiplier, PerfectStrikeMaxMultiplier, PerfectStrikeGraceSeconds, PerfectStrikeCentreMessage,
-            TimedBlockShowTiming,
+            TimedBlockShowTiming, ReelingHitKnockdownPercent,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
             ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,

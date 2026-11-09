@@ -27,6 +27,7 @@ public class ImpactHitsTests
     private static ImpactRules Rules(Action<TraxSettings>? tune = null)
     {
         var s = new TraxSettings();
+        s.Set(SettingsSchema.ReelingHitKnockdownEnabled, false, "test"); // step 105: the reeling BONUS of the usual model (step 105's roll - Step105Tests)
         tune?.Invoke(s);
         return ImpactRules.From(s);
     }

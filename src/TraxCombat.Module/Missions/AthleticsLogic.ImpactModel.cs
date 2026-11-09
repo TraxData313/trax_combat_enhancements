@@ -90,6 +90,7 @@ namespace TraxCombat.Missions
             _impact.EverOn = r.Enabled;
             TraxLog.Info("impact", "mission start: the model (step 48 - IMPACT I2, docs/IMPACT.md) " + r.Describe() + " - read live; the [summary] \"impact\" lines count every decision by event and bar band (PLAYTEST D17)");
             StartImpactMeet(); // step 82
+            StartReelingHits(); // step 105
         }
 
         /// <summary>From TickImpact (own try there): the switch and the mode read live - one [impact] line per change; the on / off time.</summary>
@@ -127,6 +128,7 @@ namespace TraxCombat.Missions
             WriteTimedAnimSummary(); // step 100d
             WritePerfectStrikeSummary(); // step 100g
             WriteImpactMeetSummary(); // step 82
+            TraxLog.Info("summary", _reelingHits.SummaryLine(ImpactRules.From(TraxSettings.Shared))); // step 105
         }
 
         // ------------------------------------------------------------------ the events
@@ -270,6 +272,7 @@ namespace TraxCombat.Missions
             }
             if (f.Fatal && ImpactMath.IsLanded(ev)) // step 62: he dies of it - his death plays, not our fall (a decided fall was counted "not seen")
             {
+                if (v != null && !altBlocked && v.Impact.Reeling(now)) _reelingHits.NoteFatal(ReelingHitMath.KindOf(ev, f.Thrust), v.Impact.ReelCause); // step 105: he just dies
                 _impact.Skip(ImpactSkip.Fatal, ev);
                 _falls.Fatal++;
                 return false;
@@ -404,6 +407,7 @@ namespace TraxCombat.Missions
                 if (riposteLive) ApplyBlock(a, v, in d, now, false, true, attackerBand); // a mounted blocker's riposte on a man on foot
             }
             else if (block && (applied || riposteLive)) ApplyBlock(a, v, in d, now, applied, riposteLive, attackerBand);
+            if (d.ReelingHit.Asked) NoteReelingHit(a, v, in d, applied, knockDown, now); // step 105
             if (!r.ShadowNow) // step 54: a window opened by what was really written (after the apply's own fixes)
             {
                 if (keep) NotePunishWindow(v, now);

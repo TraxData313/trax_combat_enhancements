@@ -60,6 +60,7 @@ namespace TraxCombat.Missions
             f.DefenderMaxHealth = victim.HealthLimit;
             f.Fatal = ImpactMath.IsLanded(f.Event) && ImpactFallMath.Fatal(victim.Health, cd.InflictedDamage); // step 62: he dies of it
             f.DamageType = TypeOf(cd.DamageType);
+            f.Thrust = cd.StrikeType == (int)StrikeType.Thrust; // step 105: the [summary]'s hit kind
             int slot = cd.AffectorWeaponSlotOrMissileIndex;
             if (f.Event == ImpactEvent.Bash)
             {
