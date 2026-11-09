@@ -2973,6 +2973,24 @@
   // (true or false)
   "PerfectStrikeWeaponFinishes": true,
 
+  // TEST TOOL, off for play. In a battle, the key below forces the nearest enemy on foot
+  // (within 8 m) into the next guard - low, high, left, right, shield lowered, shield lowered
+  // by the game's own 'cannot defend' flag - for the seconds below; hold Left Shift with it to
+  // go back. His pose is read back and shown on screen and in the log: did his guard really
+  // change.
+  // (true or false)
+  "OpeningGuardTest": false,
+
+  // The forced-guard test tool's key (only while the test tool is on). Type its name:
+  // LeftControl, RightControl, LeftAlt, RightAlt, LeftShift, RightShift, CapsLock, Tab, Q, T,
+  // Y, H, J, K, L, B, N, M, C, MiddleMouseButton, X1MouseButton, X2MouseButton.
+  // (one of LeftControl, RightControl, LeftAlt, RightAlt, LeftShift, RightShift, CapsLock, Tab, Q, T, Y, H, J, K, L, B, N, M, C, MiddleMouseButton, X1MouseButton, X2MouseButton)
+  "OpeningGuardTestKey": "K",
+
+  // How long the test tool holds his forced guard (battle seconds).
+  // (range 0.5 to 5.0)
+  "OpeningGuardTestSeconds": 2.0,
+
   // How much an outmatched man suffers: every doubling of the mismatch beyond the even band
   // adds this to the pressure on him (0.25: an enemy four times stronger counts as much as
   // being about a third tired). 0 = only tiredness counts.

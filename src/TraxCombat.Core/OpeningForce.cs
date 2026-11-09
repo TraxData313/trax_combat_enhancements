@@ -1,0 +1,270 @@
+using System;
+using System.Globalization;
+using System.Text;
+
+namespace TraxCombat.Core
+{
+    /// <summary>Step 106b: why an AI man's guard is forced right now.</summary>
+    public enum OpeningForceKind : byte
+    {
+        None,
+
+        /// <summary>OFF BALANCE: his guard written to the balance side from your blocked attack (or unguarded hit) until your follow-up's wind-up.</summary>
+        Balance,
+
+        /// <summary>Your follow-up into the side beat his block roll at its wind-up: the guard kept away from it (a shield lowered from
+        /// <c>OpeningShieldMinChain</c>) until the blow resolves, at most <c>OpeningHoldMaxSeconds</c>.</summary>
+        Held,
+
+        /// <summary>The test tool (<c>OpeningGuardTest</c>): a chosen guard for <c>OpeningGuardTestSeconds</c>.</summary>
+        Test,
+    }
+
+    /// <summary>Step 106b: how a forced guard ended (the summary counts them).</summary>
+    public enum OpeningForceEnd : byte
+    {
+        /// <summary>Your follow-up's wind-up: he won the block roll (his own AI guards again).</summary>
+        HeBlocks,
+
+        /// <summary>Your follow-up's wind-up went another way than the balance side (his own AI guards again).</summary>
+        WrongSide,
+
+        /// <summary>The blow resolved (your contact with him, a miss).</summary>
+        Resolved,
+
+        /// <summary>The time ran out (the off-balance time, the hold's cap, the test's seconds).</summary>
+        Timeout,
+
+        /// <summary>He reels now (your hit staggered him - the reel's own locks take over in 106d).</summary>
+        Reels,
+
+        /// <summary>The chain ended or moved on (another link replaced it, the chain reset).</summary>
+        ChainEnded,
+
+        /// <summary>A switch (the master switch, <c>OpeningsEnabled</c>, the test tool), he left the field, the mission ended, an error.</summary>
+        Off,
+
+        Count,
+    }
+
+    /// <summary>
+    /// Step 106b: the test tool's guards, cycled by its key - the four directions (the engine's DefendDown / Up / Left / Right bits), the shield
+    /// LOWERED by the input (every guard bit out of his frame) and the shield lowered by the game's own route (the agent's <c>CanDefend</c> flag
+    /// taken off - what vanilla does to climbers; given back at the end) on top of the input.
+    /// </summary>
+    public enum OpeningTestMode : byte
+    {
+        Low,
+        High,
+        Left,
+        Right,
+        Lowered,
+        LoweredByFlag,
+        Count,
+    }
+
+    /// <summary>
+    /// Step 106b - THE FORCED GUARD (AI_NOTES "Step 106" §106b, DESIGN decision 95): the pure part. The frame goes into step 16's input hook
+    /// (<c>AiInputComponent.Filter</c>) after step 82's read guard and before a kick; step 104b's reel lock stays last. The bits are the engine's
+    /// <c>Agent.MovementControlFlag</c> values (v1.4.8 - the offline smoke checks them against the game's enum). No allocation.
+    /// </summary>
+    public static class OpeningForceMath
+    {
+        public const uint DefendLeft = 0x400, DefendRight = 0x800, DefendUp = 0x1000, DefendDown = 0x2000, DefendAuto = 0x4000;
+
+        /// <summary><c>MovementControlFlag.DefendBlock</c> (0x8000) - NOT in the engine's DefendMask; taken out too when the guard is lowered.</summary>
+        public const uint DefendBlock = 0x8000;
+
+        /// <summary>Every guard bit (<see cref="AiInputMath.DefendMask"/> + <see cref="DefendBlock"/>).</summary>
+        public const uint GuardBits = AiInputMath.DefendMask | DefendBlock;
+
+        /// <summary>A guard (the engine's <c>UsageDirection</c> DefendUp 4 .. DefendRight 7) as its movement bit; anything else 0.</summary>
+        public static uint GuardFlag(int guard) => guard switch
+        {
+            OpeningMath.GuardUp => DefendUp,
+            OpeningMath.GuardDown => DefendDown,
+            OpeningMath.GuardLeft => DefendLeft,
+            OpeningMath.GuardRight => DefendRight,
+            _ => 0u,
+        };
+
+        /// <summary>The guard a movement bit raises (<see cref="OpeningMath.Unknown"/> for none / several / DefendAuto).</summary>
+        public static int GuardOfFlag(uint flag) => (flag & GuardBits) switch
+        {
+            DefendUp => OpeningMath.GuardUp,
+            DefendDown => OpeningMath.GuardDown,
+            DefendLeft => OpeningMath.GuardLeft,
+            DefendRight => OpeningMath.GuardRight,
+            _ => OpeningMath.Unknown,
+        };
+
+        /// <summary>
+        /// ONE FRAME of a forced man's input: his attack bits out (he does not swing while off balance); his guard bits replaced by
+        /// <paramref name="guardFlag"/> - or, with <paramref name="lower"/>, EVERY guard bit out (no guard at all: a shield is lowered - a raised
+        /// shield stops a blow from any side, step 64, so a forced shield direction alone opens nothing). The move bits, the turn bits and every
+        /// other bit stay his. <paramref name="edit"/>: AttackCleared / GuardCleared (a guard of his own taken out) / GuardRaised (ours written).
+        /// </summary>
+        public static uint Frame(uint flags, uint guardFlag, bool lower, out InputEdit edit)
+        {
+            edit = InputEdit.None;
+            uint f = flags;
+            if ((f & AiInputMath.AttackMask) != 0)
+            {
+                f &= ~AiInputMath.AttackMask;
+                edit |= InputEdit.AttackCleared;
+            }
+            uint own = f & GuardBits;
+            f &= ~GuardBits;
+            if (lower || guardFlag == 0)
+            {
+                if (own != 0) edit |= InputEdit.GuardCleared;
+                return f;
+            }
+            if (own != guardFlag) edit |= InputEdit.GuardRaised;
+            return f | (guardFlag & GuardBits);
+        }
+
+        /// <summary>The shield gives way: he holds a shield and the plan says it no longer holds the side (from link <c>OpeningShieldMinChain</c>;
+        /// an unguarded front hit's state on a shieldman too - he was not guarding).</summary>
+        public static bool Lowers(bool shieldInHand, in OpeningPlan p) => shieldInHand && !p.ShieldHolds;
+
+        /// <summary>THE LIVE BLOCK ROLL at your follow-up's wind-up: through (he fails to block) when the die is at or above his block chance.</summary>
+        public static bool Through(double die, double blockChance) => !double.IsNaN(die) && die >= blockChance;
+
+        /// <summary>The test tool's next mode (<paramref name="back"/>: the one before); the first press gives <see cref="OpeningTestMode.Low"/>.</summary>
+        public static OpeningTestMode Next(int last, bool back)
+        {
+            int n = (int)OpeningTestMode.Count;
+            if (last < 0 || last >= n) return back ? (OpeningTestMode)(n - 1) : OpeningTestMode.Low;
+            return (OpeningTestMode)(back ? (last + n - 1) % n : (last + 1) % n);
+        }
+
+        /// <summary>The test mode's guard (<see cref="OpeningMath.GuardDown"/> = low ...); the lowered modes = <see cref="OpeningMath.Unknown"/>.</summary>
+        public static int TestGuard(OpeningTestMode m) => m switch
+        {
+            OpeningTestMode.Low => OpeningMath.GuardDown,
+            OpeningTestMode.High => OpeningMath.GuardUp,
+            OpeningTestMode.Left => OpeningMath.GuardLeft,
+            OpeningTestMode.Right => OpeningMath.GuardRight,
+            _ => OpeningMath.Unknown,
+        };
+
+        public static bool TestLowers(OpeningTestMode m) => m == OpeningTestMode.Lowered || m == OpeningTestMode.LoweredByFlag;
+
+        public static string TestName(OpeningTestMode m) => m switch
+        {
+            OpeningTestMode.Low => "LOW guard (DefendDown)",
+            OpeningTestMode.High => "HIGH guard (DefendUp)",
+            OpeningTestMode.Left => "LEFT guard (DefendLeft)",
+            OpeningTestMode.Right => "RIGHT guard (DefendRight)",
+            OpeningTestMode.Lowered => "SHIELD / GUARD LOWERED (every guard bit out of his input)",
+            OpeningTestMode.LoweredByFlag => "SHIELD / GUARD LOWERED by the game's CanDefend flag (+ the input)",
+            _ => "?",
+        };
+
+        /// <summary>
+        /// The pose read back: did his guard become the wanted one? A wanted direction = his channel-1 action direction is that guard while in a
+        /// defend stage; lowered = no defend stage and no guard direction. <paramref name="direction"/> = the engine's <c>UsageDirection</c>
+        /// (-1 none), <paramref name="defending"/> = channel 1 in Defend / DefendParry.
+        /// </summary>
+        public static bool PoseMatches(int wantedGuard, bool lowered, int direction, bool defending)
+        {
+            if (lowered) return !defending && !OpeningMath.IsGuard(direction);
+            return defending && direction == wantedGuard;
+        }
+
+        public static string EndName(OpeningForceEnd e) => e switch
+        {
+            OpeningForceEnd.HeBlocks => "he won the block roll",
+            OpeningForceEnd.WrongSide => "your follow-up went another way",
+            OpeningForceEnd.Resolved => "the blow resolved",
+            OpeningForceEnd.Timeout => "the time ran out",
+            OpeningForceEnd.Reels => "he reels",
+            OpeningForceEnd.ChainEnded => "the chain ended",
+            OpeningForceEnd.Off => "a switch / gone / the end",
+            _ => "?",
+        };
+    }
+
+    /// <summary>
+    /// Step 106b: what the forced guard did in one battle - the [summary] line "openings - the forced guard". Counters only, no allocation per
+    /// event.
+    /// </summary>
+    public sealed class OpeningForceStats
+    {
+        /// <summary>Forced states started: off balance, held after a won roll, the test tool.</summary>
+        public int Balance, Held, Tests;
+
+        /// <summary>Of the holds, the ones with the shield (or guard) LOWERED.</summary>
+        public int ShieldLowerings;
+
+        /// <summary>The live block rolls at your wind-up into the side: he blocked / your follow-up got through; wind-ups another way.</summary>
+        public int RollsBlocked, RollsThrough, WrongSide;
+
+        /// <summary>A held follow-up that he blocked ANYWAY (the forcing did not stop him - an engine finding).</summary>
+        public int BlockedAnyway;
+
+        /// <summary>A held follow-up that landed.</summary>
+        public int HeldLanded;
+
+        /// <summary>Not forced: you / a man you drive, a rider.</summary>
+        public int NotAi;
+
+        /// <summary>The input frames written / with his attack bits out / with his own guard replaced or taken out / lowered.</summary>
+        public long Frames, AttacksOut, GuardsWritten, GuardsCleared, LoweredFrames;
+
+        /// <summary>The test tool's poses read back: how many, how many matched the wanted guard, how many changed from before.</summary>
+        public int PosesRead, PosesMatched, PosesChanged;
+
+        /// <summary>The CanDefend flag taken off / given back (the test tool's 6th mode).</summary>
+        public int FlagsOff, FlagsBack;
+
+        public readonly int[] Ends = new int[(int)OpeningForceEnd.Count];
+        public int Errors;
+
+        public void NoteEnd(OpeningForceEnd e)
+        {
+            if (e >= 0 && e < OpeningForceEnd.Count) Ends[(int)e]++;
+        }
+
+        public void NoteFrames(long frames, long attacksOut, long guardsWritten, long guardsCleared, long loweredFrames)
+        {
+            Frames += frames;
+            AttacksOut += attacksOut;
+            GuardsWritten += guardsWritten;
+            GuardsCleared += guardsCleared;
+            LoweredFrames += loweredFrames;
+        }
+
+        public void NotePose(bool matched, bool changed)
+        {
+            PosesRead++;
+            if (matched) PosesMatched++;
+            if (changed) PosesChanged++;
+        }
+
+        public string SummaryLine(in OpeningRules r, bool testOn)
+        {
+            var c = CultureInfo.InvariantCulture;
+            var t = new StringBuilder();
+            t.Append("openings - the forced guard (step 106b; live ").Append(r.Enabled ? "ON" : "OFF (" + r.OffBecause + ")")
+             .Append(", the test tool ").Append(testOn ? "ON" : "OFF").Append("): forced off balance ").Append(Balance.ToString(c))
+             .Append(", held after a won roll ").Append(Held.ToString(c)).Append(" (shield / guard LOWERED ").Append(ShieldLowerings.ToString(c))
+             .Append("), test ").Append(Tests.ToString(c));
+            t.Append("; the block roll at your wind-up: he blocks ").Append(RollsBlocked.ToString(c)).Append(", through ").Append(RollsThrough.ToString(c))
+             .Append(" (landed ").Append(HeldLanded.ToString(c)).Append(", BLOCKED ANYWAY ").Append(BlockedAnyway.ToString(c)).Append("), another side ")
+             .Append(WrongSide.ToString(c));
+            t.Append("; frames written ").Append(Frames.ToString(c)).Append(" (attack out ").Append(AttacksOut.ToString(c)).Append(", his guard replaced ")
+             .Append(GuardsWritten.ToString(c)).Append(", taken out ").Append(GuardsCleared.ToString(c)).Append(", lowered ").Append(LoweredFrames.ToString(c)).Append(')');
+            t.Append("; poses read back ").Append(PosesRead.ToString(c)).Append(" (as wanted ").Append(PosesMatched.ToString(c)).Append(", changed ")
+             .Append(PosesChanged.ToString(c)).Append(')');
+            if (FlagsOff + FlagsBack > 0) t.Append("; CanDefend off / back ").Append(FlagsOff.ToString(c)).Append(" / ").Append(FlagsBack.ToString(c));
+            t.Append("; ended by");
+            for (int i = 0; i < (int)OpeningForceEnd.Count; i++)
+                t.Append(i == 0 ? " " : ", ").Append(OpeningForceMath.EndName((OpeningForceEnd)i)).Append(' ').Append(Ends[i].ToString(c));
+            if (NotAi > 0) t.Append("; not forced (not the AI's) ").Append(NotAi.ToString(c));
+            if (Errors > 0) t.Append("; errors ").Append(Errors.ToString(c));
+            return t.ToString();
+        }
+    }
+}

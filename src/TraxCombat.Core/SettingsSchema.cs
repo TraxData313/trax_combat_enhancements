@@ -2233,6 +2233,20 @@ namespace TraxCombat.Core
             "Perfect strike: the side follows your weapon",
             "On: when your weapon cannot make the opposite attack, any of its other attacks finishes - an axe or mace answers an overhead with its left OR right swing, a spear answers a side swing with either stab. Off: strict opposites only.");
 
+        // Step 106b: the forced-guard TEST TOOL (Toni proves in game that the forced guard and the lowered shield really happen) - works with
+        // OpeningsEnabled off (the master switch still first).
+        public static readonly ParamDef OpeningGuardTest = Bool("OpeningGuardTest", ImpactGroup,
+            "Openings: forced-guard test tool",
+            "TEST TOOL, off for play. In a battle, the key below forces the nearest enemy on foot (within 8 m) into the next guard - low, high, left, right, shield lowered, shield lowered by the game's own 'cannot defend' flag - for the seconds below; hold Left Shift with it to go back. His pose is read back and shown on screen and in the log: did his guard really change.");
+
+        public static readonly ParamDef OpeningGuardTestKey = Key("OpeningGuardTestKey", ImpactGroup,
+            "Openings: forced-guard test key",
+            "The forced-guard test tool's key (only while the test tool is on). Type its name: " + KeyNames.ListText + ".");
+
+        public static readonly ParamDef OpeningGuardTestSeconds = Float("OpeningGuardTestSeconds", 0.5, 5, ImpactGroup,
+            "Openings: forced-guard test lasts (s)",
+            "How long the test tool holds his forced guard (battle seconds).");
+
         public static readonly ParamDef ImpactMismatchWeight = Float("ImpactMismatchWeight", 0, 2, ImpactGroup,
             "Mismatch weight (pressure per doubling)",
             "How much an outmatched man suffers: every doubling of the mismatch beyond the even band adds this to the pressure on him (0.25: an enemy four times stronger counts as much as being about a third tired). 0 = only tiredness counts.");
@@ -2957,7 +2971,7 @@ namespace TraxCombat.Core
             OpeningBlockPerLinkPercent, OpeningChainMax, OpeningChainResetSeconds, OpeningMissKeepsChain, OpeningHoldMaxSeconds, OpeningSidesCrossed,
             OpeningReelBaseSeconds, OpeningReelPerChainSeconds, OpeningReelMaxSeconds, OpeningShieldMinChain, OpeningBackHitStaggers, OpeningUnguardedHitOpens,
             OpeningArrowShow, OpeningAiVsAi, PerfectStrikeFourWayMin, PerfectStrikeFourWayMax, PerfectStrikeThreeWayMin, PerfectStrikeThreeWayMax,
-            PerfectStrikeTwoWayMin, PerfectStrikeTwoWayMax, PerfectStrikeWeaponFinishes,
+            PerfectStrikeTwoWayMin, PerfectStrikeTwoWayMax, PerfectStrikeWeaponFinishes, OpeningGuardTest, OpeningGuardTestKey, OpeningGuardTestSeconds,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
             ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,

@@ -708,6 +708,9 @@ namespace TraxCombat.Core
         public float PerfectStrikeTwoWayMin => GetFloat(SettingsSchema.PerfectStrikeTwoWayMin); // step 106a2
         public float PerfectStrikeTwoWayMax => GetFloat(SettingsSchema.PerfectStrikeTwoWayMax); // step 106a2
         public bool PerfectStrikeWeaponFinishes => GetBool(SettingsSchema.PerfectStrikeWeaponFinishes); // step 106a2
+        public bool OpeningGuardTest => GetBool(SettingsSchema.OpeningGuardTest); // step 106b
+        public string OpeningGuardTestKey => KeyNames.Name(Get(SettingsSchema.OpeningGuardTestKey)); // step 106b
+        public float OpeningGuardTestSeconds => GetFloat(SettingsSchema.OpeningGuardTestSeconds); // step 106b
         public int AiNoShieldKickPercent => GetInt(SettingsSchema.AiNoShieldKickPercent); // step 81
         public int AiNoShieldPushPercent => GetInt(SettingsSchema.AiNoShieldPushPercent); // step 88
         public float AiKickReachMetres => GetFloat(SettingsSchema.AiKickReachMetres);

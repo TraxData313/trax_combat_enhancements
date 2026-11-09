@@ -1805,6 +1805,9 @@ row goes to the Advanced page unless a player needs it to set up his game (CLAUD
 | `PerfectStrikeTwoWayMin` | 1.5 | Step 106a2: with a 2-direction weapon (spears - the overhead stab and the thrust) at timing 0. Range 1-5. Live (106d). |
 | `PerfectStrikeTwoWayMax` | 2.0 | Step 106a2: ... at timing 1. Range 1-5. Live (106d). |
 | `PerfectStrikeWeaponFinishes` | true | Step 106a2 (decision 95 (d)): the finishing side follows the weapon - the strict opposite (step 103) when the weapon can make it, else any of its other directions but the one opposite to it: a no-thrust weapon finishes an OVERHEAD stagger with left OR right, a spear a SIDE stagger with either stab; off = strict opposites. Live (106d). |
+| `OpeningGuardTest` | false | Step 106b TEST TOOL (decision 95 (i)): in a battle `OpeningGuardTestKey` forces the nearest ENEMY on foot within 8 m into the next guard - low / high / left / right / lowered (every guard bit out of his input) / lowered by the agent's CanDefend flag (+ the input) - for `OpeningGuardTestSeconds`; Left Shift + the key = back; his channel-1 pose read back before, after 0.5 s and at the end (on screen and in the log). Works with `OpeningsEnabled` off (the master switch first). Live. |
+| `OpeningGuardTestKey` | K | Step 106b: the forced-guard test tool's key (a key name). Live. |
+| `OpeningGuardTestSeconds` | 2.0 | Step 106b: how long the test tool holds his forced guard (battle s, 0.5-5). Live. |
 | `ImpactMismatchWeight` | 0.25 | Step 48: x per doubling of the mismatch R beyond the even band. Range 0-2. |
 | `ImpactEvenBandDoublings` | 0.5 | Step 48: a mismatch within ± this many doublings (×1.41) = an even match (adds 0). Range 0-3. |
 | `ImpactBodyExponent` | 0.5 | Step 48: the body = his CURRENT points to this power. Range 0-2. |

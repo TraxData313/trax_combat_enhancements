@@ -175,6 +175,10 @@ namespace TraxCombat.Core
         /// <summary>The shadow log runs: the master switch first, then <c>OpeningsShadowLog</c>.</summary>
         public bool ShadowOn => ModEnabled && ShadowLog;
 
+        /// <summary>Step 106b: the chain is followed at all - the master switch first, then the shadow log OR the live switch (the live parts
+        /// need the chain even with the shadow log off).</summary>
+        public bool Runs => ModEnabled && (ShadowLog || Switch);
+
         /// <summary>The flash after his block (s) - the PERFECT moment to start your follow-up.</summary>
         public double FlashDelay { get; }
 
@@ -951,7 +955,7 @@ namespace TraxCombat.Core
         {
             var c = CultureInfo.InvariantCulture;
             var t = new StringBuilder();
-            t.Append("openings (step 106a2 SHADOW, the revised design - nothing applied; live ").Append(r.Enabled ? "ON (not built yet)" : "OFF (" + r.OffBecause + ")")
+            t.Append("openings (step 106a2 SHADOW, the revised design - nothing applied; live ").Append(r.Enabled ? "ON (106b: the forced guard and the block roll; the stagger and the perfect strike still shadow)" : "OFF (" + r.OffBecause + ")")
              .Append(", the shadow log ").Append(r.ShadowOn ? "ON" : "OFF").Append("): your attacks the AI blocked correctly ").Append(BlocksTotal.ToString(c))
              .Append(" (shield ").Append(ShieldBlocks.ToString(c)).Append(", weapon ").Append(WeaponBlocks.ToString(c)).Append(") by link");
             for (int k = 1; k <= r.ChainMax; k++) t.Append(k == 1 ? " " : " / ").Append(Blocks[k].ToString(c));
