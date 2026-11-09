@@ -232,7 +232,7 @@ namespace TraxCombat.Core
         // step 104a only measures it (the [impact] "rider shadow" lines, the [summary] "timed blocks on horseback (shadow)" line).
         public static readonly ParamDef TimedBlocksOnHorseback = Bool("TimedBlocksOnHorseback", PlayerImpactGroup,
             "Timed blocks on horseback",
-            "A well-timed block against a RIDER's blow makes him reel in the saddle - no attack and no guard for up to 1.5 s, his horse checked; a sharp one can rear his horse, a perfect one can knock him off. Works whether you ride or stand. Off: riders shrug off timed blocks as before. Not built yet - this build only measures what it would do (the log); leave it off. The numbers: Advanced page, Impact.");
+            "A well-timed block against a RIDER's blow makes him reel in the saddle - no attack and no guard for up to 1.5 s (1 s when the AI does it to you), his horse slowed to half speed; he still steers. Works whether you ride or stand. Off: riders shrug off timed blocks as before. The numbers and the animation: Advanced page, Impact.");
 
         // Step 33 (Anton, 2026-10-12: "a short burst of speed, meant to feel a little like a dodge, and for the AI to make charges
         // sharper"): Core SprintMath, AI_NOTES "Step 33".
@@ -2080,7 +2080,7 @@ namespace TraxCombat.Core
             "On: an AI man's timed block of your mounted blow can make you reel in the saddle (at most the reel on you above; never a rear, never knocked off). Off: only riders of the AI reel.");
         public static readonly ParamDef TimedRiderReelAction = Text("TimedRiderReelAction", ImpactGroup,
             "Horseback: the reel's animation",
-            "The game action the reeling rider's upper body plays (never his legs, never the horse): act_stagger_backward, or a name picked with the animation test tool; none = no animation, only the lock.");
+            "The game action the reeling rider's upper body plays (never his legs, never the horse). Default act_stagger_backward. To pick another: turn on the animation test tool (this group), press its key near a rider, and when one looks right type the action name it shows here. none = no animation, only the lock. Live - the next reel uses it.");
         public static readonly ParamDef TimedRiderReelAnimSpeed = Float("TimedRiderReelAnimSpeed", 0.5, 2, ImpactGroup,
             "Horseback: the reel animation's speed",
             "The speed of the reel's animation (1 = the game's own; below 1 slower).");

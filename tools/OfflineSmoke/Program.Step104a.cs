@@ -36,8 +36,9 @@ namespace TraxCombat.Tools
                     S.Set(p, p.Default, SettingSources.File);
                 S.Set(SettingsSchema.TimedBlockSlowMo, false, SettingSources.File);
                 S.Set(SettingsSchema.ImpactOnPlayerPercent, 100, SettingSources.File);
-                Check(SettingsSchema.TimedBlocksOnHorseback.Default == 0 && !TraxSettings.Shared.TimedBlocksOnHorseback,
-                    "TimedBlocksOnHorseback does not ship OFF (step 104b turns it on)");
+                // step 104b turned the switch ON (defaults.json): 104a's shadow is checked with it OFF - nothing applied
+                S.Set(SettingsSchema.TimedBlocksOnHorseback, false, SettingSources.File);
+                Check(!TraxSettings.Shared.TimedBlocksOnHorseback, "TimedBlocksOnHorseback did not turn off for the shadow's check");
                 var inputs = new FakeImpactInputs { Damage = 20 };
                 var impact = new FakeImpactBody();
                 var guard = new FakeGuardBody();

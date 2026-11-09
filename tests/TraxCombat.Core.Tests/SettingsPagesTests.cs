@@ -43,7 +43,7 @@ public class SettingsPagesTests
         ("Staggers and knockdowns", "TimedBlockSlowMo", "Slow motion on your best blocks"), // step 100e - Toni's slow-mo, its own switch (DESIGN decision 91 (e))
         ("Staggers and knockdowns", "PerfectStrikeEnabled", "Perfect strike after your timed block"), // step 100g - Toni's perfect strike, its own switch (DESIGN decision 91 (j))
         ("Staggers and knockdowns", "ReelingHitKnockdownEnabled", "Hit a staggering man: he falls"), // step 105 - Toni's knockdown on a reeling man, its own switch (DESIGN decision 94)
-        ("Staggers and knockdowns", "TimedBlocksOnHorseback", "Timed blocks on horseback"), // step 104 - Toni's timed blocks on horseback, its own switch (DESIGN decision 93; off until 104b)
+        ("Staggers and knockdowns", "TimedBlocksOnHorseback", "Timed blocks on horseback"), // step 104 - Toni's timed blocks on horseback, its own switch (DESIGN decision 93; on since 104b)
         ("Sprinting", "SprintEnabled", "Sprint"),
         ("Sprinting", "SprintKey", "Sprint key"),
         ("Sprinting", "SprintControllerKey", "Sprint button (controller)"), // step 85 - Toni's gamepad sprint (the left stick press), beside the key it mirrors

@@ -148,7 +148,7 @@ public class Step97Tests
         Assert.Contains("\"AiKickCooldownSeconds\": 1.0,", text, StringComparison.Ordinal);
         Assert.Contains("a weapon push", SettingsSchema.AiKickCooldownSeconds.Description, StringComparison.Ordinal);
         Assert.Contains("1 s since step 97 (2 s before)", SettingsSchema.AiKickCooldownSeconds.Description, StringComparison.Ordinal);
-        Assert.Equal(28, ConfigFile.FormatVersion);
+        Assert.Equal(29, ConfigFile.FormatVersion);
         var s = new TraxSettings();
         s.Set(SettingsSchema.AiKickCooldownSeconds, 1.0, "test");
         Assert.Equal(1.0, AiKickRules.From(s).Cooldown, 9); // one cooldown, read live, for kicks, bashes and pushes
@@ -156,7 +156,7 @@ public class Step97Tests
         var read = ConfigFile.Read("{ \"ConfigVersion\": 25, \"AiKickCooldownSeconds\": 2.0 }");
         var notes = ConfigFile.Migrate(read, ShippedDefault);
         Assert.Equal(1.0, read.Values["AiKickCooldownSeconds"], 9);
-        Assert.Equal("AiKickCooldownSeconds: 2.0 → 1.0 (format 25 → 28, the old default; step 97, Toni: a shorter kick cooldown - at least 1 s between two kicks, bashes or pushes of one man)",
+        Assert.Equal("AiKickCooldownSeconds: 2.0 → 1.0 (format 25 → 29, the old default; step 97, Toni: a shorter kick cooldown - at least 1 s between two kicks, bashes or pushes of one man)",
             Assert.Single(notes));
         // a format-19 file too
         var nineteen = ConfigFile.Read("{ \"ConfigVersion\": 19, \"AiKickCooldownSeconds\": 2.0 }");
@@ -166,7 +166,7 @@ public class Step97Tests
         var tuned = ConfigFile.Read("{ \"ConfigVersion\": 25, \"AiKickCooldownSeconds\": 3.0 }");
         var tn = ConfigFile.Migrate(tuned, ShippedDefault);
         Assert.Equal(3.0, tuned.Values["AiKickCooldownSeconds"], 9);
-        Assert.StartsWith("AiKickCooldownSeconds: 3.0 kept - your own value (format 25 → 28; the new default 1.0 is not pushed over it; step 97", Assert.Single(tn), StringComparison.Ordinal);
+        Assert.StartsWith("AiKickCooldownSeconds: 3.0 kept - your own value (format 25 → 29; the new default 1.0 is not pushed over it; step 97", Assert.Single(tn), StringComparison.Ordinal);
         // an older file's 8 goes through step 81's block straight to today's 1, one note
         var old = ConfigFile.Read("{ \"ConfigVersion\": 18, \"AiKickCooldownSeconds\": 8.0 }");
         var on = ConfigFile.Migrate(old, ShippedDefault);
@@ -177,7 +177,7 @@ public class Step97Tests
         Assert.Empty(ConfigFile.Migrate(mine, ShippedDefault));
         Assert.Equal(2.0, mine.Values["AiKickCooldownSeconds"], 9);
         string written = ConfigFile.Write(read.Values, read.Unknown);
-        Assert.Contains("\"ConfigVersion\": 28", written, StringComparison.Ordinal);
+        Assert.Contains("\"ConfigVersion\": 29", written, StringComparison.Ordinal);
         Assert.Empty(ConfigFile.Migrate(ConfigFile.Read(written), ShippedDefault));
     }
 
