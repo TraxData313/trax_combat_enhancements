@@ -19,10 +19,13 @@ ends with a link to its numbers there. Every number is a setting you can change,
 - [Courage: men stick together](#courage-men-stick-together)
 - [Cavalry comes in waves](#cavalry-comes-in-waves)
 - [Blows that count: staggers, shields, knockdowns](#blows-that-count-staggers-shields-knockdowns)
+- [Timed blocks and the perfect strike](#timed-blocks-and-the-perfect-strike)
 - [Damage](#damage)
 - [Heroes, duels and tournaments](#heroes-duels-and-tournaments)
 - [The sprint](#the-sprint)
 - [Your orders: a click charges, a drag never does](#your-orders-a-click-charges-a-drag-never-does)
+- [Green troops cannot hold a thin line](#green-troops-cannot-hold-a-thin-line)
+- [Green troops carry a piece of wood](#green-troops-carry-a-piece-of-wood)
 - [What you see on screen](#what-you-see-on-screen)
 - [Tactics](#tactics)
 - [Settings](#settings)
@@ -43,7 +46,9 @@ So battles get slower, and **when** you commit a formation matters as much as wh
 rested line beats a spent one. And a fresh unit thrown at a line that has been fighting for two minutes is
 a real blow: tired men are staggered, knocked down, their shields knocked away.
 
-Nothing is slow motion. A tired man's swing looks almost normal; he just waits longer before the next one.
+Tiredness is not slow motion: a tired man's swing looks almost normal; he just waits longer before the next one.
+And a block timed just as the blow lands staggers the attacker - your best ones slow the game for a moment and open
+a **perfect strike** from the opposite side.
 
 ## Your Athletics bar
 
@@ -89,6 +94,10 @@ The bar starts to refill a few seconds after a man's last attack — about a min
 standing or walking, slower jogging, half as fast running flat out. Walking refills as fast as standing,
 so a formation pulled back and walked about recovers.
 
+**Crouch to rest.** Crouched (Z), your own bar refills twice as fast - the rest after a blow and your wounds still
+hold it back, and it does nothing on a horse. Your bar reads "Resting" while it works (player page: *Crouch (Z) to rest
+faster*; the AI's crouch is left alone).
+
 **A skilful defender recovers on the defence.** A clean block on the right side, or a parry, costs a
 little but lets the refill run on underneath. A block on the **wrong** side (the shield caught the blow
 off-side) costs twice as much, stops the refill and starts the wait again. So a man who reads his enemy can
@@ -97,7 +106,7 @@ it:** a shield block against a man in front of you counts as the right side, whi
 it — the same for the AI. From the side or behind, the side still matters, and so does it for a weapon parry. A
 tired soldier still misjudges some of his blocks, so a worn-out wall can still be broken.
 
-Numbers: [MECHANICS §5](MECHANICS.md#5-resting-and-the-refill), [§6](MECHANICS.md#6-defending-costs-too).
+Numbers: [MECHANICS §5](MECHANICS.md#5-resting-and-the-refill) (with the crouch), [§6](MECHANICS.md#6-defending-costs-too).
 
 ## Orders set how hard they fight
 
@@ -295,22 +304,6 @@ tired he is, the likelier he reels or goes down. Guard the wrong way, or get cau
 you are tired. The AI reads a coming kick or bash about as well as it blocks a swing (a fresh veteran often, a tired one or a recruit seldom) and
 raises the right guard; so do you, with your own guard.
 
-**Time your block.** Raise your guard - the right side, or a parry - just as the blow lands, and the man who swung reels far more often
-and for longer: up to about 2 seconds for a block made in the last moment (within about a sixth of a second), less the earlier you raised it,
-and a guard held up the whole time is an ordinary block. With the game's automatic block direction only the moment you press block counts; with
-a manual direction a late switch to the right side counts too. The AI times its blocks as well, less sharply, and never staggers you for more
-than about a second. Switch: *Timed blocks* (Staggers and knockdowns).
-
-**Slow motion on your best blocks.** When one of YOUR blocks is timed sharply and the attacker really reels, the game slows for a moment
-and eases back to normal over half a second - at most one every few seconds, never for the AI's blocks, never while the orders menu's own
-slow-down is on. Switch: *Slow motion on your best blocks* (Staggers and knockdowns).
-
-**The block you can see.** On a timed block that staggers the attacker, the blocker's shield (or weapon) punches out as the blow lands -
-it hurts nobody and costs nothing, and the guard is back a quarter second later. The attacker first bounces back the way he swung - an
-overhead jerks up, a side swing flies back to its side - then staggers backward. The AI's timed blocks look the same. Switches and the
-animations themselves: Advanced page, Impact ("Timed blocks: the blocker pushes out", "direction-matched recoil", and a test tool to pick
-the animations by eye).
-
 **The enemy goes for the opening.** When a man reels or lies on the ground — you included — the men fighting
 him press it at once.
 
@@ -323,6 +316,46 @@ it.
 Numbers: [MECHANICS §11c](MECHANICS.md#11c-staggers-shield-drops-and-knockdowns) — every chance by tiredness,
 the king and the man, the stick and the axe, armour and rank, blows from behind, the shock charge, a charge into a
 shield wall, the cavalry charge, riders, how long.
+
+## Timed blocks and the perfect strike
+
+**Time your block.** Raise your guard - the right side, or a parry - just as the blow lands, and the man who swung reels far more often
+and for longer: up to 2 seconds for a block made in the last moment, less the earlier you raised it, and a guard held up the whole time
+is an ordinary block. A **perfect** block always staggers a man on foot (a rider is never staggered - not yet), even one who reeled a
+moment ago. With the game's automatic block direction only the moment you press block counts; with a manual direction a late switch to the
+right side counts too. Switch: *Timed blocks* (Staggers and knockdowns).
+
+**Skill widens the window.** The perfect moment depends on the blocker's skill in the weapon he holds (One Handed for a shield): a tenth
+of a second at skill 0, about a sixth at 100, a fifth at 200, a quarter at 300 - and the whole window stretches with it. A master forgives a
+late guard that a novice would not.
+
+**Slow motion on your best blocks.** When one of YOUR blocks is timed sharply and the attacker really reels, the game drops to a quarter
+speed at once, holds it about a second and a half, and eases back - at most one every few seconds, never for the AI's blocks, never while
+the orders menu's own slow-down (or another mod's) is on. Switch: *Slow motion on your best blocks* (Staggers and knockdowns).
+
+**The block you can see.** On a timed block that staggers the attacker, the blocker's shield (or weapon) punches out as the blow lands -
+it hurts nobody and costs nothing, and the guard is back a quarter second later - and the attacker staggers backward. The AI's timed
+blocks look the same. The animations and a test tool to pick them by eye: Advanced page, Impact.
+
+**The perfect strike.** While the man your timed block staggered still reels, hit him from the **opposite side** and the blow does 2 to 3
+times its damage - more for a sharper block - and **PERFECT STRIKE** flashes in gold. Strict opposites:
+
+| You blocked his… | Answer with… |
+|---|---|
+| attack coming at your left | a swing from your right |
+| attack coming at your right | a swing from your left |
+| overhead | a thrust from below |
+| thrust | an overhead |
+
+A hit from the wrong side lands as usual and does not use the chance up - you can still find the right one while he reels. One perfect
+strike per stagger, on foot, with a melee swing to his body (not his shield, not a kick). An axe has no thrust, so it cannot answer an
+overhead. Yours alone: the AI never gets one. Switch: *Perfect strike after your timed block* (Staggers and knockdowns).
+
+**The AI times its blocks too** - at half strength. It does not fight any differently: an AI man who happens to raise his guard just
+before your blow lands is scored like you, with his own skill's window, at half the effect. A timed block of his never staggers you for
+more than 1.2 seconds.
+
+Numbers: [MECHANICS §11c - Timed blocks and the perfect strike](MECHANICS.md#timed-blocks-and-the-perfect-strike).
 
 ## Damage
 
@@ -424,6 +457,9 @@ Numbers: [MECHANICS §14d](MECHANICS.md#14d-tier-1-men-carry-a-cheap-culture-shi
   (no morale there).
 - **Hold ALT near a formation**: the nearest few also say **"morale 64, fresh 41%"** — their average morale and
   Athletics. Low morale and a low bar: that unit is about to become a herd.
+- **Your block's timing**: every correct block of yours says how sharp it was - "Your riposte - Aldric reels 1.46 s / 2.00
+  (guard 0.30 s / 0.15)": how long he reels, and how long your guard was up against your perfect window.
+- **PERFECT STRIKE x2.8** in gold, in the message feed and in the middle of the screen, when your perfect strike lands.
 
 Numbers and colours: [MECHANICS §15](MECHANICS.md#15-what-you-see-on-screen).
 
@@ -448,6 +484,9 @@ Numbers and colours: [MECHANICS §15](MECHANICS.md#15-what-you-see-on-screen).
   climb before you go again.
 - **Block on the right side.** Clean blocks let your bar refill while you defend, and a tired man who swings into
   your good guard reels — strike then.
+- **Block late, answer from the other side.** Wait for the blow, raise your guard as it lands, then swing from the
+  side opposite his attack (a thrust after his overhead) while he reels — two or three blows' worth in one.
+- **Crouch when you step out.** Out of reach and crouched, your bar climbs twice as fast.
 - **Sprint to get out, not to get in tired.** A short dodge saves a cornered hero; a long sprint into a fight
   arrives with a bar that has not refilled.
 
@@ -457,8 +496,10 @@ Everything works out of the box. If you have the **Mod Configuration Menu** (MCM
 two pages:
 
 - **Trax Combat Enhancements** — the short page: the master switch, how hard hits land, how fast men tire, each AI
-  system's own switch (aggression and the fever, shield walls, courage, cavalry flocking), line discipline for your units, staggers on or off and
-  how much they apply to you, the sprint and its key, what the screen shows, and *Revert all to defaults*.
+  system's own switch (aggression and the fever, shield walls, spears, press and rest, war cries, courage, cavalry flocking), line
+  discipline for your units, crouch rest, staggers on or off and how much they apply to you, meeting kicks and bashes, *Timed blocks*,
+  *Slow motion on your best blocks*, *Perfect strike after your timed block*, the sprint and its key, what the screen shows, the tier-1
+  shields, and *Revert all to defaults*.
 - **Trax Combat Enhancements - Advanced** — every other number, by system, for tuning.
 
 Without MCM, the same settings are in a commented `config.json` in
