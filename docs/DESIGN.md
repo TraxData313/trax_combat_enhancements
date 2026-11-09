@@ -3701,7 +3701,11 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     (j) STEP 104e - THE REVIEW, STEP 104 BUILT 2026-11-09 (AI_NOTES "104e - review"): one fix to the contract - a reel IN THE SADDLE (cause
     `RiderReel`) stays a rider's for step 105 and the reeling bonus even in the moment the engine has already put him on foot (his horse killed,
     thrown) before the tick ends the reel "dismounted" - never the 80 % on top of that fall (decision 94 (d)). Everything else as (a)-(i). Open
-    for Toni: a couched lance landing in a rider window counts as a perfect strike today; a hit knocking a reeling rider off (not built).
+    for Toni: a hit knocking a reeling rider off (not built).
+    (k) STEP 104 FOLLOW-UP - A COUCHED LANCE IS NO PERFECT STRIKE (Toni 2026-11-09, his answer to (j)'s question): a hit of yours that is a
+    passive attack (`AttackInformation.IsAttackerAgentDoingPassiveAttack` - a couched lance, a braced spear the same engine flag) never counts,
+    in a rider window or a window on foot, from the saddle or on foot: no multiplier, no notice, the window stays open (Core
+    `PerfectStrikeMath.Gate` - `StrikeGate.Couched` first, then `NotOnBody`); counted in the [summary] perfect-strike line. No new setting.
 94. **A hit on a reeling man knocks him down** (step 105, BUILT 2026-11-09 - Toni: "when I stagger him and PERFECT STRIKE lands the NPC doesn't
     react which looks strange, but sometimes I knock him down, which looks very good and natural ... Make it so that when hitting (swing/kick/bash)
     an opponent that is staggering has 80% chance to knock him down no matter what or who caused the stagger"; built BEFORE step 104 at his request;

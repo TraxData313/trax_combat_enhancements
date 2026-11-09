@@ -10219,6 +10219,19 @@ it; whether the AI's lock bites at once; how much a galloping horse slows from a
 every rider guard has a heavy parry on horseback (the push-out's "no heavy parry" count); whether 1.65 s is enough to turn and land the strike;
 the AI-vs-AI reel rate in a big cavalry battle (risk 4); other mods' OnAgentHit hooks seeing a horse-owned 1-damage blow.
 
+### 104 follow-up - a couched lance is no perfect strike (2026-11-09)
+
+Toni answered 104e's open question: a COUCHED LANCE must not count as a PERFECT STRIKE. Commit bd6d01f. The decorator
+(`DamageRandomizer.PerfectStrikeLast`) now passes `AttackInformation.IsAttackerAgentDoingPassiveAttack` (read at the hit, main thread)
+through `ImpactHooks.PerfectStrike(.., passiveAttack)` to `IPerfectStrike.PerfectStrike`; the logic asks Core `PerfectStrikeMath.Gate(passive,
+alternative, shield, struck, damage)` before the direction: `StrikeGate.Couched` first (counted `PerfectStrikeStats.Couched`, the [summary]
+perfect-strike line's "your couched-lance hits on a window man (never a perfect strike, the window kept) N" when > 0), then `NotOnBody` as
+before, else `Counts`. Every window - a reeling rider's or a man on foot's, you riding or standing: normal damage, no gold line, no YOU line,
+the window stays open for a swing / thrust (like a shield hit). The engine's passive flag is also a BRACED SPEAR's - it is refused the same way
+(it is not a strike either). No setting (Toni asked only for the exclusion), no config change. Step104CouchedLanceTests (12 cases), a smoke check
+in "THE PERFECT STRIKE AND THE PUSH-OUT ON HORSEBACK (step 104d)": a couch on the reeling rider = 20 → 20, counted, window kept, then the x3 swing.
+1572 tests; the offline smoke all passed.
+
 ## Step 105 (BUILT 2026-11-09) — a landed hit on a reeling man knocks him down (80 %)
 
 Toni 2026-11-09 (built BEFORE step 104 at his request): "when I stagger him and PERFECT STRIKE lands the NPC doesn't react which looks strange,
