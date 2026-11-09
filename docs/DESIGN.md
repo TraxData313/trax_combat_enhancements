@@ -3543,7 +3543,7 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     `Agent.UsageDirection` is the attacker's own (AttackRight = wound up on his right; it comes at the defender's LEFT - the game's training field
     meets the trainer's AttackRight with "Defend from left"), so Toni's swing from his right to left after a blocked right attack is HIS AttackRight:
     a blocked side swing is answered by the SAME engine value (the opposite side in the blocker's frame); a blocked overhead by either side swing; a
-    blocked thrust (or an unknown direction) by any swing but a thrust; your thrust never counts (Core `PerfectStrikeMath.Verdict`). Your first melee
+    blocked thrust (or an unknown direction) by any swing but a thrust; your thrust never counts (Core `PerfectStrikeMath.Verdict`) - AMENDED by (o), step 103: strict opposites (overhead ↔ your thrust from below, thrust ↔ your overhead; unknown = nothing). Your first melee
     swing that lands on his BODY (not blocked, not a shield, not a kick / bash, you on foot) with a Perfect verdict lands x `PerfectStrikeMinMultiplier`
     2 at timing 0 rising linearly to x `PerfectStrikeMaxMultiplier` 3 at timing 1, applied LAST in the damage decorator (after the step 25 roll, step
     89's tiredness and the reduction - all multiplications, so the hit lands exactly 2-3x what it would have; the game rounds after us; no cap of ours
@@ -3593,6 +3593,24 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     held defend = 0). Chamber blocks stay perfect. The [summary] "timed blocks - the AI's guard clock" line: AI correct blocks by score band, the share
     with a known age and why not (up before his clock saw it / no guard in his input / not watched), the median AI guard age, the watch's cost
     (PLAYTEST D70). No new setting (5 m / 0.25 s / 0.1 s plumbing).
+    (o) STEP 103 - STRICT OPPOSITES (Toni 2026-11-09: "when I block a top swing and then hit from the bottom it doesn't perfect strike", then
+    "top-down, down-top, not top/down-left/right"). AMENDS (j)'s overhead / thrust rule: a blocked OVERHEAD (his AttackUp) is answered ONLY by your
+    attack from below (your AttackDown - the thrust / stab: `item_usage_sets.xml`'s `attack_down` is `strike_type="thrust"`); a blocked THRUST (his
+    AttackDown) ONLY by your overhead; a side swing after either - and your thrust or overhead after a side swing - is a wrong side; left / right
+    unchanged (the same engine value). The game pairs them the same way (the training field's opposite objective: AttackUp ↔ AttackDown, AttackLeft
+    ↔ AttackRight). An UNKNOWN blocked direction now counts NOTHING (was: any swing but a thrust) - counted and logged once, the window kept. A weapon
+    without a thrust (an axe: no `attack_down` usage on foot) never reports AttackDown, so it cannot answer a blocked overhead. Every wrong-side hit
+    of yours is logged; the [summary] "perfect strike" line splits them by his blocked direction (Core `PerfectStrikeMath.Opposite` / `Verdict`,
+    `StrikeVerdict.BlockedUnknown`; AI_NOTES "Step 103"). No setting changed (PLAYTEST D71).
+92. **Crouch rest** (step 103, BUILT 2026-11-09 - Toni: "when I crouch (Z) increase the Athletics regeneration x2 (player only, but let this be
+    there)"; AI_NOTES "Step 103"). While a fighter the rule applies to is crouched - the engine's `Agent.CrouchMode` (the Z key's toggle,
+    `EventControlFlag.Crouch`) - his refill RATE is x `CrouchRefillMultiplier` 2.0 inside `AthleticsMath.Regen` (it multiplies the pace multiplier;
+    an empty bar refills in 30 s instead of 60 at a walk). Everything else of the refill stands: the rest after a blow (decisions 24 / 28 - 3 s, nothing
+    refills crouched inside it), the wounds' cap, the curve (`RegenRateNearFullPercent`), the pace rule, no refill while sprinting, the master switch
+    and `AthleticsEnabled`. Who: YOU by `CrouchRefillForPlayer` (true, the player page - Tiredness); the AI by `CrouchRefillForAi` (false, Advanced -
+    Refill: Toni's "let this be there"; the game's AI never crouches in a battle - only scripted scenes - and while off its crouch is not even read);
+    never mounted. Your bar's label reads "Resting" while it refills crouched; the [athletics] first-crouch line and the [summary] "crouch rest" line
+    (PLAYTEST D71). No existing default changed - no config format bump.
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research

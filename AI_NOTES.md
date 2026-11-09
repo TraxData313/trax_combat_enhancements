@@ -9616,3 +9616,64 @@ switch and the master switch; the line; the 1000-man cost.
 **Unverified until D70:** the callback's real cost with many more men hooked; whether the AI's defend bits rise per blow or stay up (the line's
 known-age share and median say it); whether our hold's guard frames inflate AI scores (compare the bands with step 16's holds on / off); that no
 AI behaviour changed (the input is provably untouched - only the callback's being on is new for men no wish held).
+
+## Step 103 — PERFECT STRIKE strict opposites + crouch rest (built 2026-11-09)
+
+Toni 2026-11-09: (A) "when I block a top swing and then hit from the bottom it doesn't perfect strike", then the correction "top-down,
+down-top, not top/down-left/right"; (B) "when I crouch (Z) increase the Athletics regeneration x2 (player only, but let this be there)".
+
+**What the log showed (A), 2026-11-09.** Tournament 10:12-10:17 (arena_vlandia_a): 3 windows, 2 PERFECT STRIKES - a LEFT swing after a blocked
+OVERHEAD (x2.96, the old rule) and an overhead after a blocked thrust (x2.84); wrong-side hits 0; 1 window expired unused (after a blocked thrust).
+Training field 10:18-10:25 (training_field_2; no [summary] - the log ends at 10:25:04, the game still running): 7 perfect strikes (5 same-side after
+a blocked left / right, 2 overheads after a blocked thrust); the only logged wrong-side hit is the FIRST of the battle (only the first was logged):
+at 33.0 s - Toni's OVERHEAD after the trainer's blocked RIGHT swing, NOT a hit after a blocked overhead (the earlier reading "an overhead mismatch"
+meant Toni's strike was the overhead). So the log does not show his exact case (a thrust after a blocked overhead) - later wrong-side hits went
+unlogged and the training field wrote no summary. Since 103 every wrong-side hit of yours is logged and the summary splits them by his blocked
+direction.
+
+**The engine (A), verified in the v1.4.8 decompile (`%TEMP%\trax_decomp`).** `Agent.UsageDirection`: AttackUp 0 (overhead), AttackDown 1 (the
+attack from below - `item_usage_sets.xml` styles `attack_down` = `strike_type="thrust"`, `act_release_thrust_*`), AttackLeft 2, AttackRight 3.
+The game itself pairs opposites so: `TrainingFieldMissionController`'s opposite mouse objective maps AttackUp ↔ AttackDown and AttackLeft ↔
+AttackRight. A weapon with NO thrust (e.g. `twohanded_axe` has no `attack_down` usage on foot - only up / left / right) never reports
+AttackDown: the native input picks another direction, so with an axe a blocked overhead cannot be answered (nothing counts) - say so if Toni
+plays axes. NEW RULE (Core `PerfectStrikeMath.Opposite` / `Verdict`): blocked AttackUp → only your AttackDown; blocked AttackDown → only your
+AttackUp; blocked left / right → the SAME value (unchanged, step 100g); a side swing after an overhead / thrust and a thrust after a side swing are
+wrong sides; an UNKNOWN blocked direction (his recoil direction older than `TimedRecoilMath.DirectionMaxAge`) → `StrikeVerdict.BlockedUnknown`:
+nothing counts, counted, logged once, the window kept. The [summary] "perfect strike" line: `thrust from below N` among the landed, the wrong-side
+hits by yours and, per blocked direction with any, "after his blocked overhead (wanted your thrust): your left a / right b / overhead c / thrust
+d", "strict opposites since step 103", the unknown-direction count. The first-window line's hint: "(it came from above - answer from BELOW: YOUR
+thrust / stab)" / "(it came from below - answer from ABOVE: YOUR overhead)". No setting changed, no config format.
+
+| He attacked (blocked) | Counts (yours) |
+|---|---|
+| right swing (came at your left) | your right swing (from your right) |
+| left swing (came at your right) | your left swing (from your left) |
+| overhead (from above) | your thrust / stab from below |
+| thrust (from below) | your overhead |
+| unknown | nothing |
+
+**The crouch (B), verified.** `Agent.CrouchMode` (native `IMBAgent.GetCrouchMode`) is the state; the Z key is game key 15 "Crouch"
+(`CombatHotKeyCategory`, `InputKey.Z`), sent as `EventControlFlag.Crouch` (0x2000, a toggle; `Stand` 0x4000), the menu's "Toggle Crouch"
+(`MissionGauntletMainAgentControlModeView`). SandBox's own logics read `Agent.Main.CrouchMode` (DisguiseMissionLogic, CorpseDragging). The AI
+crouches only when scripted (`Agent.SetCrouchMode` → `AIScriptedFrameFlags.Crouch` 0x200 - stealth / prison-break / follow-agent behaviours),
+never in a battle - so `CrouchRefillForAi` is kept but off, and while off an AI man's crouch is NOT even read.
+
+**Built (B).** Core `CrouchRest.cs`: `CrouchRestRules` (ModEnabled FIRST, AthleticsEnabled, multiplier > 1, a switch on), `CrouchRestMath`
+(`Applies` - the switch for you / the AI, never mounted; `Multiplier`), `CrouchRestStats` (the [summary] "crouch rest" line);
+`AthleticsMath.Regen(…, extraMultiplier = 1)` multiplies the effort's rate (≤ 1 ignored); `BarMath.Label` / `RestingLabelText`. Module
+`AthleticsLogic.CrouchRest.cs` (`CrouchMultiplierFor` - one native read a regen pass for you alone by default; `NoteCrouchRefill`;
+`CrouchRead` = the smoke's seam), RegenPass calls it after the mount read (`TrackedAgent.CrouchResting`, reset each pass), the API
+`IsCrouchResting`, your bar's label reads "Resting" while it refills crouched (the HUD's throttled refresh). THE REFILL RULES THAT STILL APPLY: the
+rest after a blow (`RegenDelayBlowTimes` x `BlowTimeSeconds`, 3 s - crouched inside it nothing refills), the wounds' cap (`UsableFraction`), the
+refill curve (`RegenRateNearFullPercent`), the pace rule (`RegenRateMultiplier` - x the crouch; crouched walking is slow, so ~1), no refill while
+sprinting (a sprinting man is skipped before), the master switch / AthleticsEnabled. Settings: `CrouchRefillForPlayer` true (the player page,
+Tiredness - 36 settings), `CrouchRefillMultiplier` 2.0 (1-5) and `CrouchRefillForAi` false (Advanced, Refill). No existing default changed → no
+config format bump.
+
+**Tests.** PerfectStrikeTests (+6: Toni's case x2-x3, the strict pairs, an unknown blocked direction, the split summary); Step103Tests (9: the rules,
+who it applies to, empty → full 60 s standing / 30 s crouched, the delay and the cap hold, the pace x the crouch, the label, the settings' places,
+the summary, no allocation) - 1485 tests. Offline smoke: step 100g's overhead / thrust parts rewritten; a new step (`Program.Step103.cs`) - 225
+steps green.
+
+**Unverified until D71:** that `CrouchMode` reads true while Toni is crouched in a battle (the bar's "Resting" and the [athletics] "first crouch"
+line prove it); which direction the engine reports for his "from below" attack with each weapon (the YOU lines name it).
