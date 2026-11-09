@@ -10462,3 +10462,50 @@ landed blow reaches `OpeningContactSeen` first in the smoke ("the blow resolved"
 **For 106c / 106d.** (1) D78 decides the lowering route (input vs CanDefend) and the side pairing (left / right). (2) 106d's stagger must take
 over from the force (today a landed hit ends it - "he reels"). (3) The unshielded case relies on a FORCED WRONG-SIDE weapon guard letting the blow
 through - the engine's parry is direction-checked, so it should; BLOCKED ANYWAY counts any miss of it.
+
+### 106c - built (2026-11-09)
+Commits 8a695e5 (Core + the switch's page + tests), d85726b (module + prefab + smoke). Display only - nothing in a fight changes.
+
+**How it is drawn (checked in the v1.4.8 game files, read only).** Vanilla's direction indicator is four `BrushWidget`s in
+Native/GUI/Prefabs/Mission/Crosshair.xml: `TopArrow` / `BottomArrow` with `Sprite="crosshair_arrow_vertical"` 31 x 131, `LeftArrow` /
+`RightArrow` with `crosshair_arrow` 131 x 31, centred, `PositionYOffset` / `PositionXOffset` -350 / +350; the BOTTOM one `Brush.VerticalFlip`, the
+RIGHT one `Brush.HorizontalFlip`, the top and left as drawn (ui_group1, `AlwaysLoad`). Its `CrosshairWidget.OnUpdate` only writes each arrow's
+`Brush.AlphaFactor`. Our `module/GUI/Prefabs/TraxOpeningArrow.xml` copies those four widgets exactly (literal sizes / offsets / flips).
+THE RED: a `BrushWidget` renders its BRUSH only (decompiled `BrushWidget.OnRender` -> `BrushRenderer`), so a widget's plain `Color` would be
+ignored; `Brush.Color` sets the brush's default style layer colour (decompiled `Brush.Color` -> `DefaultStyleLayer.Color`), which the renderer
+multiplies onto the sprite - `#F01E1EFF`. Vanilla binds `Brush.Color` the same way (Compass.xml, PowerLevelComparer.xml). The strength:
+`Brush.GlobalAlphaFactor="@...Alpha"` (vanilla's SPChatLog.xml binds it to fade lines), `IsVisible="@...Shown"` so an unlit arrow draws nothing.
+UNVERIFIED in game: that the arrow sprites are light enough for the multiply to read clearly red (vanilla shows them white-ish, so it should).
+If they look dark, the fallback is a `Brush.ColorFactor` above 1 or a plain white sprite shaped as an arrow - D79 says.
+
+**The mapping.** Vanilla's `MissionGauntletCrosshair`: `UsageDirection` 0 (AttackUp) -> top, 3 (AttackRight) -> right, 1 (AttackDown) -> bottom,
+2 (AttackLeft) -> left (the defend directions the same, minus 4) - exactly `OpeningMath.ArrowFor`, pinned by Step106cTests. So the arrow names
+YOUR attack in YOUR frame: top = your overhead, bottom = your thrust, left / right = the swing vanilla lights on that side.
+
+**The two cues (Core `OpeningArrowMath`, module `AthleticsLogic.OpeningArrow.cs`, view `Hud/OpeningArrowView.cs` + `OpeningArrowVM.cs`).**
+- THE OPENING FLASH: `BeginFollowUp` notes `plan.Opening` (so `OpeningSidesCrossed` is respected) peaking at block + `plan.Flash`; the K test
+  tool notes the side its forced guard leaves open (`TestFlashAttack` = `OpeningFor(guard, sidesCrossed)`; the lowered modes none) peaking
+  `OpeningFlashDelaySeconds` after the key, and its on-screen line says "the red arrow flashes top at 0.30 s". Linear fade in 0.05 s to full
+  AT the flash, out 0.15 s (mission time - the slow motion slows it too). Shown only with `OpeningsEnabled` - or for the test tool's flash
+  (`ShowsFlash`); while lit it wins over the steady arrow.
+- THE PERFECT STRIKE SIDE (steady, alpha 1): an opening's reel (`_openChain.FinishMask`, only with `OpeningsEnabled` - the reel is shadow
+  until 106d) else the NEWEST open perfect-strike window in step 100g's book (yours only; the victim alive, `PerfectStrikeMath.Open` - his reel +
+  the grace; a rider's window only with `MountedOn`, and nothing with `HorsebackAnySide`): `DefensiveFinishMask` = `FinishMask(PerfectStrikeMath
+  .Opposite(blocked), your wielded weapon's mask, PerfectStrikeWeaponFinishes)`. EVERY side of the mask is lit (an axe after his blocked overhead:
+  left + right; a spear after a side swing: top + bottom) - 106a2's "the first of" rule is not needed.
+- One cue at a time, one man (the newest window) - never several.
+
+**Settings.** `OpeningArrowShow` moved to the PLAYER page ("Red arrow: the side to strike", after `OpeningsEnabled`; 40 settings there; 631 in
+all, no config-format change - a page move only). No size / opacity setting (vanilla's sizes; optional in the brief). The view also needs the
+HUD's common gate (ModEnabled, AthleticsEnabled, no Hide battle UI, a fight mode, you on the field).
+
+**For 106d.** (1) The defensive game's VERDICT is still step 103's strict opposites, while the arrow already shows 106a2's weapon sides - with
+an axe after his blocked overhead the arrow says left / right but today only a thrust would count: 106d must switch `PerfectStrikeMath.Verdict`
+to the `FinishMask` rule (as planned) or the arrow lies for axes / spears. (2) When 106d makes the opening stagger live it can keep
+`_openChain.FinishMask` (shown already) or open a book window - either way the arrow follows. (3) Nothing else in 106d's plan changes.
+
+**Tests / smoke.** Step106cTests 7 (vanilla's mapping, the fade, the test tool's side both crossings, the defensive sides by sword / axe /
+spear / off / unknown / rider, the gates, the page, no allocation); tests 1615. Smoke "THE RED ARROW (step 106c)" (235 green): the prefab against
+the game (5 widgets, 8 bindings), the openings off / on flash (bottom: half way in / full / half way out / gone), the K tool's top flash with the
+openings off, the defensive window's right arrow steady and gone with the window, an axe's left + right, a sword's bottom, the switch, the
+[summary] "hud: opening arrow" line. Deployed as the dev build. PLAYTEST D79.

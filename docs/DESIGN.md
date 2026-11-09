@@ -3800,7 +3800,13 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     out of his input (DefendBlock too); a wrong-side follow-up gives his guard back. Never you / a man you drive / a rider. THE TEST TOOL
     (`OpeningGuardTest` off, `OpeningGuardTestKey` K, `OpeningGuardTestSeconds` 2 - works with the live switch off): the nearest enemy on foot within
     8 m forced to low / high / left / right / lowered / lowered by the agent's `CanDefend` flag (vanilla's climbers' route, given back), his pose
-    read back after 0.5 s and at the end. The [summary] "openings - the forced guard" line (PLAYTEST D78). UNPROVEN in game until D78.
+    read back after 0.5 s and at the end. The [summary] "openings - the forced guard" line (PLAYTEST D78). UNPROVEN in game until D78. (k) STEP 106c BUILT 2026-11-09 (AI_NOTES "106c - built"): THE RED ARROW -
+    vanilla's direction-indicator arrows (Crosshair.xml: the same sprites, 131 x 31, 350 px from the centre, the bottom flipped vertically, the
+    right horizontally) drawn red by our own layer (`Brush.Color`, the strength by `Brush.GlobalAlphaFactor`), in YOUR attack frame like vanilla's
+    (top = your overhead, bottom = your thrust, left / right as vanilla lights them). The FLASH (fade in 0.05 s to full at the flash, out 0.15 s)
+    when he goes off balance - with `OpeningsEnabled`, or for the K test tool's forced guard; the PERFECT STRIKE side steady while the man you can
+    finish reels - an opening's reel, or step 100g's newest window (the defensive game's timed-block reel), his blocked attack's answer by your
+    weapon (106a2's no-thrust / spear sides, every side lit). One cue, one man. `OpeningArrowShow` on the player page (PLAYTEST D79).
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research
