@@ -2207,6 +2207,14 @@ overhead) ..., 4-direction weapon → x4.00`; `[summary] openings (step 106d; li
 forced guard does not hold - tell Claude); `[summary] perfect strike (step 100g / 106d ...` - strikes after an opening, by the weapon's
 directions 2 / 3 / 4. **Tell Claude:** how the timing felt (too tight / loose), whether the shield path works, any arrow that pointed at a side
 that did not score, and whether the x4 feels too strong. To turn it off: `Openings after your blocked attacks` (player page, Staggers and knockdowns).
+*Step 106e (the review) adds:* **Try 7 - hit one man's back again and again:** the first hit staggers him; the next ones while he still reels and
+for ~2 s after it do NOT stagger him again (he can recover) - then a back hit staggers again. A man reeling from your timed block is no "unguarded"
+opening either. **Try 8 (only if you play with the impact system in shadow mode, or its riposte off):** the openings go quiet - no forced guard, no
+flash, no "GUARD BROKEN" - and the log says so at the start. **Log:** `YOU: openings (shadow): your ... LANDED on X from behind - he is still
+reeling or inside the stagger immunity (... s left): no new opening`; the [summary] openings line's `back / unguarded hits on a man still reeling
+or stagger-immune (no new opening) N`; `[impact] openings: SHADOW this battle although OpeningsEnabled is on ...` (only in shadow). **Tell Claude:**
+does a man hit from behind now get back into the fight, or does the 2 s feel too long / too short? Does a man you keep attacking ever get a swing
+in while he is off balance (Claude's open question)?
 
 ---
 

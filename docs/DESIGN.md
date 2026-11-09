@@ -3814,7 +3814,14 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     (x2-x4 / x2-x3 / x1.5-x2 by 4 / 3 / 2 directions; the flat `PerfectStrikeMin/MaxMultiplier` retired) and THE DEFENSIVE VERDICT BY THE WEAPON
     (= the arrow: an axe answers his overhead with left or right, a spear his side swing with either stab; the couched-lance / braced exclusion
     stays). Only your hits, AI men on foot, you on foot; AI vs AI and riders unchanged. Kept as designed until D78 / D80: `OpeningSidesCrossed`,
-    the shield lowered by stripping its guard bits (PLAYTEST D80).
+    the shield lowered by stripping its guard bits (PLAYTEST D80). (m) STEP 106e REVIEW 2026-11-09 (AI_NOTES "106e - review"): AMENDS (f) - a back
+    hit, or an unguarded front hit, on a man STILL REELING or inside `ImpactStaggerImmunitySeconds` after a reel opens nothing (no stagger, no off
+    balance): a reeling man never guards, so without it every other hit re-staggered him for as long as you kept hitting. The first back hit still
+    staggers; a chain EARNED with a block (off balance) staggers whatever the immunity, as designed. AMENDS (l) - `OpeningsEnabled` is LIVE only when
+    the impact system can carry the stagger (its riposte family live - not shadow, not the spike - and its clean hits decided): otherwise the
+    openings run as a SHADOW (no forced guard, no lowered shield, no GUARD BROKEN, no flash; a mission-start line says why) - Claude's choice as the
+    least surprising: "shadow" means nothing applied, and half the openings live with a stagger that can never come would look broken. The chain's
+    stagger / finish verdict reads the hit's COLLISION direction, the same value as the damage.
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research

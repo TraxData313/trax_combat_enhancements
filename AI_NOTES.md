@@ -10286,7 +10286,7 @@ That the engine plays the fall cleanly ON TOP of our slowed `act_stagger_backwar
 stagger - the engine's fall should take over; if not, step 62's backup blow fires after `ImpactFallBackupSeconds`); how 80 % feels against you
 in a melee where AI ripostes are frequent (`ImpactOnPlayerPercent` scales it).
 
-## Step 106 — OPENINGS: the offensive twin of the timed block (Toni's REVISED design 2026-11-09; 106a + 106a2 built - shadow only; 106b built - the forced guard; 106c the red arrow; 106d built - THE PAYOFF LIVE, the switch ON)
+## Step 106 — OPENINGS: the offensive twin of the timed block (Toni's REVISED design 2026-11-09; 106a + 106a2 built - shadow only; 106b built - the forced guard; 106c the red arrow; 106d built - THE PAYOFF LIVE, the switch ON; 106e reviewed - BUILT)
 
 **The first design was replaced the same day.** Toni's first brief ("his guard goes to 1 of the other 3 at random, a red arrow shows the opening,
 swing into it in time and he reels") was built as 106a: a FORCED guard, a commit-to-swing window (0.45 s + 0.15 / link + skill), a separate
@@ -10570,3 +10570,70 @@ FinishOther while the damage was perfect (only the shadow counts differ). (3) Th
 blocks / ripostes (fine - the same animation) but its not-applied counts land in `_blocks` too for the generic queue paths (LeftField,
 LeverOff). (4) When the impact system's own HitStagger carries the reel, its slowed flinch (not our backward stagger) is what plays.
 (5) `OpeningPayoff` requires the RIPOSTE family live - with impact in shadow mode the openings fall back to counting only.
+
+### 106e - review (2026-11-09)
+
+An independent review of everything from bbadacb through 9a8b346 (steps 106a, 106a2, 106b, 106c, 106d: src, tests, tools, defaults.json, the
+prefab), the code read against the design (DESIGN 95), not the notes. Step 106 is BUILT.
+
+**Fixed** (tests / smoke per fix):
+- **dda4425 (medium) - a man could be kept reeling forever (the builder's question 1: yes).** `OpeningChain.NoteLanded` ignored the stagger
+  immunity: a back hit staggered him, the next hit was the reel's finish (perfect or another side - either RESETS the chain), and the hit after that
+  - the chain now empty - was a new back-hit entry → a new opening stagger, his reel lengthened again (`ImpactState.Reel` only grows); a reeling man
+  never guards, so FRONT hits did the same through the unguarded entry (hit → off balance → hit → stagger). Add step 105's 80 % and the KD
+  immunity it ignores, and a man hit from behind spent most of the fight reeling or on the ground. Now `NoteLanded(..., staggerImmune)`: a back hit
+  on a man NOT off balance, and an unguarded front hit, open nothing while he is reeling or inside `ImpactStaggerImmunitySeconds` (2 s) after a reel
+  (`OpeningHit.Immune`, the chain untouched, `OpeningStats.ImmuneRefused` on the [summary] line, a YOU line). "Before the hit" is read after the
+  impact decision wrote his record, so `OpeningMath.ImmuneBeforeHit(immuneNow, decisionStaggered)` - a stagger that decision rolled proves he was not
+  immune (`ImpactMath.Decide` refuses a stagger inside it). Kept as designed: the first back hit still staggers; a chain EARNED with a block
+  (off balance) staggers whatever the immunity (106d's "the player earned it"); the finish on the reeling man is unchanged. Net: back hits every
+  0.6 s stagger him about once per 3 s (0.8 s reel + 2 s), not every other hit (Step106eTests' scenario: 4 in 12 s, was 10).
+  This also closes a step-100 interaction: a man reeling from YOUR timed block (the defensive window) no longer becomes an "unguarded front hit"
+  opening when you hit him.
+- **dda4425 (low, diagnostics) - the chain and the damage could read different directions (question 2).** The decorator's PERFECT STRIKE reads
+  the collision's `AttackDirection`; the chain's `NoteLanded` read `OpeningSwingRead` (channel 1). The DAMAGE and the ARROW never disagreed (both
+  read the window's mask, noted at the stagger) - only the chain's FinishPerfect / FinishOther count and YOU line could contradict the gold
+  PERFECT STRIKE. Now `ImpactDecideEvent` notes the clean hit's collision direction (`_hitSwing`, same blow, same time) and `OpeningShadowHit`
+  uses it, channel 1 only without a collision (the smoke's direct `ImpactDecide`). The smoke now hits with channel 1 saying "right" and the
+  collision "left" - the chain says perfect, as the damage does.
+- **dda4425 (medium - Claude's decision, question 3) - the openings were half live with the impact system in shadow.** `OpeningPayoff` refused
+  the stagger without the RIPOSTE family live (shadow mode, the spike, `ImpactRiposteEnabled` off) - but the FORCED GUARD, the LOWERED SHIELD,
+  "GUARD BROKEN" and the red FLASH ran on `OpeningsEnabled` alone. And with `ImpactHitsEnabled` off a landed hit is never decided, so the stagger
+  could never come at all. Decision: least surprising = the openings FOLLOW the impact system: `OpeningsLive` = `OpeningsEnabled` AND
+  `OpeningMath.ImpactCarries` (riposte applies, hits decided) AND the ForcedStagger lever not lost to an error; otherwise SHADOW - the chain and the
+  [summary] counts go on, nothing is forced or flashed (the K test tool still works and flashes). A mission-start line says so: "openings: SHADOW
+  this battle although OpeningsEnabled is on - ...". Why not make openings independent: their stagger IS the riposte's machinery (the queue, the
+  lever, the watch, the measured end), and "shadow mode" means nothing applied - Toni uses it to compare. Toni can overturn it (TASKS_TODO).
+- **e221139 (low, diagnostics) - builder's note (3).** An opening stagger dropped by the shared block queue (the lever off, he left the field,
+  cannot force) is now counted on the openings' line ("not applied") as well as on the blocks' line.
+- **470bc7b (test bug) - `Step106bTests.The_frame_and_the_stats_allocate_nothing` failed on EVERY run** (24 bytes): its own `GC.KeepAlive(acc)`
+  boxed the uint. A static sink now. Nothing in the product allocated.
+
+**Checked and found right** (no change):
+- Every exit lets go: the forced guard (`EndForce`) on the tick's switches (the master switch first, `OpeningsEnabled`, now the impact system),
+  the man removed (no engine call) / mounted / taken over, the time (`OpeningChainResetSeconds` / `OpeningHoldMaxSeconds`), his reel, the chain
+  moving on, an error, the mission end before the summary (`CloseOpenings`); the CanDefend flag (test tool only) given back on every path; the
+  input hook's `Opening` bits cleared with the state. The window: the tick closes it by its switches (`OpeningOn`), his reel's end + grace, death /
+  removal; the decorator re-checks the same. The queued stagger / its watch go with the riposte family's switch, the lever's error, the man leaving.
+  No slow motion on openings. A killing blow never reaches `OpeningShadowHit` (fatal skip) - the dead target ends the chain at the next tick.
+- AI vs AI and riders: every entry requires YOU driving the attacker and both men on foot (`OpeningShadowHit`, `OpeningShadowBlock`, `StartForce`
+  `OnFoot` / `AiDriven`); the smoke's AI-vs-AI back hit makes nothing.
+- Step 100 / 103 / 104 / 105: the defensive verdict = `OpeningMath.FinishMask(Opposite(blocked), weapon)` = the arrow's `DefensiveFinishMask`
+  (Step106dTests checks every case); a sword keeps step 103's strict opposites; riders keep any side; the couched-lance gate first; 104b's reel
+  lock stays LAST in the input filter, the opening's guard after step 82's read guard; step 105 asks on an opening's reel (cause Opening).
+- The arrow shows only sides that score: an opening window's verdict and the arrow both read the window's `FinishMask`; a defensive window's
+  arrow and verdict both use YOUR wielded weapon and `PerfectStrikeWeaponFinishes`; both skip a closed / switched-off / rider-without-switch window.
+- Config format 30: a format-29 file's OpeningsEnabled false → true once (`MoveOrKeepIfMoved`); a format-30 false stays; older files have no key
+  (the default); the retired 106a / flat perfect-strike keys dropped from any format with a note; the migration's lambdas run at load only.
+- Performance: the chain / force / window are one record each; the tick costs O(1) plus the book (≤ a few windows); the arrow reads structs per
+  frame (`ImpactRules.From` only while a flash is pending); no allocation per tick (lines only for yours, 40 at Info).
+
+**Open for Toni** (TASKS_TODO "NOT DECIDED"): (a) while a man is OFF BALANCE his attack bits are out until your next wind-up or
+`OpeningChainResetSeconds` 2 s - a player who keeps swinging into a guarding man keeps him from ever counter-attacking (each correct block
+re-arms it); fine as "off balance", or should it be shorter than the 2 s? (b) Question 3's decision above (openings shadow while the impact
+system is shadow / its riposte or hits are off) - or should openings work on their own? (c) A wrong-side hit on an opening's reel: the
+damage keeps the window open (like the defensive game - a second try still scores), the chain counts it "another side" - keep the second try?
+
+**Only Toni's playtest can confirm** (PLAYTEST D80, D78): the forced wrong-side weapon guard letting the blow through (BLOCKED ANYWAY), the
+shield lowered by its guard bits, the side pairing, how often a back hit now finds a man still immune in a real melee (the [summary] "stagger-immune
+(no new opening)" count against the staggers from behind).
