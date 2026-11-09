@@ -3792,7 +3792,15 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     2026-11-09 (AI_NOTES "106a - built", "106a2 - built"): the [impact] "YOU: openings (shadow)" lines and the [summary] "openings" line (off balance
     by entry, the follow-up's direction and timing, the shadow block roll "WOULD have got through", the staggers, the would-be perfect strikes with
     their multiplier, the side pairing) (PLAYTEST D77). NOTHING applied - no guard forced, no arrow, no reel. 11 first-design keys retired (dropped
-    from a config file with a note), no config format change.
+    from a config file with a note), no config format change. (j) STEP 106b BUILT 2026-11-09 (AI_NOTES "106b - built"): THE FORCED GUARD,
+    behind `OpeningsEnabled` (still OFF until 106d): the off-balance AI man's guard written to the balance side through step 16's input hook
+    (after step 82's read guard, before a kick; step 104b's reel lock last), his attack bits out; at YOUR follow-up's wind-up into the side the
+    LIVE block roll ((1 − score) x the link's cut; a shield's first link 100 %): he wins = his own AI guards again; he fails = the guard held until
+    the blow resolves (your contact, a miss) or `OpeningHoldMaxSeconds`, a SHIELD from link 2 (or after an unguarded hit) LOWERED - every guard bit
+    out of his input (DefendBlock too); a wrong-side follow-up gives his guard back. Never you / a man you drive / a rider. THE TEST TOOL
+    (`OpeningGuardTest` off, `OpeningGuardTestKey` K, `OpeningGuardTestSeconds` 2 - works with the live switch off): the nearest enemy on foot within
+    8 m forced to low / high / left / right / lowered / lowered by the agent's `CanDefend` flag (vanilla's climbers' route, given back), his pose
+    read back after 0.5 s and at the end. The [summary] "openings - the forced guard" line (PLAYTEST D78). UNPROVEN in game until D78.
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research

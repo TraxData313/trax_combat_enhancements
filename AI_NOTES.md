@@ -10286,7 +10286,7 @@ That the engine plays the fall cleanly ON TOP of our slowed `act_stagger_backwar
 stagger - the engine's fall should take over; if not, step 62's backup blow fires after `ImpactFallBackupSeconds`); how 80 % feels against you
 in a melee where AI ripostes are frequent (`ImpactOnPlayerPercent` scales it).
 
-## Step 106 — OPENINGS: the offensive twin of the timed block (Toni's REVISED design 2026-11-09; 106a + 106a2 built - shadow only)
+## Step 106 — OPENINGS: the offensive twin of the timed block (Toni's REVISED design 2026-11-09; 106a + 106a2 built - shadow only; 106b built - the forced guard, live behind the switch)
 
 **The first design was replaced the same day.** Toni's first brief ("his guard goes to 1 of the other 3 at random, a red arrow shows the opening,
 swing into it in time and he reels") was built as 106a: a FORCED guard, a commit-to-swing window (0.45 s + 0.15 / link + skill), a separate
@@ -10412,3 +10412,53 @@ Tests 1598. Smoke "OPENINGS, THE SHADOW (steps 106a / 106a2)" through the real l
 **Unverified (D77 answers them):** the SIDE pairing (`OpeningSidesCrossed`); whether channel 1's direction at your wind-up is the swing's; his
 guard at contact as DefendUp..Right (else every front hit reads "not guarding" - watch the "unguarded front hit" count against duels where he
 clearly guarded); the spear's overhead stab as AttackUp; how often the impact system's own stagger lands on the same hit.
+
+### 106b - built (2026-11-09)
+Commits 6c7121c (Core + settings + tests), 0722ea0 (module + smoke). Live behind `OpeningsEnabled` (still OFF until 106d); the test tool works
+with it off.
+
+**The engine route (what we know, what we do not).**
+- THE GUARD: step 16's `AiInputComponent.Filter` writes Core `OpeningForceMath.Frame` (attack bits out; the guard bits replaced by the balance
+  guard's Defend* bit) right after step 82's `MeetGuard` frame and before a kick; step 104b's reel lock stays LAST. The bits are the engine's
+  `MovementControlFlag` (DefendLeft 0x400, DefendRight 0x800, DefendUp 0x1000, DefendDown 0x2000, DefendAuto 0x4000; **DefendBlock 0x8000 is NOT in
+  the engine's DefendMask** - checked in the v1.4.8 decompile, the smoke pins all of them). Step 82 proved a written DefendUp / DefendDown is honoured;
+  a written LEFT / RIGHT is the same mechanism but unproven - D78's test tool reads it back.
+- THE SHIELD LOWERED: (1) the input route - every guard bit out of his frame (DefendMask + DefendBlock), every frame (his AI re-decides every frame,
+  we clear every frame). Evidence it is enough: step 82's logs - bashes and kicks LAND on shieldmen who are not guarding ("bash - no guard or
+  mid-swing" with a shield, drops counted), i.e. an unraised shield does not stop a melee collision; the engine stops a blow only while the defend
+  action is up. Unknown: how fast the defend action blends out once the bits go (we lower at your wind-up, ~0.4-0.6 s before contact). (2) the
+  engine's own route - `AgentFlag.CanDefend` (0x10) off through `SetAgentFlags`, what vanilla's `ClimbingMachineDetachment` does to climbers; the
+  native AI then should not defend at all. A persistent flag, so only the TEST TOOL uses it (its 6th mode, given back at the end and on every exit);
+  if D78 shows (1) fails and (2) works, 106d switches the live hold to (2) with the same give-back paths. No other route found (no "lower shield"
+  call in the managed API).
+- THE ROLL: at YOUR follow-up's wind-up (step 13's phases, `OpeningWindUp`) - the engine decides his block natively at contact, so it is
+  pre-empted: `OpeningMath.BlockChance(score, k, shieldHolds)` against the openings' dice; through = `OpeningForceKind.Held` until your contact
+  with him (`OpeningContactSeen`), a miss, he reels, or `OpeningHoldMaxSeconds` 1.5; he wins / another side = the force ends, his AI guards.
+  A held follow-up he still blocks is counted `BLOCKED ANYWAY` - the in-game proof (or disproof) of the route.
+- `OpeningRules.Runs` (the master switch, then the shadow log OR the live switch): the chain is followed when either is on (was the shadow only).
+
+**Module.** `AthleticsLogic.OpeningForce.cs` (one force record - only your chain; `StartForce` / `EndForce` with the frames summed, the flag given
+back, the callback released when idle; `ForceBalance` from `BeginFollowUp`'s two callers; `ForceAtWindUp` appends "- LIVE: ..." to the follow-up
+line; `TickOpeningForce` from `TickOpenings` - the switches, the man gone / mounted / taken over, the time, the chain moved on; `CloseOpeningForce`
+before the summary); `OpeningBody.cs` (`IOpeningBody`: AiDriven, OnFoot, NearestFoe, Hook / Release, Pose - channel 1's action / direction /
+stage + `GetDefendMovementFlag` -, CanDefend get / set); `AiInputState.Opening*` + `AiInputHook.SetOpening / ApplyOpening` (also in the
+Athletics-off branch of the filter, so the test tool works without Athletics).
+
+**The test tool.** `OpeningGuardTest` (off) + `OpeningGuardTestKey` K (free: the anim tool has J, the sprint LeftControl; K is no vanilla mission
+key) + `OpeningGuardTestSeconds` 2: the nearest ENEMY on foot within 8 m (`TestNearestMetres`), six modes (`OpeningTestMode`), Left Shift back;
+the pose read before, after 0.5 s and at the end - `OpeningForceMath.PoseMatches` (a guard = channel 1 in a defend stage with that direction;
+lowered = no defend stage, no guard direction); on screen and `[impact] guard test:` lines.
+
+**Summary.** `[summary] openings - the forced guard (step 106b; ...)` (Core `OpeningForceStats`): forced off balance / held / LOWERED / tests; the
+live roll (he blocks / through - landed, BLOCKED ANYWAY - / another side); frames written (attack out, his guard replaced / taken out, lowered);
+poses read back (as wanted, changed); CanDefend off / back; ends by reason; not forced.
+
+**Tests / smoke.** Step106bTests 10 (the bits both ways, the frame, lowered incl. DefendBlock, when a shield gives way, the roll, the cycle, the
+read-back verdict, the settings + `Runs`, the summary, no allocation); tests 1608. Smoke "OPENINGS, THE FORCED GUARD (step 106b)" (234 green): the
+forced balance guard, the held perfect follow-up and BLOCKED ANYWAY, the wrong side, the shield's 2 links and the LOWERED frame, the timeout, a man
+you drive, the switches, the test tool's six modes, the read-backs, the CanDefend flag given back, Left Shift, nobody near. Smoke-order note: a
+landed blow reaches `OpeningContactSeen` first in the smoke ("the blow resolved"); in game the decorator decides it first ("he reels").
+
+**For 106c / 106d.** (1) D78 decides the lowering route (input vs CanDefend) and the side pairing (left / right). (2) 106d's stagger must take
+over from the force (today a landed hit ends it - "he reels"). (3) The unshielded case relies on a FORCED WRONG-SIDE weapon guard letting the blow
+through - the engine's parry is direction-checked, so it should; BLOCKED ANYWAY counts any miss of it.
