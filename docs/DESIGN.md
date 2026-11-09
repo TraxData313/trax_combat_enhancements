@@ -3630,7 +3630,7 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     Refill: Toni's "let this be there"; the game's AI never crouches in a battle - only scripted scenes - and while off its crouch is not even read);
     never mounted. Your bar's label reads "Resting" while it refills crouched; the [athletics] first-crouch line and the [summary] "crouch rest" line
     (PLAYTEST D71). No existing default changed - no config format bump.
-93. **Timed blocks on horseback** (step 104, PROPOSED 2026-11-09; APPROVED by Toni 2026-11-09 "as suggested" - all 5 recommended answers of AI_NOTES "Step 104"; built after step 105; nothing built yet, no parameter rows yet - they join the
+93. **Timed blocks on horseback** (step 104, PROPOSED 2026-11-09; APPROVED by Toni 2026-11-09 "as suggested" - all 5 recommended answers of AI_NOTES "Step 104"; built after step 105; 104a-104c built - (f)-(h) below; at the proposal nothing built yet, no parameter rows yet - they join the
     Parameters table with the step that builds them. Toni 2026-11-09: "can you add the reel vs mounted troops as well somehow, like that 3rd round,
     we were on horsebacks fighting, I blocked, can you implement a similar system there?" - his mounted tournament round: 13 shield blocks, 6
     perfect, every riposte refused "a rider"; AI_NOTES "Step 104"). Why riders were refused: decision 45 / IMPACT §3.8 - "never a forced stagger
@@ -3669,6 +3669,18 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     reel's end, death / removal (no engine call), dismounted, a switch off (the master switch first), the mission end (before the summary) / the
     behaviour's removal, an error (all let go, off for the battle); the [summary] "timed blocks on horseback (step 104b)" line ("left over at the
     mission end 0"). Still SHADOW: (b) the rear, (c) the knock-off (104c); (e) the strike and the mounted push-out (104d). PLAYTEST D74.
+    (h) STEP 104c BUILT 2026-11-09 - THE REAR AND THE KNOCK-OFF LIVE (AI_NOTES "104c - built"): the ladder's two rolls - (c) first at a PERFECT
+    block, then (b) only if he stayed on by the die; never on you - are APPLIED at the reel's start from the tick, never in the hit callback. (c)
+    = step 53's own dismount blow (`OwnDismountBlow`, owned by the blocker) and his record DOWN at once (`ImpactState.KnockedDown`, the game's
+    fall-and-rise - his reel ends with it), so while he falls step 105's 80 % has no reel to roll on and the usual model refuses him "down" (no
+    double-up); followed until seen off (2 s, else his ground time taken back). (b) = our 1-damage `MakesRear` blow on his HORSE, OWNED BY THE HORSE
+    ITSELF (vanilla's drowning blow - nobody's attack: no kill credit, no hit reward, no team hit; a horse has no Character for BattleAgentLogic /
+    the tournament's score; `CommonAIComponent` panics only a riderless mount), refused below 2 health (it can never kill) and its health WRITTEN
+    BACK at once (net 0, summed in the summary); never an action on a horse; its own lever `ImpactLever.Rear`; followed until seen rearing (1.5 s).
+    Under either the reel's channel-1 animation is NOT played (the engine's own fall / rear pose), the lock stays. The 4 settings from 104a at
+    their designed values (0.8 / 50 / 30 / 50) - no default change, no config format change; the [summary] "timed blocks on horseback - rear and
+    knock-off (step 104c)" line. NOT built (Toni's open question): a HIT on a reeling rider knocking him off - step 105 still refuses "a rider".
+    PLAYTEST D75.
 94. **A hit on a reeling man knocks him down** (step 105, BUILT 2026-11-09 - Toni: "when I stagger him and PERFECT STRIKE lands the NPC doesn't
     react which looks strange, but sometimes I knock him down, which looks very good and natural ... Make it so that when hitting (swing/kick/bash)
     an opponent that is staggering has 80% chance to knock him down no matter what or who caused the stagger"; built BEFORE step 104 at his request;

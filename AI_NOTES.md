@@ -9678,7 +9678,7 @@ steps green.
 **Unverified until D71:** that `CrouchMode` reads true while Toni is crouched in a battle (the bar's "Resting" and the [athletics] "first crouch"
 line prove it); which direction the engine reports for his "from below" attack with each weapon (the YOU lines name it).
 
-## Step 104 (APPROVED by Toni 2026-11-09 "as suggested" - all 5 recommendations below; built after step 105; 104a + 104b built) — timed blocks on horseback: the rider reels in the saddle (research 2026-11-09)
+## Step 104 (APPROVED by Toni 2026-11-09 "as suggested" - all 5 recommendations below; built after step 105; 104a + 104b + 104c built) — timed blocks on horseback: the rider reels in the saddle (research 2026-11-09)
 
 Toni 2026-11-09, after the v1.5.0 release: "can you add the reel vs mounted troops as well somehow, like that 3rd round, we were on horsebacks
 fighting, I blocked, can you implement a similar system there?" His tournament round 3/4: both he and his opponent MOUNTED, 13 shield blocks of
@@ -10036,6 +10036,73 @@ a50b28d (code).
   channel-1 animation SKIPPED when he rears, the lock kept); 4 settings already in (`TimedRiderRearMinScore` / `RearPercent` / `DismountPercent` /
   `DismountWeaponPercent`); a `Rear` lever disabled alone on its error; the summary's rears / knock-offs decided → applied → seen; decide whether a
   reeling rider's knock-off by a HIT (step 105's "a rider" refusal, the no-bonus rule above) changes - Toni's call.
+
+### 104c - built (2026-11-09)
+
+The rear and the knock-off LIVE (Toni, approved "as suggested": rear on a sharp block, knock-off only on a perfect one; the AI's blocks never
+rear Toni's horse or unhorse him). Commit 95e6da9.
+
+- **Where**: `AthleticsLogic.RiderFall.cs` (new), called from `StartRiderReel` (the tick, never the hit callback) right after the lock and
+  BEFORE the animation. `RiderReelRec` carries the ladder's `KnockOff` / `Rear` (from `o.Dismount` / `o.Rear` in `QueueRiderReel`) and what was
+  applied (`Fell` / `Reared`). No new dice - 104a's rider dice already rolled them (knock-off first, the rear only if he stayed on by the die).
+- **The knock-off** = step 53's `IImpactBody.OwnDismountBlow` (CanDismount, `SpikeMath.OwnBlowDamage`, owned by the blocker - unchanged, the proven
+  seam). Right after it his record goes DOWN: `ImpactState.KnockedDown(now, now + VanillaFallRiseSeconds 1.5, KnockdownImmunity)` - what step
+  53's knock-off does in `ImpactMath.Decide`; it also ends his reel (`ReelingUntil = now`). So while he falls (on foot now) step 105 has no reel to
+  roll its 80 % on, and the usual model refuses the knockdown "down" and gives no stagger - checked by Step104cTests (a real Decide) and the smoke
+  (your swing on the fallen man). Marked at the blow, not at "seen": between the engine's dismount and the next tick he would otherwise be a man
+  on foot still reeling - exactly 105's double-up. Followed by `RiderFallWatch` (a pool of 32): off the horse (`IImpactBody.IsMounted`) = SEEN,
+  2 s = not seen → `GotUp(now, 0)` (no false ground time). The reel's locks end "dismounted" on the next tick (104b's path). Levers: refused while
+  `Dismount` or `OwnBlow` is off; a throw disables `Dismount`.
+- **The rear** = `IImpactBody.OwnRearBlow`, now `(rider, out RiderFallRefusal why, out double horseDamage)` - the J tool's #16 uses the SAME call,
+  so its preview is the live blow. Changes from 104a: the blow is OWNED BY THE HORSE ITSELF (`RegisterOwnBlowOn(horse, null, ...)` = `new
+  Blow(horse.Index)` - vanilla's own drowning blow, Mission.cs 3668); refused below `TimedRiderFallMath.MinHorseHealthForRear` 2 health; the
+  horse's health written back right after (`Restored` = min(before, HealthLimit), never below what the blow left) - `horseDamage` = the net loss,
+  summed in the summary (should read 0). A new lever `ImpactLever.Rear` (LeverCount 10), disabled alone on a throw. Followed: the horse's
+  channel 0 type Rear within 1.5 s = SEEN.
+- **Verified in the v1.4.8 decompile (`%TEMP%\trax_decomp`) - why the rear blow is harmless**:
+  - `Agent.RegisterBlow` → `HandleBlow` (Agent.cs 5413): the hit sound + `AddSoundAlarmFactorToAgents` (stealth only); `InflictedDamage <= 0`
+    returns BEFORE `HandleBlowAux` (so 1 is the least that can rear); `Health -= 1`, `Die` only below 1 (hence the 2-health floor);
+    `_lastHitInfo.RegisterLastBlow` only for a HUMAN victim (a horse: never); no damage model is asked (`DamageCalculated` - the models run only
+    in `Mission.CreateMeleeBlow`), so our damage decorator and its KnockDown / dismount / knock-back / shrug-off seams never see it; `OnMeleeHit`
+    is only the melee callback - our kick / bash poll, Athletics costs, the impact model and the meet reads never see it.
+  - `Mission.OnAgentHit` (Mission.cs 5589) → every behaviour's `OnAgentHit` + `OnScoreHit`: `BattleAgentLogic` (OnAgentHit needs
+    `affectedAgent.Character`; OnScoreHit maps a mount affector to its rider, then needs both Characters), `CustomBattleAgentLogic` (both
+    Characters), `TournamentFightMissionController.OnScoreHit` (both Characters) - a horse agent is built with no Character
+    (`CreateHorseAgentFromRosterElements` → `CreateAgent(..., null)`): no XP, no hit reward, no team-hit penalty, no tournament score;
+    `MissionScoreboardComponent` is multiplayer only. Morale: nothing in vanilla reacts to a hit (morale moves on removals / flight). Ours:
+    `CourageHitTaken` skips `InOwnBlow`, the health cap / Athletics track humans only, the spike only counts a seen own blow.
+  - `AgentComponent.OnHit` on the horse: `CommonAIComponent.OnHit` panics a mount ONLY when `RiderAgent == null` - ours always carries its rider
+    (checked mounted right before) → no panic chain. `OnMountHealthChanged` subscribers: `MPPerksAgentComponent` (multiplayer only).
+  - Owned by the horse, not the blocker: no kill / attack credit can ever name the blocker (vanilla's way for a blow nobody made); OnScoreHit's
+    mount → rider mapping then names the RIDER as the affector of a hit on his own horse - harmless, the horse has no Character.
+  - NOT verified (the game answers it, PLAYTEST D75): whether the native `HandleBlowAux` honours `MakesRear` on our debug-collision blow on a
+    slow / standing horse (vanilla's own rear needs > 5 m/s into a braced pike) - the summary's "SEEN rearing / not seen" is the answer.
+  - Other mods' OnAgentHit hooks (RBM etc.) see a 1-damage blow on a horse owned by the horse - not checked.
+- **No fighting animation on top**: `TimedRiderFallMath.SkipsReelAnimation(Fell, Reared)` - the channel-1 reel is not played (counted
+  `AnimSkipped`); the input lock and the horse check stay (a rearing rider still cannot attack / guard for the reel; a fallen one is released
+  "dismounted"). A REFUSED fall / rear plays the reel as in 104b.
+- **Every lock still released on every path**: nothing new holds a lock - the watches only read; `RiderFallLeftField` (Forget), `CloseRiderFalls`
+  (the mission end / the behaviour's removal - counted "still followed at the mission end"), the tick's error drops them.
+- **Words**: your reel line + `TimedRiderLines.FallSuffix` (" - knocked off his horse!" / " - his horse rears!"); a knock-off sends step 53's
+  `KnockedOff` message kind (your men's heroes too). The shadow line now ends "a knock-off / rear above applied from the tick (step 104c)".
+- **Settings**: the 4 from 104a match DESIGN 93 (`TimedRiderRearMinScore` 0.8, `TimedRiderRearPercent` 50, `TimedRiderDismountPercent` 30,
+  `TimedRiderDismountWeaponPercent` 50) and are live under `TimedBlocksOnHorseback` (ON since 104b) - no default changed, no config format bump
+  (still 29). The player hint names the rear / knock-off. `MinHorseHealthForRear` 2 is a Core safety constant (like `StandingBand`), not a setting.
+- **[summary]** `timed blocks on horseback - rear and knock-off (step 104c): LIVE (...) - knock-offs decided → applied (yours) → SEEN off within
+  2.0 s (mean), not seen, refused: ...; rears decided → applied (yours) → SEEN rearing within 1.5 s, not seen, refused: ...; the horses' health
+  lost to our rear blows (after the give-back) S in N (the most one horse M); the reel's animation skipped under a fall / rear N; followed men gone,
+  still followed at the mission end` - after the 104b line, before the shadow's.
+- **Tests**: Step104cTests 15 (the knock-off 9.4 % / 30 %, the rear 50 / 47 / 40 / 0 %, the die order, never on you / the AI's half strength, the
+  settings, the blow's safety math, the animation skip, the lever, a real Decide on a man just knocked off - no 80 %, knockdown "down", no
+  stagger -, the words, the summary line, no allocation); LeverCount pinned at 10 in 3 older tests. 1546 tests. Smoke "THE REAR AND THE
+  KNOCK-OFF, LIVE (step 104c)" (Program.Step104c.cs; the fake body's rear now takes the horse's health / CanRear / a throw) - 230 steps.
+- **OPEN for Toni (not built)**: should a HIT (not a block) on a rider who reels in the saddle knock him off, like 105's 80 % on foot? Today
+  `ReelingHitMath` refuses him `Mounted` and `ImpactMath.Decide` gives a rider no reeling bonus, so a hit's knock-off is step 53's as before. The
+  clean seam: `ReelingHitMath.Decide`'s `Mounted` refusal → for `ReelCause.RiderReel` roll a chance there and let `ApplyRider` answer it in the
+  dismount seam (`IDismountDecider`) - the path that already knocks riders off on landed blows.
+- **What 104d needs**: the PERFECT STRIKE from horseback (the window from `TimedRiderReelAccepted` once the reel is taken, any side on horseback
+  per `PerfectStrikeHorsebackAnySide`; the decorator's mounted filter lifted for YOU, never a horse victim); the mounted blocker's push-out as his
+  guard's heavy parry (`TimedBlockPushOutMounted`); PLAYTEST D76. A knocked-off man gets no strike window (he is down - step 54's punish covers him).
 
 ## Step 105 (BUILT 2026-11-09) — a landed hit on a reeling man knocks him down (80 %)
 
