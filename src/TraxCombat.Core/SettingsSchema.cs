@@ -234,6 +234,11 @@ namespace TraxCombat.Core
             "Timed blocks on horseback",
             "A well-timed block against a RIDER's blow makes him reel in the saddle - no attack and no guard for up to 1.5 s (1 s when the AI does it to you), his horse slowed to half speed; he still steers. A sharp block can make his horse rear, a perfect one can knock him off it (the AI's blocks only ever make YOU reel). Works whether you ride or stand. Off: riders shrug off timed blocks as before. The numbers and the animation: Advanced page, Impact.");
 
+        // Step 106 (Toni 2026-11-09 - OPENINGS, the offensive twin of the timed block): OpeningMath, DESIGN decision 95. Ships OFF until 106d.
+        public static readonly ParamDef OpeningsEnabled = Bool("OpeningsEnabled", PlayerImpactGroup,
+            "Openings after your blocked attacks",
+            "BEING BUILT - nothing changes in battle yet (the log records what it would do). When a man blocks your attack correctly, his guard jumps to one of the other three and a red arrow shows the opening for a moment; swing into it in time and he reels like after your timed block. Every attack of yours he blocks in a row widens the window, up to the 4th; your weapon skill helps a little; shields only from the 2nd and they can break. The numbers: Advanced page, Impact.");
+
         // Step 33 (Anton, 2026-10-12: "a short burst of speed, meant to feel a little like a dodge, and for the AI to make charges
         // sharper"): Core SprintMath, AI_NOTES "Step 33".
         public static readonly ParamDef SprintEnabled = Bool("SprintEnabled", PlayerSprintGroup,
@@ -2118,6 +2123,99 @@ namespace TraxCombat.Core
             "Horseback: a mounted blocker's push-out",
             "On: a mounted blocker's shield or weapon snaps out on a timed block (his guard's own heavy parry - the game has no bash on horseback).");
 
+        // Step 106a - OPENINGS (DESIGN decision 95, AI_NOTES "Step 106"): every number of the feature; the live parts come in 106b-106d.
+        public static readonly ParamDef OpeningsShadowLog = Bool("OpeningsShadowLog", ImpactGroup,
+            "Openings: the shadow log",
+            "On: every attack of yours an AI man blocks correctly is written to the log with the opening it would make (the guard forced, your next swing's start and direction, in time or not) and counted in the battle summary - even while 'Openings after your blocked attacks' is off. Nothing changes in battle.");
+
+        public static readonly ParamDef OpeningForceDelaySeconds = Float("OpeningForceDelaySeconds", 0, 0.5, ImpactGroup,
+            "Openings: guard switch after the block (s)",
+            "How long after his block his guard jumps to the new position and the arrow shows. A swing you start before that is too early.");
+
+        public static readonly ParamDef OpeningWindowBaseSeconds = Float("OpeningWindowBaseSeconds", 0.1, 2, ImpactGroup,
+            "Openings: window to start your swing (s)",
+            "After his guard jumps, how long you have to START your swing in the arrow's direction, on the first attack of a chain.");
+
+        public static readonly ParamDef OpeningWindowPerChainSeconds = Float("OpeningWindowPerChainSeconds", 0, 1, ImpactGroup,
+            "Openings: window added per blocked attack (s)",
+            "Added to the window for every earlier attack of yours he blocked in a row (the 4th: 3 times this).");
+
+        public static readonly ParamDef OpeningWindowSkillWeight = Float("OpeningWindowSkillWeight", 0, 5, ImpactGroup,
+            "Openings: weapon skill's help (x)",
+            "Your weapon skill widens the window by this times what it adds to your timed block's perfect window (skill 300: 0.15 s more there, 0.30 s more here at 2). 0 = skill does not help.");
+
+        public static readonly ParamDef OpeningChainMax = Int("OpeningChainMax", 1, 8, ImpactGroup,
+            "Openings: longest chain",
+            "How many attacks blocked in a row still widen the window - after this many it stays the same.");
+
+        public static readonly ParamDef OpeningChainResetSeconds = Float("OpeningChainResetSeconds", 0.5, 6, ImpactGroup,
+            "Openings: chain breaks after (s)",
+            "More than this between your attacks on him and the chain starts over. It also starts over when your hit lands on him, when he hits you, or when you strike someone else.");
+
+        public static readonly ParamDef OpeningMissKeepsChain = Bool("OpeningMissKeepsChain", ImpactGroup,
+            "Openings: a missed swing keeps the chain",
+            "On: a swing that hits nothing neither breaks nor grows the chain. Off: a miss starts the chain over.");
+
+        public static readonly ParamDef OpeningHoldMaxSeconds = Float("OpeningHoldMaxSeconds", 0.3, 3, ImpactGroup,
+            "Openings: guard held open at most (s)",
+            "Once you swing into the opening, his guard stays where it was forced until your blow lands or misses - at most this long after your swing started.");
+
+        public static readonly ParamDef OpeningSidesCrossed = Bool("OpeningSidesCrossed", ImpactGroup,
+            "Openings: side guards crossed",
+            "Which side guard opens which side swing. On: his left guard (the one that takes your right swing) leaves your LEFT swing open, his right guard your right swing. Off: the other way round. The battle summary's side pairing line shows which one the game really uses.");
+
+        public static readonly ParamDef OpeningReelBaseSeconds = Float("OpeningReelBaseSeconds", 0.2, 3, ImpactGroup,
+            "Openings: his reel (s)",
+            "How long he reels when your swing hits the opening, on the first attack of a chain.");
+
+        public static readonly ParamDef OpeningReelPerChainSeconds = Float("OpeningReelPerChainSeconds", 0, 1, ImpactGroup,
+            "Openings: reel added per blocked attack (s)",
+            "Added to his reel for every earlier attack of yours he blocked in a row.");
+
+        public static readonly ParamDef OpeningReelMaxSeconds = Float("OpeningReelMaxSeconds", 0.2, 3, ImpactGroup,
+            "Openings: longest reel (s)",
+            "His reel from an opening never lasts longer than this.");
+
+        public static readonly ParamDef OpeningShieldMinChain = Int("OpeningShieldMinChain", 1, 8, ImpactGroup,
+            "Openings: shields from the Nth blocked attack",
+            "A shield opens only from this attack of a chain on (2: the first shield block opens nothing).");
+
+        public static readonly ParamDef OpeningShieldWindowPercent = Int("OpeningShieldWindowPercent", 10, 100, ImpactGroup,
+            "Openings: shield window (%)",
+            "Against a shield the window to start your swing is this share of the usual one.");
+
+        public static readonly ParamDef OpeningGuardBreakBasePercent = Int("OpeningGuardBreakBasePercent", 0, 100, ImpactGroup,
+            "Openings: GUARD BROKEN chance (%)",
+            "When your swing into the opening still meets his shield: the chance his guard breaks (he staggers), on the first link a shield opens at.");
+
+        public static readonly ParamDef OpeningGuardBreakPerChainPercent = Int("OpeningGuardBreakPerChainPercent", 0, 100, ImpactGroup,
+            "Openings: GUARD BROKEN added per link (%)",
+            "Added to the guard-break chance for every further attack he blocked in a row (35 / 50 / 65 % on the 2nd / 3rd / 4th).");
+
+        public static readonly ParamDef OpeningGuardBreakStaggerMinSeconds = Float("OpeningGuardBreakStaggerMinSeconds", 0.1, 2, ImpactGroup,
+            "Openings: broken guard's stagger, first (s)",
+            "How long a man whose guard broke staggers, on the first link a shield opens at.");
+
+        public static readonly ParamDef OpeningGuardBreakStaggerMaxSeconds = Float("OpeningGuardBreakStaggerMaxSeconds", 0.1, 3, ImpactGroup,
+            "Openings: broken guard's stagger, last (s)",
+            "... and on the chain's last link (linear between).");
+
+        public static readonly ParamDef OpeningGivesPerfectStrike = Bool("OpeningGivesPerfectStrike", ImpactGroup,
+            "Openings: also a perfect strike",
+            "On: a man reeling from an opening can also be hit for a PERFECT STRIKE (2-3x damage). Off: the reel alone (and the knockdown chance on the next hit).");
+
+        public static readonly ParamDef OpeningArrowShow = Bool("OpeningArrowShow", ImpactGroup,
+            "Openings: the red arrow",
+            "On: a red arrow shows where the opening is while it lasts. Off: read his guard yourself.");
+
+        public static readonly ParamDef OpeningArrowAtCrosshair = Bool("OpeningArrowAtCrosshair", ImpactGroup,
+            "Openings: arrow at the crosshair",
+            "On: the arrow shows at your crosshair, where the game's own attack-direction arrow is. Off: above his head.");
+
+        public static readonly ParamDef OpeningAiVsAi = Bool("OpeningAiVsAi", ImpactGroup,
+            "Openings: AI against AI too",
+            "On: the AI's attacks that the AI blocks make openings too. Off: only your attacks (the AI's are only counted).");
+
         public static readonly ParamDef ImpactMismatchWeight = Float("ImpactMismatchWeight", 0, 2, ImpactGroup,
             "Mismatch weight (pressure per doubling)",
             "How much an outmatched man suffers: every doubling of the mismatch beyond the even band adds this to the pressure on him (0.25: an enemy four times stronger counts as much as being about a third tired). 0 = only tiredness counts.");
@@ -2745,7 +2843,7 @@ namespace TraxCombat.Core
             DamageRandomPercent, DamageReductionPercent, TiredDamageAtEmptyPercent,
             AthleticsEnabled, CostPerBlow, HeroCostMultiplier, CrouchRefillForPlayer,
             AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, ShieldWallHoldsSlots, ShieldWallStepOutMetres, ShieldWallStandFirm, ShieldWallFlanksFaceOut, SpearPreferenceEnabled, PressDontPass, RotationEnabled, RestEnabled, WarCriesEnabled, CourageEnabled, CavalryFlockEnabled, LineDisciplineForPlayer,
-            ImpactEnabled, ImpactOnPlayerPercent, ImpactMeetRulesEnabled, TimedBlocksEnabled, TimedBlockSlowMo, PerfectStrikeEnabled, ReelingHitKnockdownEnabled, TimedBlocksOnHorseback,
+            ImpactEnabled, ImpactOnPlayerPercent, ImpactMeetRulesEnabled, TimedBlocksEnabled, TimedBlockSlowMo, PerfectStrikeEnabled, ReelingHitKnockdownEnabled, TimedBlocksOnHorseback, OpeningsEnabled,
             SprintEnabled, SprintKey, SprintControllerKey,
             ShowPlayerBar, AltMarksEveryone, ImpactShowMessages,
             GiveTier1Shields,
@@ -2838,6 +2936,10 @@ namespace TraxCombat.Core
             TimedRiderReelMaxSeconds, TimedRiderReelAgainstYouMaxSeconds, TimedRiderReelOnYou, TimedRiderReelAction, TimedRiderReelAnimSpeed, TimedRiderReelAnimMaxSeconds,
             TimedRiderNoGuard, TimedRiderHorseCheckPercent, TimedRiderFromFoot, TimedRiderRearMinScore, TimedRiderRearPercent, TimedRiderDismountPercent,
             TimedRiderDismountWeaponPercent, PerfectStrikeOnHorseback, PerfectStrikeHorsebackAnySide, TimedBlockPushOutMounted,
+            OpeningsShadowLog, OpeningForceDelaySeconds, OpeningWindowBaseSeconds, OpeningWindowPerChainSeconds, OpeningWindowSkillWeight, OpeningChainMax,
+            OpeningChainResetSeconds, OpeningMissKeepsChain, OpeningHoldMaxSeconds, OpeningSidesCrossed, OpeningReelBaseSeconds, OpeningReelPerChainSeconds,
+            OpeningReelMaxSeconds, OpeningShieldMinChain, OpeningShieldWindowPercent, OpeningGuardBreakBasePercent, OpeningGuardBreakPerChainPercent,
+            OpeningGuardBreakStaggerMinSeconds, OpeningGuardBreakStaggerMaxSeconds, OpeningGivesPerfectStrike, OpeningArrowShow, OpeningArrowAtCrosshair, OpeningAiVsAi,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
             ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,

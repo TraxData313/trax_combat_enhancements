@@ -300,6 +300,15 @@
   // (true or false)
   "TimedBlocksOnHorseback": true,
 
+  // BEING BUILT - nothing changes in battle yet (the log records what it would do). When a man
+  // blocks your attack correctly, his guard jumps to one of the other three and a red arrow
+  // shows the opening for a moment; swing into it in time and he reels like after your timed
+  // block. Every attack of yours he blocks in a row widens the window, up to the 4th; your
+  // weapon skill helps a little; shields only from the 2nd and they can break. The numbers:
+  // Advanced page, Impact.
+  // (true or false)
+  "OpeningsEnabled": false,
+
   // ==================== Sprinting ====================
   // Every fighter on foot has a sprint: a short burst of speed stored in seconds - the more
   // Athletics he has left, the longer (150 points = 7.5 s; empty = none). Hold the sprint key
@@ -2829,6 +2838,118 @@
   // parry - the game has no bash on horseback).
   // (true or false)
   "TimedBlockPushOutMounted": true,
+
+  // On: every attack of yours an AI man blocks correctly is written to the log with the opening
+  // it would make (the guard forced, your next swing's start and direction, in time or not) and
+  // counted in the battle summary - even while 'Openings after your blocked attacks' is off.
+  // Nothing changes in battle.
+  // (true or false)
+  "OpeningsShadowLog": true,
+
+  // How long after his block his guard jumps to the new position and the arrow shows. A swing
+  // you start before that is too early.
+  // (range 0.0 to 0.5)
+  "OpeningForceDelaySeconds": 0.1,
+
+  // After his guard jumps, how long you have to START your swing in the arrow's direction, on
+  // the first attack of a chain.
+  // (range 0.1 to 2.0)
+  "OpeningWindowBaseSeconds": 0.45,
+
+  // Added to the window for every earlier attack of yours he blocked in a row (the 4th: 3 times
+  // this).
+  // (range 0.0 to 1.0)
+  "OpeningWindowPerChainSeconds": 0.15,
+
+  // Your weapon skill widens the window by this times what it adds to your timed block's
+  // perfect window (skill 300: 0.15 s more there, 0.30 s more here at 2). 0 = skill does not
+  // help.
+  // (range 0.0 to 5.0)
+  "OpeningWindowSkillWeight": 2.0,
+
+  // How many attacks blocked in a row still widen the window - after this many it stays the
+  // same.
+  // (range 1 to 8)
+  "OpeningChainMax": 4,
+
+  // More than this between your attacks on him and the chain starts over. It also starts over
+  // when your hit lands on him, when he hits you, or when you strike someone else.
+  // (range 0.5 to 6.0)
+  "OpeningChainResetSeconds": 2.0,
+
+  // On: a swing that hits nothing neither breaks nor grows the chain. Off: a miss starts the
+  // chain over.
+  // (true or false)
+  "OpeningMissKeepsChain": true,
+
+  // Once you swing into the opening, his guard stays where it was forced until your blow lands
+  // or misses - at most this long after your swing started.
+  // (range 0.3 to 3.0)
+  "OpeningHoldMaxSeconds": 1.5,
+
+  // Which side guard opens which side swing. On: his left guard (the one that takes your right
+  // swing) leaves your LEFT swing open, his right guard your right swing. Off: the other way
+  // round. The battle summary's side pairing line shows which one the game really uses.
+  // (true or false)
+  "OpeningSidesCrossed": true,
+
+  // How long he reels when your swing hits the opening, on the first attack of a chain.
+  // (range 0.2 to 3.0)
+  "OpeningReelBaseSeconds": 0.8,
+
+  // Added to his reel for every earlier attack of yours he blocked in a row.
+  // (range 0.0 to 1.0)
+  "OpeningReelPerChainSeconds": 0.3,
+
+  // His reel from an opening never lasts longer than this.
+  // (range 0.2 to 3.0)
+  "OpeningReelMaxSeconds": 2.0,
+
+  // A shield opens only from this attack of a chain on (2: the first shield block opens
+  // nothing).
+  // (range 1 to 8)
+  "OpeningShieldMinChain": 2,
+
+  // Against a shield the window to start your swing is this share of the usual one.
+  // (range 10 to 100)
+  "OpeningShieldWindowPercent": 75,
+
+  // When your swing into the opening still meets his shield: the chance his guard breaks (he
+  // staggers), on the first link a shield opens at.
+  // (range 0 to 100)
+  "OpeningGuardBreakBasePercent": 35,
+
+  // Added to the guard-break chance for every further attack he blocked in a row (35 / 50 / 65
+  // % on the 2nd / 3rd / 4th).
+  // (range 0 to 100)
+  "OpeningGuardBreakPerChainPercent": 15,
+
+  // How long a man whose guard broke staggers, on the first link a shield opens at.
+  // (range 0.1 to 2.0)
+  "OpeningGuardBreakStaggerMinSeconds": 0.6,
+
+  // ... and on the chain's last link (linear between).
+  // (range 0.1 to 3.0)
+  "OpeningGuardBreakStaggerMaxSeconds": 1.0,
+
+  // On: a man reeling from an opening can also be hit for a PERFECT STRIKE (2-3x damage). Off:
+  // the reel alone (and the knockdown chance on the next hit).
+  // (true or false)
+  "OpeningGivesPerfectStrike": false,
+
+  // On: a red arrow shows where the opening is while it lasts. Off: read his guard yourself.
+  // (true or false)
+  "OpeningArrowShow": true,
+
+  // On: the arrow shows at your crosshair, where the game's own attack-direction arrow is. Off:
+  // above his head.
+  // (true or false)
+  "OpeningArrowAtCrosshair": true,
+
+  // On: the AI's attacks that the AI blocks make openings too. Off: only your attacks (the AI's
+  // are only counted).
+  // (true or false)
+  "OpeningAiVsAi": false,
 
   // How much an outmatched man suffers: every doubling of the mismatch beyond the even band
   // adds this to the pressure on him (0.25: an enemy four times stronger counts as much as
