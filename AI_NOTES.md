@@ -10285,3 +10285,70 @@ Smoke "A HIT ON A REELING MAN KNOCKS HIM DOWN (step 105)" through the real logic
 That the engine plays the fall cleanly ON TOP of our slowed `act_stagger_backward` (the KnockDown blow arrives while channel 0 plays our
 stagger - the engine's fall should take over; if not, step 62's backup blow fires after `ImpactFallBackupSeconds`); how 80 % feels against you
 in a melee where AI ripostes are frequent (`ImpactOnPlayerPercent` scales it).
+
+## Step 106 — OPENINGS: the offensive twin of the timed block (PROPOSED 2026-11-09; 106a in flight)
+
+Toni 2026-11-09: "when I attack someone and he blocks correctly, his guard immediately goes to 1 of the other 3 positions at random, and a red
+arrow like the vanilla attack-direction arrow briefly shows the opening (e.g. he drops to a low guard -> arrow at the top pointing down -> my
+overhead into it staggers him the same way a timed block does). Shields too but harder to break. Consecutive attacks he blocks give a bigger
+window each time, up to the 4th. Small skill-based help like the defensive game." DESIGN decision 95 (decision 94 is step 105's).
+
+### 1. The engine route (researched; nothing new applied in 106a)
+- FORCING HIS GUARD: step 82's path - `AiInputComponent.Filter` (AiInputHook.cs ~280) writes `ImpactMeetMath.GuardFrame(flags, guard)` (his
+  attack bits and his own guard out, ours in) every input frame - PROVEN in game (the meet's "read guard" frames). The opening's guard goes in
+  the same place: after the MeetGuard line, before the kick (step 65 writes last but one); step 104b's reel lock stays LAST. Never
+  `Agent.Main`, never a player-controlled agent (the filter already returns for them). Single player only.
+- THE TRIGGER: the player's melee attack blocked CORRECTLY by an AI man on foot = `ImpactEvent.RightBlock` or `Parry` in the impact
+  decision (`ImpactEventOf`, AthleticsLogic.ImpactModel.cs ~139 - step 64's block kind), i.e. the same seam `TimedBlockDecided` uses.
+- THE ARROW (106c): a Gauntlet prefab of ours at the crosshair with vanilla's `crosshair_arrow` / `crosshair_arrow_vertical` sprites
+  (Native/GUI/Prefabs/Mission/Crosshair.xml) tinted red; the mod's `HudLayer.cs` hosts it.
+
+### 2. The proposed rules (every number a setting - §4)
+- THE CHAIN k = 1..`OpeningChainMax` 4: consecutive player attacks the SAME man blocks correctly. Reset by: a hit of yours landing on him, more
+  than `OpeningChainResetSeconds` 2.0 s between your attacks (block to the next block, or to a wind-up), him hitting you, a blow of yours on
+  someone else (a target switch), a MISSED swing only with `OpeningMissKeepsChain` off. A wrong-direction swing keeps it.
+- THE OPENING: `OpeningForceDelaySeconds` 0.1 s after the block his guard is forced to one of the 3 OTHER guards at random - only guards
+  whose opening your weapon can make (step 103's rule: no thrust - e.g. a two-handed axe - = no high-guard opening). Guard → opening
+  (attacker-relative): DefendDown → your AttackUp (overhead), arrow at the TOP; DefendUp → your AttackDown (thrust), arrow at the BOTTOM;
+  DefendLeft → your AttackLeft, arrow LEFT; DefendRight → your AttackRight, arrow RIGHT. Formally: the guard opens the attack OPPOSITE to the
+  one it blocks; the vertical pairs are certain, the side pairing (does DefendLeft block AttackRight - "crossed" - or AttackLeft?) is the
+  engine's (native `CheckBlock`), NOT readable in the decompile - `OpeningSidesCrossed` (on = the brief's mapping) and 106a's shadow MEASURES
+  it (your attack's direction × his guard at contact).
+- THE WINDOW W to START your swing in the arrow's direction, from the force: `OpeningWindowBaseSeconds` 0.45 + `OpeningWindowPerChainSeconds`
+  0.15 x (k − 1) + `OpeningWindowSkillWeight` 2 x (`TimedBlockMath.PerfectFor`(your wielded weapon's skill) − the skill-0 perfect 0.10) -
+  skill 100: 0.55 / 0.70 / 0.85 / 1.00 s; skill 300: 0.75 ... 1.20 s. Once committed his guard stays forced until the blow resolves, at most
+  `OpeningHoldMaxSeconds` 1.5 s. A wrong direction = the force released, the chain kept; too early (before the force) / too late = nothing.
+- THE PAYOFF (106d): a hit INTO the opening reels him - a new `ReelCause.Opening` through `ImpactState.Reel` / the usual RunStagger, length
+  `OpeningReelBaseSeconds` 0.8 + `OpeningReelPerChainSeconds` 0.3 x (k − 1) (0.8 / 1.1 / 1.4 / 1.7 s, capped at `OpeningReelMaxSeconds` 2.0);
+  step 105's 80 % knockdown then chains on the next hit; on-screen "OPENING!". No PERFECT STRIKE window from it (`OpeningGivesPerfectStrike` off).
+- SHIELDS: an opening only from k = `OpeningShieldMinChain` 2, W x `OpeningShieldWindowPercent` 75 %; when your blow into the opening still
+  meets his shield: "GUARD BROKEN" at `OpeningGuardBreakBasePercent` 35 + `OpeningGuardBreakPerChainPercent` 15 x (k − 2) = 35 / 50 / 65 %
+  (k = 2 / 3 / 4), the blocker staggered `OpeningGuardBreakStaggerMinSeconds` 0.6 → `...MaxSeconds` 1.0 s across the chain.
+- WHO: you vs an AI man on FOOT only (horseback skipped in v1 - both ends); AI vs AI shadow-counted only (`OpeningAiVsAi` off).
+
+### 3. Build order
+106a Core `OpeningMath` / `OpeningRules` / `OpeningChain` / `OpeningStats` + tests, every setting (the live switch `OpeningsEnabled` OFF on
+the player page, `OpeningsShadowLog` ON), the SHADOW log - nothing applied → 106b the forced guard (+ a test key to force one on demand) →
+106c the red arrow → 106d the payoff live, the switch ON → 106e review.
+
+### 4. Settings (106a - all in defaults.json, the schema, MCM; new keys only, no config format change)
+Player page, "Staggers and knockdowns": `OpeningsEnabled` false (ships OFF until 106d). Advanced, Impact (after `TimedBlockPushOutMounted`):
+`OpeningsShadowLog` true, `OpeningForceDelaySeconds` 0.1, `OpeningWindowBaseSeconds` 0.45, `OpeningWindowPerChainSeconds` 0.15,
+`OpeningWindowSkillWeight` 2, `OpeningChainMax` 4, `OpeningChainResetSeconds` 2, `OpeningMissKeepsChain` true, `OpeningHoldMaxSeconds` 1.5,
+`OpeningSidesCrossed` true, `OpeningReelBaseSeconds` 0.8, `OpeningReelPerChainSeconds` 0.3, `OpeningReelMaxSeconds` 2,
+`OpeningShieldMinChain` 2, `OpeningShieldWindowPercent` 75, `OpeningGuardBreakBasePercent` 35, `OpeningGuardBreakPerChainPercent` 15,
+`OpeningGuardBreakStaggerMinSeconds` 0.6, `OpeningGuardBreakStaggerMaxSeconds` 1, `OpeningGivesPerfectStrike` false, `OpeningArrowShow` true,
+`OpeningArrowAtCrosshair` true, `OpeningAiVsAi` false.
+
+### 5. Open questions for Toni (each already a setting; the recommended answer is the default)
+1. A MISSED swing (it hits nothing) - does it keep the chain like a blocked one? Recommended YES (`OpeningMissKeepsChain`): a miss neither
+   breaks nor grows the chain - only blocks grow it.
+2. A hit into the opening - also a PERFECT STRIKE window (x2-x3)? Recommended NO (`OpeningGivesPerfectStrike`): the reel + step 105's 80 %
+   knockdown already pay; x3 on top would make openings the best attack in the game.
+3. The arrow at the CROSSHAIR or over his head? Recommended the crosshair (`OpeningArrowAtCrosshair`) - where vanilla's own direction
+   arrow is and your eyes already are.
+4. Shields: openings only from the 2nd blocked attack, a 75 % window, GUARD BROKEN 35 / 50 / 65 %? Recommended YES (the four settings).
+5. Player only (never AI vs AI)? Recommended YES (`OpeningAiVsAi` off) - AI vs AI only counted.
+
+### 106a - built (2026-11-09)
+(filled in when the step closes)

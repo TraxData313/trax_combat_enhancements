@@ -3729,6 +3729,26 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     `Mission.CreateMeleeBlow`), the perfect strike's x2-x3 on it unchanged. (f) `ReelingHitKnockdownEnabled` (the player page, on) +
     `ReelingHitKnockdownPercent` 80 (Advanced, Impact); the [impact] first-time lines and the [summary] "hits on reeling men" line (landed / knocked
     down by hit kind and by what made him reel, refusals by reason, on you / by you) (PLAYTEST D72). New keys only - no config format change.
+95. **Openings - the offensive twin of the timed block** (step 106, PROPOSED 2026-11-09 - Toni: "when I attack someone and he blocks correctly,
+    his guard immediately goes to 1 of the other 3 positions at random, and a red arrow like the vanilla attack-direction arrow briefly shows the
+    opening ... my overhead into it staggers him the same way a timed block does. Shields too but harder to break. Consecutive attacks he blocks
+    give a bigger window each time, up to the 4th. Small skill-based help like the defensive game."; AI_NOTES "Step 106"; Toni's 5 open questions
+    there, each a setting at the recommended answer). (a) THE CHAIN k = 1..`OpeningChainMax` 4: consecutive attacks of YOURS the same AI man on
+    foot blocks CORRECTLY (right-side shield / parry - the impact decision's RightBlock / Parry); reset by your hit landing on him, more than
+    `OpeningChainResetSeconds` between your attacks, his hit on you, your blow on someone else, a miss only with `OpeningMissKeepsChain` off.
+    (b) THE OPENING: `OpeningForceDelaySeconds` after the block his guard is forced (step 82's input path) to one of the 3 OTHER guards at random,
+    only those whose opening your weapon can make (no thrust = no high-guard opening); a guard opens the attack OPPOSITE to the one it blocks -
+    a low guard: your overhead (arrow at the top), a high guard: your thrust (bottom), the sides by `OpeningSidesCrossed` (the engine's side
+    pairing, measured by 106a). (c) THE WINDOW to START the swing in the arrow's direction: `OpeningWindowBaseSeconds` + `OpeningWindowPerChainSeconds`
+    x (k − 1) + `OpeningWindowSkillWeight` x (your weapon skill's timed-block perfect window − its skill-0 value) - committed, his guard stays
+    forced until the blow resolves (≤ `OpeningHoldMaxSeconds`); a wrong direction releases it, the chain kept. (d) THE PAYOFF: a hit into the
+    opening reels him (`ReelCause.Opening`) `OpeningReelBaseSeconds` + `OpeningReelPerChainSeconds` x (k − 1), at most `OpeningReelMaxSeconds`;
+    step 105 chains; no perfect strike (`OpeningGivesPerfectStrike`). (e) SHIELDS from k = `OpeningShieldMinChain`, the window x
+    `OpeningShieldWindowPercent`; a blow into the opening his shield still meets breaks the guard at `OpeningGuardBreakBasePercent` +
+    `OpeningGuardBreakPerChainPercent` x (k − min) (35 / 50 / 65 %), a blocker stagger `OpeningGuardBreakStaggerMinSeconds` →
+    `...MaxSeconds`. (f) You vs an AI man on foot only; riders skipped; AI vs AI counted only (`OpeningAiVsAi`). (g) The red arrow
+    (`OpeningArrowShow`, `OpeningArrowAtCrosshair`) at the crosshair with vanilla's own direction-arrow sprites. Build: 106a Core + every setting
+    + a SHADOW log (`OpeningsShadowLog`; `OpeningsEnabled` ships OFF) → 106b the forced guard → 106c the arrow → 106d the payoff live → 106e review.
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research
