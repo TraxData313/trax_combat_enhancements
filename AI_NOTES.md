@@ -9677,3 +9677,237 @@ steps green.
 
 **Unverified until D71:** that `CrouchMode` reads true while Toni is crouched in a battle (the bar's "Resting" and the [athletics] "first crouch"
 line prove it); which direction the engine reports for his "from below" attack with each weapon (the YOU lines name it).
+
+## Step 104 (PROPOSED - waiting for Toni) — timed blocks on horseback: the rider reels in the saddle (research 2026-11-09, no code)
+
+Toni 2026-11-09, after the v1.5.0 release: "can you add the reel vs mounted troops as well somehow, like that 3rd round, we were on horsebacks
+fighting, I blocked, can you implement a similar system there?" His tournament round 3/4: both he and his opponent MOUNTED, 13 shield blocks of
+his (6 perfect), every riposte refused because the attacker rode a horse - the decision line "shadow - nothing applied" (`AthleticsLogic.ImpactModel`
+~370: `riposteLive = block && CanRiposte && Applies(Riposte) && !f.AttackerMounted` - the decision is still made and logged, never applied).
+Research only. Verified 2026-11-09 in the v1.4.8 decompile `%TEMP%\trax_decomp\` and the install's `Modules\Native\ModuleData` (action_types.xml,
+action_sets.xml, item_usage_sets.xml, monster_usage_sets.xml). This is NOT old 100c (a FOOT blocker unhorsing a charging rider, dropped by Toni
+2026-11-08) - but the same machinery covers that case too (§3).
+
+### 0. Why riders were refused until now (the original reason)
+
+- IMPACT §3.8 / RESEARCH §R3.4 / R3.6 (step 47-53): "never a forced stagger on a rider (the horse's legs share channel 0 - RBM crashed a horse with
+  it)". The real story in RBM's source (RESEARCH §R3.4): `act_stagger_backward_3` is not in the HORSE action set; a RIDERLESS HORSE given it on
+  channel 0 resolved it to -1 and the engine crashed (StanceLogic.Core.cs 120-131). Our `IImpactBody.CanForce` refuses `MountAgent != null`
+  (`ForceRefusal.Mounted`) for every action of ours, and Core refuses the riposte with `ImpactRefusal.Rider` (Impact.cs ~1318 / ~1339).
+- **The same RESEARCH note says what RBM does on a rider**: its posture break plays `act_stagger_*` on channel **0 on foot / 1 mounted**, at
+  actionSpeed 0.9-1.0 (StanceLogic.Visuals.cs 172-179) - i.e. an UPPER-BODY stagger on a rider is shipping prior art in a big mod. What crashed
+  was channel 0 (the whole body - on a rider the riding pose that is synced with the horse) and a horse agent. So the rule we need is narrower than
+  the one we kept: **never channel 0 on a rider, never any action of ours on a horse agent** - channel 1 on a mounted human is fair game.
+- Step 53 already gave riders the two levers that were proven: our own `CanDismount` blow (`IImpactBody.OwnDismountBlow`, "SEEN off the horse
+  within 2.0 s ... 1, still mounted 0" in Toni's 2026-11-08 log) and his block stun.
+
+### 1. What a "reel" can look like on a rider (the engine's material)
+
+**Upper-body actions that exist and the engine itself plays on riders** (action_types.xml, wired in item_usage_sets.xml `is_mounted="True"`
+usages - `blocked_action` / `quick_blocked_action`, all `actt_blocked_melee`, the ATTACKER's recoil when his blow is blocked):
+- one-handed: `act_[quick_]blocked_overswing_horseback`, `act_[quick_]blocked_slash_horseback_left / _right`, `act_[quick_]blocked_thrust_1h_horseback`
+  (each also `_balanced`);
+- two-handed: `act_[quick_]blocked_overswing_2h_horseback`, `act_[quick_]blocked_slash_2h_horseback_left / _right`, `act_[quick_]blocked_thrust_2h_horseback`;
+- polearm: `act_[quick_]blocked_{overswing|thrust|slashleft|slashright}_staff[_balanced]_horseback`, `act_[quick_]blocked_overswing_spear[_balanced]_horseback`;
+- no mounted blocked recoil for a couched lance (the couch is a passive attack - never blocked as a swing; never ours anyway).
+- The rider's guard: `act_defend_{forward|up|right|left}_staff_{passive|active|parry_light|parry_heavy}_horseback`; shields and one / two-handers
+  use the same `act_defend_shield_*` / `act_defend_*_1h|2h_*` defends as on foot (no horseback variant exists - the engine plays the foot ones
+  upper-body on a rider).
+- Hit reactions: monster_usage_sets.xml has ONE strike table for everyone (`act_strike_*` / `act_strike2_*`, actt_strike_light / _medium) - the
+  mounted entries in it are only the mount ids and the rider falls (`act_rider_only_fall_{left|right}_{front|back}[_heavy]`). So the engine plays the
+  same `act_strike_*` flinches on a rider, upper body only (inferred - the native picks the channel; a rider never leaves the saddle on a hit).
+- `act_stagger_backward` (actt_strike_light, as_human_warrior; 1.01-1.02 s natural, measured by step 51's ReactionWatch) - RBM's mounted choice on
+  channel 1.
+
+**Forcing it on a rider - safe?** Channel 1 only, `Agent.SetActionChannel(1, act, ignorePriority, 0, 0f, speed)` on the HUMAN agent (never
+`MountAgent`): the legs / the saddle pose stay on channel 0, the horse is a separate agent with its own action set (as_horse) and is never
+touched - no -1 resolution can reach a horse (the RBM crash needs a horse agent or channel 0). Falling off: impossible from an upper-body action - a
+rider leaves the saddle only through a blow with `CanDismount` (Mission.CreateMeleeBlow ~5562-5567) or the engine's own rider fall. Horse desync:
+none - the horse is never addressed and the rider's channel 0 is never replaced. **Unverified**: how a standing-skeleton stagger clip reads on a
+seated upper body (RBM ships it, so it is not absurd), and a SLOWED one (RBM plays 0.9-1.0; step 100d saw a slowed foot recoil read as a tangle and
+a re-wind-up - 100f). Hence the test tool first (104a).
+
+**How long can it be stretched?** The animation itself: at speed natural ÷ asked within step 51's 0.5-2.0 → `act_stagger_backward` up to ~2 s; but
+we do NOT need the animation to carry the length. The REEL on horseback = a short upper-body animation (≤ `TimedRiderReelAnimMaxSeconds` 1.0 s,
+default speed 1.0 - RBM's) + an INPUT LOCK for the whole reel (no attack, no guard - §2). So the length is a gameplay number, not an animation
+limit: proposed max 1.5 s (§2), never a clip slowed to 0.5 unless Toni picks that in the tool.
+
+**The horse - can it rear / flinch / slow?**
+- **Slow (proven lever)**: the stat decorator already writes the horse's `MountSpeed` from its rider's tiredness (`AthleticsMath.MountSpeedMultiplier`,
+  `AthleticsLogic.Engine.ApplyMountSpeed` → `RegisterMount` + `UpdateAgentProperties` on the mount - step 5-ish, "horses x0.70" in every summary). A
+  CHECKED horse = for the reel, the multiplier min(tired m, `TimedRiderHorseCheckPercent` 50 %) and back after - the same seam, two recomputes per
+  reel. `MountSpeed` is the TOP speed; how fast a galloping horse actually bleeds speed is the engine's acceleration (unverified - the summary
+  measures his speed at the block and 0.5 s / at the reel's end).
+- **Rear (engine path, unproven by us)**: `BlowFlags.MakesRear` (0x200) on a blow REGISTERED ON THE MOUNT (Mission.cs ~5581-5584 sets it when
+  `DecideMountRearedByBlow` says yes; MissionCombatMechanicsHelper ~96-103 gives it only to a braced long wide-grip thrust into a horse running
+  > 5 m/s at it, damage ≥ `MakesRearAttackDamageThreshold`, the victim's `AgentFlag.CanRear`). Our own 1-damage blow (step 53's drowning recipe,
+  `RegisterOwnBlow`) with `MakesRear` on `MountAgent` = the engine plays `act_horse_rear` (as_horse: `horse_rear`) AND the rider's matching
+  `act_horse_rear` (as_human_warrior: `rider_horse_rear`) itself - the native keeps them in step, which a `SetActionChannel` on the horse would NOT
+  (that is exactly the desync / -1 risk - never do it). `Agent.Mount` refuses while the horse rears (Agent ~4789, `ActionCodeType.Rear` 47) - the
+  rear is a real ~1-1.5 s stop. Check `CanRear` first (camels: `act_camel_rear` exists - read the flag, never assume). Followed: channel 0 type Rear
+  on the mount within 1 s = SEEN.
+- `act_horse_quick_stop` / `_when_fast` (actt_mount_quick_stop) exist - the engine's own hard stop; no managed lever reaches it but input - not used.
+- **Dismount (proven)**: `OwnDismountBlow` (step 53) - rider vs rider too: our blow sets `CanDismount` itself, vanilla's dismount question is not
+  asked, the engine plays `act_rider_only_fall_*`.
+
+### 2. The effect in gameplay terms - the ladder (Core `TimedRiderMath`)
+
+s = the timing score exactly as on foot (step 100b / 101 / 102: the player's guard clock, the skill window 0.10-0.25 s, the AI at 50 % from its own
+clock, a parry x `TimedBlockParryPercent`), on a CORRECT block (right-side shield - step 64's front arc too -, a parry, a chamber) of a RIDER's
+melee blow. **s 0 = exactly today** (the Rider refusal stays; no die is added - the same test pattern as step 101's `A_score_of_0_is_still_step_56`).
+
+| What | Chance | Effect |
+|---|---|---|
+| THE REEL (s > 0) | step 101's timed riposte chance (`TimedChance`: the blend + 15, a perfect block 100 %, halving / immunity as on foot) | an upper-body stagger in the saddle (≤ 1.0 s anim) + for the whole reel L: no attack, no guard (his guard DROPS - the shield / weapon comes down), his horse checked to 50 % top speed; L = L56 + (`TimedRiderReelMaxSeconds` 1.5 − L56) x s; on YOU at most `TimedRiderReelAgainstYouMaxSeconds` 1.0 |
+| + THE HORSE REARS (s ≥ `TimedRiderRearMinScore` 0.8, the reel taken) | `TimedRiderRearPercent` 50 % x s | our MakesRear blow on his horse - the horse rears ~1-1.5 s (the engine's rear + rider pose; our channel-1 stagger is then SKIPPED, the input lock stays) |
+| + KNOCKED OFF (a PERFECT block, s ≥ 0.999, the reel taken; rolled BEFORE the rear) | `TimedRiderDismountPercent` 30 % x (shield 1 / weapon `TimedRiderDismountWeaponPercent` 50 %) x his horse's speed band (0.25 standing → 1 at a gallop - step 53's rider momentum band, `ImpactFacts.AttackerSpeed`) x skill min(1, 0.5 + S(x_r)) | step 53's own dismount blow from the tick, followed until seen off ("You knocked X off his horse") |
+
+The real numbers, skill 100 (perfect 0.15 s, nothing after 0.5 s), fresh even men (L56 ≈ 0.6 s), the attacker cantering (~6.5 m/s, band 0.63):
+
+| your guard went up | s | reel chance | reel length | rear | knocked off |
+|---|---|---|---|---|---|
+| 0.10 s (perfect) | 1.00 | 100 % | 1.50 s | 50 % | ~9 % (30 x 0.63 x 0.5); a galloping poor rider 30 % |
+| 0.20 s | 0.95 | 95 % | 1.45 s | 47 % | - |
+| 0.30 s | 0.61 | 67 % | 1.15 s | - | - |
+| 0.40 s | 0.20 | 33 % | 0.78 s | - | - |
+| held / 0.5 s+ | 0 | step 56's ~1 % → refused (today) | - | - | - |
+
+- **Why an input lock, not just an animation**: a rider's channel 1 IS his weapon arm; an upper-body action of priority strike-light may be cut by
+  his own next attack / guard input (unverified). The lock is what makes the reel real: the AI's attack AND defend bits taken out in step 16's
+  `AiInputComponent.OnAIInputSet` (a new edit `Reel` - like `HoldAttacks` but WITHOUT the raised guard; the move bits / the vector untouched - he
+  keeps riding where his AI steers); YOURS cleared in step 13's `PlayerAttackGate` (`GatePlayerInput` - the attack bits it already clears + the
+  four Defend bits while you reel; steering / the horse never locked). Mounted AI holds already run through that hook (AttackRateStats "mounted"
+  holds - step 16 / 21), so the path is known on riders.
+- **Why 1.5 s, not 2.0**: a rider at a canter covers ~10 m in 1.5 s - the horse check is what keeps him in reach; a 2 s guardless lock plus a
+  checked horse in a 1v1 tournament is near a free kill (the PERFECT STRIKE window rides it - §3). One number, Toni's call (question 2).
+- **Caps on YOU** (the AI blocked YOUR mounted blow): the AI's 50 % share keeps s ≤ 0.5 → the reel only (never a rear: 0.8 floor; never knocked off:
+  perfect only), at most 1.0 s, x `ImpactOnPlayerPercent`; your steering is never locked; `TimedRiderReelOnYou` (Advanced, on) turns it off alone.
+- **Refused**: a couched lance (`IsDoingPassiveAttack`), a horse's charge / bump (not a block), a ranged or thrown blow, his reel or knockdown
+  immunity (the perfect bypasses of step 101 apply as on foot), already reeling (`Reeling(now)` - never restart the channel-1 action), the switches,
+  the rider on a game object / in water (CanForce's other rows keep their meaning), shadow mode = decide and log only.
+
+### 3. Which combos
+
+- **Rider vs rider** (Toni's case) - the target. The blocker mounted or not does not matter to the ATTACKER's reel: the decision keys on
+  `f.AttackerMounted` and the score; the blocker's own rows stay step 53's rider path (`riderLive`).
+- **Foot blocker vs rider** (the old dropped 100c's situation): the SAME branch, no extra code - an infantryman's timed block of a rider's blow
+  reels the rider. Cheap; but it hands infantry a cavalry counter Toni dropped once. With the AI at 50 % an AI spearman can only REEL a rider (no
+  rear, no dismount - unreachable); only YOU on foot can rear / unhorse. **Recommend ON** behind its own switch `TimedRiderFromFoot` (Advanced),
+  so cavalry charges still pass AI lines unharmed by perfects (question 3).
+- **Rider blocking a foot attacker**: works TODAY - `riposteLive` does not look at the defender's horse, so a mounted blocker's timed block staggers
+  a foot attacker on foot as in step 100b (`act_stagger_backward` on the FOOT man). What is missing: the push-out (skipped for a mounted blocker)
+  and PERFECT STRIKE (refused from horseback) - both below.
+- **PERFECT STRIKE while the rider reels**: the decorator refuses `DoesAttackerHaveMountAgent` and a horse on either end today, and the window opens
+  only in `TimedRiposteAccepted` (the foot stagger). 104d: open the window when the rider's reel is TAKEN (`TimedRiderReelAccepted` - the input
+  lock started, the channel-1 action or the rear taken), keep `IsVictimAgentMount` / `IsAttackerAgentMount` refused (never on a horse), allow YOU
+  mounted. The DIRECTION on horseback: riders pass side by side, a mounted swing is mostly forced by which side he is on (a 1h rider cannot
+  answer across his horse's neck freely), so step 103's strict opposites would rarely be possible. **Recommend: on horseback ANY melee swing / thrust
+  of yours landing on his body while he reels counts** (x2 → x3 by the timing, one per reel), `PerfectStrikeHorsebackAnySide` (Advanced, on) - on
+  foot unchanged (question 4).
+
+### 4. Slow-mo, push-out, the timing line - mounted
+
+- **Slow-mo**: nothing rider-specific in 100e / 101 - `MaybeStartSlowMo(blocker, score)` is called from `TimedRiposteAccepted`; 104b calls it from
+  `TimedRiderReelAccepted` too (YOU the blocker, s ≥ 0.8, the cooldown, every give-back path unchanged). Works mounted as on foot.
+- **Push-out**: no MOUNTED bash exists - item_usage_sets.xml wires the kick / bash usages (`act_1h_bash`, `act_shield_bash` ...) only for foot usages,
+  no `is_mounted` row has one; playing `act_shield_bash` on a rider's channel 1 is unproven (a standing clip; and a bash collision from a horse). The
+  safe beat is step 100d's existing FALLBACK - his guard's own `_parry_heavy` replayed fast (`TimedPushOutMath.ParryHeavyOf`): a DEFEND action the
+  engine already plays on riders (`act_defend_shield_*_parry_heavy_*`, `act_defend_*_staff_parry_heavy_horseback`, the 1h / 2h ones), so the shield /
+  weapon visibly snaps out and back. 104d: for a mounted blocker the push-out kind = parry_heavy always (`TimedBlockPushOutMounted`, on); the J tool
+  also offers `act_shield_bash` on a rider so Toni can see it, never a default. The 0.5 s bash-collision guard stays (harmless for a defend action).
+- **The on-screen timing line** (`TimedBlockShowTiming`): already says every correct block's timing; for a rider today "... holds". New words:
+  "Your block - X reels in the saddle 1.45 s / 1.50 (guard 0.10 s / 0.15)", "+ his horse rears", "+ knocked off his horse"; on you "X timed his
+  block - you reel in the saddle 1.0 s".
+
+### 5. Settings (proposal), [summary] lines, Core-testable math
+
+New keys only - **no config format bump**; defaults in defaults.json + `DefaultsTool refresh`; DESIGN rows in the same commit; read at use time.
+
+PLAYER page, "Staggers and knockdowns" (36 → 37; SettingsPagesTests' list grows by 1):
+- `TimedBlocksOnHorseback` Bool **true** - "Timed blocks on horseback": "A well-timed block against a RIDER's blow makes him reel in the saddle -
+  no attack and no guard for up to 1.5 s, his horse checked; a sharp one can rear his horse, a perfect one can knock him off. Works whether you
+  ride or stand. Off: riders shrug off timed blocks as before."
+
+ADVANCED page, "Impact: staggers, shield drops, knockdowns":
+| Key | Default | Range | Step |
+|---|---|---|---|
+| `TimedRiderReelMaxSeconds` | 1.5 | 0.5-3 | 104b - the reel after a perfect block |
+| `TimedRiderReelAgainstYouMaxSeconds` | 1.0 | 0.3-3 | 104b - the longest reel the AI can put on you |
+| `TimedRiderReelOnYou` | true | - | 104b - the AI's timed blocks can reel you in the saddle |
+| `TimedRiderReelAction` | act_stagger_backward | text | 104a/b - the channel-1 animation (picked with the J tool; "none" = the lock only) |
+| `TimedRiderReelAnimSpeed` | 1.0 | 0.5-2 | 104a/b - its speed (RBM's 0.9-1.0) |
+| `TimedRiderReelAnimMaxSeconds` | 1.0 | 0-2 | 104b - the animation's part; the rest is the input lock |
+| `TimedRiderNoGuard` | true | - | 104b - his guard drops while he reels (off = only no attack) |
+| `TimedRiderHorseCheckPercent` | 50 | 10-100 | 104b - his horse's top speed while he reels (100 = never checked) |
+| `TimedRiderFromFoot` | true | - | 104b - a man ON FOOT reels a rider too |
+| `TimedRiderRearMinScore` / `TimedRiderRearPercent` | 0.8 / 50 | 0-1 / 0-100 | 104c - a sharp block rears his horse (x the timing) |
+| `TimedRiderDismountPercent` / `TimedRiderDismountWeaponPercent` | 30 / 50 | 0-100 | 104c - a perfect block knocks him off (x his horse's speed, x the skill mismatch) |
+| `PerfectStrikeOnHorseback` / `PerfectStrikeHorsebackAnySide` | true / true | - | 104d |
+| `TimedBlockPushOutMounted` | true | - | 104d - a mounted blocker's shield / weapon snaps out (his guard's own heavy parry) |
+
+Gates: `ModEnabled` FIRST → AthleticsEnabled + ImpactEnabled → `TimedBlocksEnabled` → `TimedBlocksOnHorseback` → each part's switch;
+`r.Applies(ImpactFamily.Riposte)`; shadow = decide and log. The smoke's master-switch step: off = the lock released, the horse's multiplier back,
+no new rear / dismount.
+
+**[summary] lines** (`timed blocks on horseback (step 104) ...`):
+- `correct blocks on RIDERS by timing band (rider vs rider / foot vs rider; you / the AI); reels decided → taken (lock started / anim taken / anim
+  refused by the engine) → ended (lock released, measured length); refused (lance, immune, reeling, switches, on you capped n)`
+- `horse checked n: his speed at the block → 0.5 s later → at the reel's end (mean m/s) - THE ENGINE'S ANSWER to the MountSpeed lever`
+- `rears decided → applied → SEEN rearing within 1 s (no CanRear n); dismounts decided → applied → SEEN off within 2 s`
+- `the lock: AI frames edited (attack / guard bits out), your presses swallowed (attack / guard); a reel ended early by a knockdown / death`
+- the perfect strike line + `from horseback n`; the push-out line + `mounted (heavy parry) n`; the slow-mo line's trigger `a rider's reel n`.
+- YOU lines: "your timed block (0.08 s, perfect): X reels in the saddle 1.50 s, his horse rears" / "X timed his block on you (0.31 s): you reel 0.9 s".
+
+**Core-testable (`src/TraxCombat.Core/TimedRider.cs`, `tests/.../TimedRiderTests.cs`)**: `TimedRiderRules` (ModEnabled FIRST, the chain, the
+numbers rounded to 5 decimals like step 101's); `TimedRiderMath.Applies(rules, facts)` (lance / foot-blocker switch / ranged / not a correct
+block); `ReelChance` = `TimedBlockMath.TimedChance` (reuse - s 0 → p56 → the Rider refusal unchanged, the dice identical); `ReelLength(L56, s,
+max, toYou, youCap)`; `AnimPlan(L, animMax, speed, natural)`; `HorseCheck(tiredM, pct)` = min; `RearChance(s, min, pct)`; `DismountChance(s, shield,
+speedBand, xr, pct, weaponPct)` (perfect only; S-curve reuse); `Ladder` (dismount roll → rear roll → reel, one die each, only after the reel was
+taken); `AiInputMath.ReelLock` (attack + defend bits out, move bits and the vector untouched); `PerfectStrikeMath.Verdict(mounted, anySide)`;
+`TimedRiderStats` + the line text. Tests: s 0 = today exactly (400 seeded decisions, the next die compared - step 101's pattern); monotone in s; the
+caps on you; an AI blocker can never reach the rear / dismount (s ≤ 0.5); a lance never; the lock bits; the stats line; no allocation.
+
+### 6. The build steps (each small, its own commit, the manager protocol)
+
+- **104a - the eyes first (test tool + shadow diagnostic)**: the J tool (`TimedBlockAnimTest`) gains rider candidates on the nearest RIDER (else you
+  mounted): `act_stagger_backward` on channel 1 at 1.0 / 0.5, his mounted blocked recoil for his weapon (the names in §1) at 1.0 / slowed,
+  `act_strike2_chest_front` on channel 1, the MakesRear blow on his horse, the heavy-parry beat and `act_shield_bash` on a mounted blocker; each named
+  on screen and in the log with "taken / refused". The decision on a rider computed in shadow (what WOULD happen - reel / rear / dismount) and the
+  first [summary] line. Files: Core `TimedAnim.cs` (`Candidates`), `TimedRider.cs` (new - the math, stats), Module `ImpactBody.cs` (`ForceRiderReel`
+  - channel 1, human agent only, never `MountAgent`; `OwnRearBlow`), `AthleticsLogic.TimedAnim.cs` (the tool), tests, smoke. PLAYTEST D72 (Toni picks
+  by eye in a tournament / on a horse in the training field).
+- **104b - the reel live**: Core `Impact.cs` (the timed rider branch beside the Rider refusal - `d.RiderReel`, length, `ImpactRefusal.Rider` kept for
+  s 0), Module `AthleticsLogic.ImpactModel.cs` (`riposteLive` → `|| riderReelLive`), `AthleticsLogic.ImpactRiders.cs` (queue → `RunRiderReel` from the
+  tick: the lock, the channel-1 action, the horse check, the watch, `TimedRiderReelAccepted` → slow-mo), `AiInput.cs` / the hook (`Reel` edit),
+  `AthleticsLogic.PlayerTimer.cs` (`GatePlayerInput` - the defend bits while you reel), `AthleticsLogic.Engine.cs` (`ApplyMountSpeed` - the check),
+  the YOU lines / on-screen words, settings (player 1 + Advanced 9), tests, smoke, docs (DESIGN 93 → built, IMPACT §3.8, HOW-IT-WORKS §11c, MECHANICS,
+  PLAYTEST D73).
+- **104c - rear and unhorse**: the ladder's two rolls, `OwnRearBlow` / `OwnDismountBlow` from the tick, followed / seen, the lines, settings (4),
+  tests. PLAYTEST D74.
+- **104d - PERFECT STRIKE and the push-out on horseback**: the decorator's mounted filter lifted for YOU, the any-side rule, the window from
+  `TimedRiderReelAccepted`; the mounted blocker's heavy-parry beat; settings (3), tests. PLAYTEST D75.
+- **104e - independent review + fixes, close step 104.**
+
+### Risks
+
+1. **The channel-1 stagger on a seated rider** may look odd (a standing clip) or be cut by his own input - the lock covers the gameplay, the tool
+   picks the look; "none" (the lock only, plus the engine's own short blocked recoil) is a valid fallback.
+2. **The horse check may barely show** (top speed, not deceleration) - measured by the summary; if weak, the rear carries the "horse" part.
+3. **The rear blow** is unproven by us (a 1-damage blow on a horse - its hit sound, its own reaction; `CanRear` may be off on some mounts, then
+   nothing) - its own lever `Rear`, disabled alone on an error, counted.
+4. **Cavalry battles get choppier**: AI riders time blocks at 50 % against each other → many short reels (≤ ~1.05 s at s 0.5). Watch the AI-vs-AI
+   reel rate per minute in the summary; `TimedBlockAiPercent` and the master switch for riders are the brakes.
+5. **Lock stuck**: the lock lives in `TrackedAgent` with an end time; released at its end, on the switches, death / removal, the mission end - the
+   pattern of step 100e's give-back; the smoke's master-switch step checks it.
+6. **A foot man unhorsing riders** (only you, at perfect) - the reason 100c was dropped; behind `TimedRiderFromFoot` and the 30 % ceiling.
+
+### Open questions for Toni (each with Claude's recommendation)
+
+1. What should the reel BE on horseback? - **An upper-body stagger in the saddle (≤ 1 s) + no attack and no guard for the whole reel + his horse
+   checked to half speed**; the animation picked by you with the J tool (104a) before anything goes live.
+2. How long? - **1.5 s at a perfect block** (2.0 on foot), at most 1.0 s on you.
+3. Also when YOU (or an AI man) block a rider ON FOOT? - **Yes, the reel** (same code); the rear / unhorse only reachable by your own sharp / perfect
+   blocks (the AI's 50 % cannot reach them); a switch `TimedRiderFromFoot`.
+4. PERFECT STRIKE from horseback - strict opposites or any side? - **Any side while he reels** (mounted swings are forced by the pass), x2 → x3 as on foot.
+5. Rear and knock-off: both? - **Yes**: rear at a sharp block (0.8+, 50 % x s), knocked off only at a perfect one (30 % x his speed x the mismatch -
+   ~9 % at a canter, 30 % for a galloping poor rider).

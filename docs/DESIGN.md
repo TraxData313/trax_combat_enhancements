@@ -3611,6 +3611,26 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     Refill: Toni's "let this be there"; the game's AI never crouches in a battle - only scripted scenes - and while off its crouch is not even read);
     never mounted. Your bar's label reads "Resting" while it refills crouched; the [athletics] first-crouch line and the [summary] "crouch rest" line
     (PLAYTEST D71). No existing default changed - no config format bump.
+93. **Timed blocks on horseback** (step 104, PROPOSED 2026-11-09 - waiting for Toni; nothing built, no parameter rows yet - they join the
+    Parameters table with the step that builds them. Toni 2026-11-09: "can you add the reel vs mounted troops as well somehow, like that 3rd round,
+    we were on horsebacks fighting, I blocked, can you implement a similar system there?" - his mounted tournament round: 13 shield blocks, 6
+    perfect, every riposte refused "a rider"; AI_NOTES "Step 104"). Why riders were refused: decision 45 / IMPACT §3.8 - "never a forced stagger
+    on a rider" after RBM crashed a RIDERLESS HORSE with `act_stagger_*` on channel 0; RBM itself plays its stagger on channel 1 on a rider. The
+    proposal keeps the old rule's real core - **never channel 0 on a rider, never an action of ours on a horse agent** - and opens channel 1.
+    (a) THE REEL IN THE SADDLE: a correct block of a RIDER's melee blow (never a couched lance) with timing s > 0 (decision 91's score - the
+    skill window, the AI's 50 %) rolls step 101's timed riposte chance (a perfect block 100 %); taken = an upper-body action on the rider's
+    channel 1 (`act_stagger_backward` at speed 1.0, at most 1.0 s - picked with the test tool) + an INPUT LOCK for the whole reel (no attack, no
+    guard - the AI's bits out in step 16's hook, yours in step 13's gate; steering never locked) + his horse CHECKED (the decorator's MountSpeed at
+    50 %); the length blends from step 56's to 1.5 s by s, at most 1.0 s on you; s 0 = today exactly (the Rider refusal, the same dice).
+    (b) THE HORSE REARS at a sharp block (s ≥ 0.8): 50 % x s - our 1-damage blow flagged `MakesRear` on his MOUNT, so the engine plays the horse's
+    and the rider's rear in step (never `SetActionChannel` on a horse). (c) KNOCKED OFF at a PERFECT block only: 30 % x (a weapon 50 %) x his
+    horse's speed band (0.25 standing → 1 at a gallop) x the skill mismatch - decision 45's own dismount blow. The AI's 50 % share can never reach
+    (b) or (c). (d) WHO: rider vs rider (Toni's case) and, behind its own switch (proposed on), a man on foot blocking a rider - the same branch;
+    a rider blocking a foot attacker already staggers him today (decision 91 (b)). (e) PERFECT STRIKE from horseback once the rider's reel is
+    taken - any side on horseback (proposed; strict opposites stay on foot - decision 91 (o)); the slow motion as on foot; the push-out of a
+    MOUNTED blocker = his guard's own heavy parry (no mounted bash exists in the game's usage sets). Settings proposed in AI_NOTES "Step 104" §5
+    (1 on the player page - `TimedBlocksOnHorseback` -, ~13 Advanced), no config format change; build 104a (test tool + shadow) → 104b (the reel)
+    → 104c (rear / unhorse) → 104d (strike, push-out) → 104e (review).
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research
