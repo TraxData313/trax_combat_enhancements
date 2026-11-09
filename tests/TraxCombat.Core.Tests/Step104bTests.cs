@@ -124,14 +124,14 @@ public class Step104bTests
     [Fact]
     public void The_switch_ships_on_and_format_29_moves_104as_off_once()
     {
-        Assert.Equal(29, ConfigFile.FormatVersion);
+        Assert.Equal(30, ConfigFile.FormatVersion);
         // shipped ON in defaults.json (the tests' own defaults are DESIGN's initial values - the switch's is off, as 104a shipped it)
         Assert.Contains("\"TimedBlocksOnHorseback\": true,", DefaultsFile.ReadEmbeddedText(), StringComparison.Ordinal);
         // Toni's file: written by step 104a (format 28) with the switch OFF he never touched → ON, said once
         var read = ConfigFile.Read("{ \"ConfigVersion\": 28, \"TimedBlocksOnHorseback\": false }");
         var notes = ConfigFile.Migrate(read, Shipped);
         Assert.Equal(1, read.Values["TimedBlocksOnHorseback"], 9);
-        Assert.StartsWith("TimedBlocksOnHorseback: false → true (format 28 → 29, the old default; step 104b", Assert.Single(notes), StringComparison.Ordinal);
+        Assert.StartsWith("TimedBlocksOnHorseback: false → true (format 28 → 30, the old default; step 104b", Assert.Single(notes), StringComparison.Ordinal);
         // a format-29 file keeps whatever it holds (turned off by hand stays off)
         var mine = ConfigFile.Read("{ \"ConfigVersion\": 29, \"TimedBlocksOnHorseback\": false }");
         Assert.Empty(ConfigFile.Migrate(mine, Shipped));

@@ -142,8 +142,11 @@ namespace TraxCombat.Core
         /// a tuned value kept and noted; TimedBlockSlowMoRealSeconds - the whole ramp - retired for TimedBlockSlowMoHoldSeconds 1.5 and
         /// TimedBlockSlowMoEaseOutSeconds 0.3, new keys; the old key dropped from any file by <c>DropRetiredSlowMoKeys</c>, one note), 29 = step 104b
         /// (the reel in the saddle built - DESIGN decision 93): TimedBlocksOnHorseback false → true in a format-28 file (step 104a shipped the switch OFF
-        /// inside format 28 while nothing was built; a switch's hand-set value is not told apart from the old default, so a format-28 false is moved once).</summary>
-        public const int FormatVersion = 29;
+        /// inside format 28 while nothing was built; a switch's hand-set value is not told apart from the old default, so a format-28 false is moved once), 30 = step 106d
+        /// (the openings' payoff built - DESIGN decision 95): OpeningsEnabled false → true in a format-29 file (steps 106a-106c shipped the switch OFF inside
+        /// format 29 while the payoff was not built; a switch's hand-set value is not told apart, so a format-29 false is moved once); step 100g's flat
+        /// PerfectStrikeMinMultiplier / PerfectStrikeMaxMultiplier retired for the weapon-direction multipliers (<c>DropRetiredPerfectStrikeKeys</c>).</summary>
+        public const int FormatVersion = 30;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
         public const string VersionKey = "ConfigVersion";
@@ -649,6 +652,13 @@ namespace TraxCombat.Core
                 MoveOrKeepIfMoved(read, SettingsSchema.TimedBlocksOnHorseback, 0,
                     "step 104b: timed blocks on horseback are built - a timed block of a rider's blow makes him reel in the saddle", from, defaultOf);
             }
+            if (from == 29)
+            {
+                // step 106d: steps 106a-106c shipped OpeningsEnabled OFF inside format 29 (the shadow, the forced guard, the arrow - the payoff not
+                // built); the payoff is built now - on (no older file has the key: a missing key takes the default like any other)
+                MoveOrKeepIfMoved(read, SettingsSchema.OpeningsEnabled, 0,
+                    "step 106d: openings are built - a man who blocks your attack correctly is thrown off balance; hit him then and he staggers, open for a PERFECT STRIKE", from, defaultOf);
+            }
             // format 17 (step 78b) moved the lull's LullRecover*Percent 10 / 15 / 20 → 20 / 25 / 30; step 78c removed the lull and its keys, so a
             // format 16 file's are dropped below with the rest of them - nothing to move any more (78c kept format 17; step 80 made it 18)
             // steps 36 / 37: the retired AI sprint keys - in ANY format (they are only ever steps 33-36's, and a hand-pasted one
@@ -662,6 +672,8 @@ namespace TraxCombat.Core
             DropRetiredSlowMoKeys(read, from);
             // step 106a2: the openings' first-design keys (step 106a, Toni replaced the design the same day) - in ANY format
             DropRetiredOpeningKeys(read, from);
+            // step 106d: step 100g's flat perfect-strike multipliers - in ANY format
+            DropRetiredPerfectStrikeKeys(read, from);
             return read.Migrated;
         }
 
@@ -684,6 +696,22 @@ namespace TraxCombat.Core
                 read.Unknown.RemoveAt(i);
                 read.Migrated.Add(pair.Key + " " + pair.Value + " dropped (format " + from + " → " + FormatVersion
                                   + "; step 106a2, Toni's revised openings: off balance, a timed follow-up, the stagger and the perfect strike - see the Opening* keys)");
+            }
+        }
+
+        /// <summary>Step 100g's flat perfect-strike multipliers (x2-x3), retired by step 106d for the weapon-direction ranges (PerfectStrike*Way*).</summary>
+        public static readonly string[] RetiredPerfectStrikeKeys = { "PerfectStrikeMinMultiplier", "PerfectStrikeMaxMultiplier" };
+
+        /// <summary>Step 106d: the retired perfect-strike keys leave <see cref="ConfigReadResult.Unknown"/> - one note each (78c's pattern). Idempotent.</summary>
+        private static void DropRetiredPerfectStrikeKeys(ConfigReadResult read, int from)
+        {
+            for (int i = read.Unknown.Count - 1; i >= 0; i--)
+            {
+                var pair = read.Unknown[i];
+                if (Array.FindIndex(RetiredPerfectStrikeKeys, k => string.Equals(k, pair.Key, StringComparison.OrdinalIgnoreCase)) < 0) continue;
+                read.Unknown.RemoveAt(i);
+                read.Migrated.Add(pair.Key + " " + pair.Value + " dropped (format " + from + " → " + FormatVersion
+                                  + "; step 106d: the perfect strike's multiplier now follows your weapon - see PerfectStrikeFourWayMin / Max, ThreeWay, TwoWay)");
             }
         }
 

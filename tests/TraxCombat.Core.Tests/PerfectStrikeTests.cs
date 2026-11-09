@@ -21,8 +21,8 @@ public class PerfectStrikeTests
         s.Set(SettingsSchema.ImpactEnabled, 1, "test");
         s.Set(SettingsSchema.TimedBlocksEnabled, 1, "test");
         s.Set(SettingsSchema.PerfectStrikeEnabled, 1, "test");
-        s.Set(SettingsSchema.PerfectStrikeMinMultiplier, 2, "test");
-        s.Set(SettingsSchema.PerfectStrikeMaxMultiplier, 3, "test");
+        s.Set(SettingsSchema.PerfectStrikeThreeWayMin, 2, "test"); // step 106d: the old flat x2-x3 = today's no-thrust range (Axe below)
+        s.Set(SettingsSchema.PerfectStrikeThreeWayMax, 3, "test");
         s.Set(SettingsSchema.PerfectStrikeGraceSeconds, 0.15, "test");
         s.Set(SettingsSchema.PerfectStrikeCentreMessage, 1, "test");
         tune?.Invoke(s);
@@ -30,6 +30,9 @@ public class PerfectStrikeTests
     }
 
     private static PerfectStrikeRules Rules(Action<TraxSettings>? tune = null) => PerfectStrikeRules.From(Settings(tune));
+
+    /// <summary>Step 106d: a no-thrust weapon (3 directions) - its range is the old x2-x3.</summary>
+    private static readonly int Axe = OpeningMath.WeaponMask(true, false);
 
     // ------------------------------------------------------------------ the direction mapping
 
@@ -71,9 +74,9 @@ public class PerfectStrikeTests
         Assert.Equal(Down, PerfectStrikeMath.Opposite(Up));
         Assert.Equal(StrikeVerdict.Perfect, PerfectStrikeMath.Verdict(blocked: Up, strike: Down));
         var r = Rules();
-        Assert.Equal(2.0, PerfectStrikeMath.Multiplier(0, in r), 9);
-        Assert.Equal(3.0, PerfectStrikeMath.Multiplier(1, in r), 9);
-        Assert.Equal(60f, PerfectStrikeMath.Apply(20f, PerfectStrikeMath.Multiplier(1, in r)), 3);
+        Assert.Equal(2.0, PerfectStrikeMath.Multiplier(0, in r, Axe), 9);
+        Assert.Equal(3.0, PerfectStrikeMath.Multiplier(1, in r, Axe), 9);
+        Assert.Equal(60f, PerfectStrikeMath.Apply(20f, PerfectStrikeMath.Multiplier(1, in r, Axe)), 3);
     }
 
     [Fact]
@@ -149,7 +152,7 @@ public class PerfectStrikeTests
         Assert.Equal(5.0, PerfectStrikeMath.Multiplier(1, 2, 99), 9); // the range 1-5
         Assert.Equal(1.0, PerfectStrikeMath.Multiplier(0, 0.2, 3), 9);
         var r = Rules();
-        Assert.Equal(2.8, PerfectStrikeMath.Multiplier(0.8, in r), 5);
+        Assert.Equal(2.8, PerfectStrikeMath.Multiplier(0.8, in r, Axe), 5);
         Assert.Equal("PERFECT STRIKE x2.8", PerfectStrikeMath.Text(2.8));
     }
 
@@ -218,7 +221,7 @@ public class PerfectStrikeTests
         Assert.Equal("TimedBlocksEnabled", Rules(s => s.Set(SettingsSchema.TimedBlocksEnabled, 0, "test")).OffBecause);
         Assert.Equal("PerfectStrikeEnabled", Rules(s => s.Set(SettingsSchema.PerfectStrikeEnabled, 0, "test")).OffBecause);
         Assert.Contains("perfect strike ON", Rules().Describe());
-        Assert.Contains("x2.0 (timing 0) to x3.0 (timing 1)", Rules().Describe());
+        Assert.Contains("x2.0-4.0 / x2.0-3.0 / x1.5-2.0 damage by your weapon's 4 / 3 / 2 attack directions", Rules().Describe()); // step 106d
         Assert.Contains("perfect strike OFF (PerfectStrikeEnabled)", Rules(s => s.Set(SettingsSchema.PerfectStrikeEnabled, 0, "test")).Describe());
         Assert.Equal(0.15, Rules().GraceSeconds, 5);
         Assert.True(Rules().CentreMessage);
@@ -236,7 +239,7 @@ public class PerfectStrikeTests
         st.NoteWrongSide(Left);
         st.ExpiredUnused = 1;
         string line = st.SummaryLine(Rules());
-        Assert.Contains("windows opened by your timed blocks 3, PERFECT STRIKES landed 2 (your left swing 1, right swing 1, overhead 0, thrust from below 0", line);
+        Assert.Contains("windows opened 3 (by an opening's stagger 0), PERFECT STRIKES landed 2 (after an opening 0; by your weapon's directions 2 / 3 / 4: 0 / 0 / 0, by the weapon's relaxed sides 0) (your left swing 1, right swing 1, overhead 0, thrust from below 0", line);
         Assert.Contains("after his blocked left 0 / right 1 / overhead 1 / thrust 0 / unknown 0", line);
         Assert.Contains("mean multiplier x2.50 (x2.20-x2.80, mean timing 0.50), damage 30 → 78", line);
         Assert.Contains("windows expired unused 1", line);
@@ -257,7 +260,7 @@ public class PerfectStrikeTests
         Assert.Contains("after his blocked overhead (wanted your thrust): your left 1 / right 0 / overhead 1 / thrust 0", line);
         Assert.Contains("after his blocked thrust (wanted your overhead): your left 0 / right 1 / overhead 0 / thrust 0", line);
         Assert.DoesNotContain("after his blocked left swing (", line);
-        Assert.Contains("strict opposites since step 103", line);
+        Assert.Contains("the opposite by your weapon since step 106d", line);
         Assert.Contains("unknown direction (nothing counts) 2", line);
         Assert.Equal(1, st.WrongSideAfter[Up * 4 + Left]);
     }
@@ -271,8 +274,7 @@ public class PerfectStrikeTests
         Assert.DoesNotMatch(@"[Ss]tep \d", SettingsSchema.PerfectStrikeEnabled.Description);
         var advanced = new[]
         {
-            SettingsSchema.PerfectStrikeMinMultiplier, SettingsSchema.PerfectStrikeMaxMultiplier, SettingsSchema.PerfectStrikeGraceSeconds,
-            SettingsSchema.PerfectStrikeCentreMessage,
+            SettingsSchema.PerfectStrikeGraceSeconds, SettingsSchema.PerfectStrikeCentreMessage, // step 106d: the flat Min / Max multipliers retired
         };
         int first = all.IndexOf(SettingsSchema.TimedBlockAnimTestKey) + 1;
         for (int i = 0; i < advanced.Length; i++)
@@ -281,8 +283,6 @@ public class PerfectStrikeTests
             Assert.Equal(SettingsPage.Advanced, advanced[i].Group.Page);
         }
         Assert.Equal(1, SettingsSchema.PerfectStrikeEnabled.Default, 5);
-        Assert.Equal(2, SettingsSchema.PerfectStrikeMinMultiplier.Default, 5);
-        Assert.Equal(3, SettingsSchema.PerfectStrikeMaxMultiplier.Default, 5);
         Assert.Equal(0.15, SettingsSchema.PerfectStrikeGraceSeconds.Default, 5);
         Assert.Equal(1, SettingsSchema.PerfectStrikeCentreMessage.Default, 5);
     }

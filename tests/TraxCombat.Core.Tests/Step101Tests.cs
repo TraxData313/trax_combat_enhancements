@@ -355,7 +355,7 @@ public class Step101Tests
     [Fact]
     public void Format_28_moves_the_old_slow_motion_speed_keeps_a_tuned_one_and_drops_the_retired_key()
     {
-        Assert.Equal(29, ConfigFile.FormatVersion);
+        Assert.Equal(30, ConfigFile.FormatVersion);
         var old = ConfigFile.Read("{ \"ConfigVersion\": 27, \"TimedBlockSlowMoSpeed\": 0.3, \"TimedBlockSlowMoRealSeconds\": 0.5 }");
         var notes = ConfigFile.Migrate(old, Shipped);
         Assert.Equal(0.25, old.Values["TimedBlockSlowMoSpeed"], 6);

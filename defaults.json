@@ -300,14 +300,13 @@
   // (true or false)
   "TimedBlocksOnHorseback": true,
 
-  // BEING BUILT - nothing changes in battle yet (the log records what it would do). When a man
-  // blocks your attack correctly he is thrown off balance: a red arrow flashes the side to hit
-  // - start your swing on the flash and he cannot block it; your hit staggers him and the arrow
-  // shows the side for a PERFECT STRIKE. Missing the moment makes the next try easier, up to
-  // the 4th. Shields need one block more. Hits from behind always stagger. The numbers:
-  // Advanced page, Impact.
+  // When a man on foot blocks your attack correctly he is thrown off balance: a red arrow
+  // flashes the side to hit - start your swing on the flash and he cannot block it; your hit
+  // staggers him and the arrow shows the side for a PERFECT STRIKE. Missing the moment makes
+  // the next try easier, up to the 4th. Shields need one block more. Hits from behind always
+  // stagger. The numbers: Advanced page, Impact.
   // (true or false)
-  "OpeningsEnabled": false,
+  "OpeningsEnabled": true,
 
   // A red arrow at your crosshair, where the game shows your attack direction. It shows the
   // side for a PERFECT STRIKE while a man you can finish reels (after your well-timed block,
@@ -2727,17 +2726,6 @@
   // (one of LeftControl, RightControl, LeftAlt, RightAlt, LeftShift, RightShift, CapsLock, Tab, Q, T, Y, H, J, K, L, B, N, M, C, MiddleMouseButton, X1MouseButton, X2MouseButton)
   "TimedBlockAnimTestKey": "J",
 
-  // The perfect strike's damage multiplier after a block timed at the edge of the window
-  // (timing 0). It rises in a straight line to the one below for a perfectly timed block.
-  // Applied last, after the damage roll, tiredness and the overall reduction, so the hit lands
-  // exactly this many times what it would have.
-  // (range 1.0 to 5.0)
-  "PerfectStrikeMinMultiplier": 2.0,
-
-  // The perfect strike's damage multiplier after a perfectly timed block (timing 1).
-  // (range 1.0 to 5.0)
-  "PerfectStrikeMaxMultiplier": 3.0,
-
   // How long after the staggered man's stagger ends your counter still counts (a swing already
   // on its way). 0 = only while he still reels.
   // (range 0.0 to 1.0)
@@ -2847,10 +2835,10 @@
   "TimedBlockPushOutMounted": true,
 
   // On: every attack of yours an AI man blocks correctly, and every hit of yours that would
-  // stagger him, is written to the log with what openings would do (where his balance went,
-  // your follow-up's side and timing, the stagger, the perfect strike) and counted in the
-  // battle summary - even while 'Openings after your blocked attacks' is off. Nothing changes
-  // in battle.
+  // stagger him, is written to the log with what openings do (where his balance went, your
+  // follow-up's side and timing, the stagger, the perfect strike) and counted in the battle
+  // summary - also while 'Openings after your blocked attacks' is off (then nothing changes in
+  // battle).
   // (true or false)
   "OpeningsShadowLog": true,
 
@@ -2943,7 +2931,10 @@
   "OpeningAiVsAi": false,
 
   // The perfect strike's damage multiplier with a weapon that attacks from all four directions
-  // (swords) at the weakest timing.
+  // (swords) at the weakest timing - after your timed block and after an opening alike. It
+  // rises in a straight line to the one below at perfect timing. Applied last, after the damage
+  // roll, tiredness and the overall reduction, so the hit lands exactly this many times what it
+  // would have.
   // (range 1.0 to 5.0)
   "PerfectStrikeFourWayMin": 2.0,
 

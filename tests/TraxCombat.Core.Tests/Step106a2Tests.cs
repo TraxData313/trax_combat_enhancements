@@ -354,7 +354,7 @@ public class Step106a2Tests
         st.NoteFinish(false, 0, Sword, false);
         st.AiVsAi = 2;
         string line = st.SummaryLine(in r);
-        Assert.StartsWith("openings (step 106a2 SHADOW, the revised design - nothing applied; live OFF (OpeningsEnabled), the shadow log ON): ", line);
+        Assert.StartsWith("openings (step 106d; live OFF (OpeningsEnabled) - counted only, the shadow log ON): ", line);
         Assert.Contains("OFF BALANCE 1 (weapon block 1", line);
         Assert.Contains("INTO the balance side 1 (by link 1 / 0 / 0 / 0)", line);
         Assert.Contains("TIMING perfect / good / weak / none 1 / 0 / 0 / 0 (mean 1.00)", line);

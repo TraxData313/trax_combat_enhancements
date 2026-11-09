@@ -115,6 +115,10 @@ namespace TraxCombat.Core
 
         /// <summary>Step 65: a kicked man's reaction CUT SHORT - he braced (what is left of it) or a lucky kick's short reel - played FASTER.</summary>
         Brace,
+
+        /// <summary>Step 106d: an OPENING's stagger - your landed hit on a man off balance (or from behind): our act_stagger_* from the tick at the
+        /// speed for the opening's reel (the riposte's path); seen, its length, its end into his state.</summary>
+        Opening,
     }
 
     /// <summary>

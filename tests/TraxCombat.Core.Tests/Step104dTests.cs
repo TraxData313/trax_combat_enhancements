@@ -55,11 +55,11 @@ public class Step104dTests
     [InlineData(1.0, 3.0)]
     [InlineData(0.5, 2.5)]
     [InlineData(0.0, 2.0)]
-    public void The_multiplier_on_a_rider_is_the_foot_one(double score, double k)
+    public void The_multiplier_on_a_rider_is_the_foot_one(double score, double k) // step 106d: by the weapon - a no-thrust one's x2-x3
     {
         var r = PerfectStrikeRules.From(Live());
-        Assert.Equal(k, PerfectStrikeMath.Multiplier(score, in r), 9);
-        Assert.Equal(20f * (float)k, PerfectStrikeMath.Apply(20f, PerfectStrikeMath.Multiplier(score, in r)), 4);
+        Assert.Equal(k, PerfectStrikeMath.Multiplier(score, in r, OpeningMath.WeaponMask(true, false)), 9);
+        Assert.Equal(20f * (float)k, PerfectStrikeMath.Apply(20f, PerfectStrikeMath.Multiplier(score, in r, OpeningMath.WeaponMask(true, false))), 4);
     }
 
     // ------------------------------------------------------------------ B. the switches

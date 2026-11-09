@@ -19,8 +19,15 @@ namespace TraxCombat.Core
             ImpactOn = s.AthleticsEnabled && s.ImpactEnabled;
             TimedOn = s.TimedBlocksEnabled;
             Switch = s.PerfectStrikeEnabled;
-            MinMultiplier = PerfectStrikeMath.ClampMultiplier(F(s.PerfectStrikeMinMultiplier));
-            MaxMultiplier = PerfectStrikeMath.ClampMultiplier(F(s.PerfectStrikeMaxMultiplier));
+            // step 106d: the multiplier by the striker's weapon's attack directions (DESIGN decision 95 (d)) - the old flat x2-x3 retired
+            FourMin = PerfectStrikeMath.ClampMultiplier(F(s.PerfectStrikeFourWayMin));
+            FourMax = Math.Max(FourMin, PerfectStrikeMath.ClampMultiplier(F(s.PerfectStrikeFourWayMax)));
+            ThreeMin = PerfectStrikeMath.ClampMultiplier(F(s.PerfectStrikeThreeWayMin));
+            ThreeMax = Math.Max(ThreeMin, PerfectStrikeMath.ClampMultiplier(F(s.PerfectStrikeThreeWayMax)));
+            TwoMin = PerfectStrikeMath.ClampMultiplier(F(s.PerfectStrikeTwoWayMin));
+            TwoMax = Math.Max(TwoMin, PerfectStrikeMath.ClampMultiplier(F(s.PerfectStrikeTwoWayMax)));
+            WeaponFinishes = s.PerfectStrikeWeaponFinishes;
+            OpeningsSwitch = s.OpeningsEnabled;
             GraceSeconds = Math.Max(0, Math.Min(PerfectStrikeMath.MaxGraceSeconds, Nan0(F(s.PerfectStrikeGraceSeconds))));
             CentreMessage = s.PerfectStrikeCentreMessage;
             HorsebackSwitch = s.TimedBlocksOnHorseback;
@@ -36,11 +43,49 @@ namespace TraxCombat.Core
         public bool Switch { get; }
         public bool Enabled => ModEnabled && ImpactOn && TimedOn && Switch;
 
-        /// <summary>The damage multiplier after a block timed at score 0 (1-5).</summary>
-        public double MinMultiplier { get; }
+        /// <summary>Step 106d: the multiplier's range by the STRIKER's weapon's attack directions - 4 (swords) x2-x4, 3 (no thrust: axes,
+        /// maces) x2-x3, 2 or fewer (spears) x1.5-x2 (the defaults); min at timing 0, a line to max at 1. Replaces step 100g's flat x2-x3.</summary>
+        public double FourMin { get; }
+        public double FourMax { get; }
+        public double ThreeMin { get; }
+        public double ThreeMax { get; }
+        public double TwoMin { get; }
+        public double TwoMax { get; }
 
-        /// <summary>The damage multiplier after a perfectly timed block, score 1 (1-5).</summary>
-        public double MaxMultiplier { get; }
+        /// <summary>Step 106d: <c>PerfectStrikeWeaponFinishes</c> - the finishing side follows the weapon (an axe finishes an overhead with
+        /// left OR right, a spear a side swing with either stab); off = step 103's strict opposites.</summary>
+        public bool WeaponFinishes { get; }
+
+        /// <summary>Step 106d: <c>OpeningsEnabled</c> (the player page).</summary>
+        public bool OpeningsSwitch { get; }
+
+        /// <summary>
+        /// Step 106d: an OPENING's reel opens a perfect-strike window - the master switch FIRST, Athletics and the impact system (the reel is
+        /// the impact system's), <c>PerfectStrikeEnabled</c>, <c>OpeningsEnabled</c>. Not <c>TimedBlocksEnabled</c> (that is the defensive game's).
+        /// </summary>
+        public bool OpeningOn => ModEnabled && ImpactOn && Switch && OpeningsSwitch;
+
+        public string? OpeningOffBecause => !ModEnabled ? "ModEnabled" : !ImpactOn ? "the impact system off" : !Switch ? "PerfectStrikeEnabled" : !OpeningsSwitch ? "OpeningsEnabled" : null;
+
+        /// <summary>Step 106d: the range for a weapon with <paramref name="directions"/> attack directions.</summary>
+        public void Range(int directions, out double min, out double max)
+        {
+            if (directions >= 4)
+            {
+                min = FourMin;
+                max = FourMax;
+            }
+            else if (directions == 3)
+            {
+                min = ThreeMin;
+                max = ThreeMax;
+            }
+            else
+            {
+                min = TwoMin;
+                max = TwoMax;
+            }
+        }
 
         /// <summary>Battle seconds the window stays open after his stagger's end (a counter already on its way).</summary>
         public double GraceSeconds { get; }
@@ -72,9 +117,12 @@ namespace TraxCombat.Core
         {
             var c = CultureInfo.InvariantCulture;
             if (!Enabled) return "perfect strike OFF (" + OffBecause + ")";
-            return "perfect strike ON: after YOUR timed block staggers him, your first attack from the strict opposite (his right ↔ your right swing, left ↔ left, his overhead ↔ your thrust from below, his thrust ↔ your overhead) that lands on his body while he reels (+"
-                   + GraceSeconds.ToString("0.00", c) + " s) does x" + MinMultiplier.ToString("0.0#", c) + " (timing 0) to x" + MaxMultiplier.ToString("0.0#", c)
-                   + " (timing 1) damage; the line in the middle of the screen " + (CentreMessage ? "on" : "off")
+            return "perfect strike ON: after YOUR timed block staggers him (or, with the openings, YOUR hit staggers him off balance), your first attack from the opposite side (his right ↔ your right swing, left ↔ left, his overhead ↔ your thrust from below, his thrust ↔ your overhead"
+                   + (WeaponFinishes ? "; by your weapon: no thrust - an overhead answered by left OR right, a spear - a side answered by either stab" : "; strict opposites") + ") that lands on his body while he reels (+"
+                   + GraceSeconds.ToString("0.00", c) + " s) does x" + FourMin.ToString("0.0#", c) + "-" + FourMax.ToString("0.0#", c) + " / x" + ThreeMin.ToString("0.0#", c) + "-"
+                   + ThreeMax.ToString("0.0#", c) + " / x" + TwoMin.ToString("0.0#", c) + "-" + TwoMax.ToString("0.0#", c)
+                   + " damage by your weapon's 4 / 3 / 2 attack directions (timing 0 to 1); openings' windows " + (OpeningOn ? "ON" : "OFF (" + OpeningOffBecause + ")")
+                   + "; the line in the middle of the screen " + (CentreMessage ? "on" : "off")
                    + "; on horseback (step 104d) " + (MountedOn ? "ON - a rider reeling in the saddle after your timed block: " + (HorsebackAnySide ? "ANY side" : "strict opposites")
                                                                   + " on his body (never his horse); your strike may come from horseback (strict opposites on a man on foot)"
                                                                 : "OFF (" + MountedOffBecause + ")");
@@ -193,6 +241,35 @@ namespace TraxCombat.Core
         }
 
         /// <summary>
+        /// Step 106d - THE VERDICT BY THE WEAPON (the same rule as the red arrow, <see cref="OpeningArrowMath.DefensiveFinishMask"/>, so the arrow
+        /// never points at a side that does not score): your <paramref name="strike"/> is perfect when it is one of the finishing sides of the
+        /// strict opposite of his blocked attack by YOUR weapon (<paramref name="weaponMask"/>) - <see cref="OpeningMath.FinishMask"/>: the strict
+        /// opposite when your weapon can make it, else (with <paramref name="weaponFinishes"/>) any of its other directions but the one opposite
+        /// the wanted (an axe after his blocked overhead: left or right; a spear after a side swing: either stab). Off = step 103's strict opposites.
+        /// </summary>
+        public static StrikeVerdict Verdict(int blocked, int strike, int weaponMask, bool weaponFinishes)
+        {
+            if (!IsAttack(strike)) return StrikeVerdict.Unknown;
+            if (!IsAttack(blocked)) return StrikeVerdict.BlockedUnknown;
+            int mask = OpeningMath.FinishMask(Opposite(blocked), weaponMask, weaponFinishes);
+            return (mask & OpeningMath.Bit(strike)) != 0 ? StrikeVerdict.Perfect : StrikeVerdict.WrongSide;
+        }
+
+        /// <summary>Step 106d: the verdict for a window's kind with the weapon rule (a rider with any side: any hit; else
+        /// <see cref="Verdict(int, int, int, bool)"/>).</summary>
+        public static StrikeVerdict Verdict(bool riderWindow, bool anySide, int blocked, int strike, int weaponMask, bool weaponFinishes) =>
+            riderWindow && anySide ? StrikeVerdict.Perfect : Verdict(blocked, strike, weaponMask, weaponFinishes);
+
+        /// <summary>Step 106d: an OPENING's window - perfect when <paramref name="strike"/> is one of the finishing sides noted at his stagger
+        /// (<see cref="OpeningMath.FinishAfterYourSwing"/>, YOUR frame); unknown direction = Unknown; an empty mask = BlockedUnknown (nothing counts).</summary>
+        public static StrikeVerdict OpeningVerdict(int finishMask, int strike)
+        {
+            if (!IsAttack(strike)) return StrikeVerdict.Unknown;
+            if ((finishMask & OpeningMath.AllAttacks) == 0) return StrikeVerdict.BlockedUnknown;
+            return (finishMask & OpeningMath.Bit(strike)) != 0 ? StrikeVerdict.Perfect : StrikeVerdict.WrongSide;
+        }
+
+        /// <summary>
         /// Step 104d: the verdict for a window's kind. A window on a reeling RIDER (<paramref name="riderWindow"/>) with
         /// <c>PerfectStrikeHorsebackAnySide</c> (<paramref name="anySide"/>): ANY landed hit on his body is perfect, whatever its direction - a
         /// mounted swing is dictated by which side you pass him (Toni's answer 4). Otherwise (a man on foot, or any-side off) step 103's strict
@@ -224,7 +301,12 @@ namespace TraxCombat.Core
             return ClampMultiplier(min) + (ClampMultiplier(max) - ClampMultiplier(min)) * s;
         }
 
-        public static double Multiplier(double score, in PerfectStrikeRules r) => Multiplier(score, r.MinMultiplier, r.MaxMultiplier);
+        /// <summary>Step 106d: the multiplier by the striker's weapon (<paramref name="weaponMask"/> - its attack directions pick the range).</summary>
+        public static double Multiplier(double score, in PerfectStrikeRules r, int weaponMask)
+        {
+            r.Range(OpeningMath.DirectionCount(weaponMask), out double min, out double max);
+            return Multiplier(score, min, max);
+        }
 
         /// <summary>The landed damage x the multiplier (applied LAST - after the roll, tiredness and the reduction - so the hit lands exactly k
         /// times what it would have); 0 stays 0, NaN / negative = unchanged.</summary>
@@ -270,6 +352,12 @@ namespace TraxCombat.Core
 
         /// <summary>Step 104d: opened by his REEL IN THE SADDLE (a rider), not a riposte stagger on foot.</summary>
         public bool Rider;
+
+        /// <summary>Step 106d: opened by an OPENING's stagger (your hit on him off balance / from behind) - <see cref="FinishMask"/> decides.</summary>
+        public bool Opening;
+
+        /// <summary>Step 106d: an opening's finishing sides (attack bits, YOUR frame - the opposite of the staggering swing, by the weapon).</summary>
+        public int FinishMask;
     }
 
     /// <summary>Step 100g: the open windows (a fixed array, no allocation after construction). Main thread.</summary>
@@ -312,6 +400,17 @@ namespace TraxCombat.Core
             _w[i] = new PerfectStrikeWindow { Victim = victim, Blocked = PerfectStrikeMath.IsAttack(blocked) ? blocked : -1, Score = score, OpenedAt = now, Rider = rider };
         }
 
+        /// <summary>Step 106d: a window opened by an OPENING's stagger on <paramref name="victim"/> - <paramref name="finishMask"/> the sides that
+        /// finish him, <paramref name="score"/> the follow-up's timing (the multiplier's).</summary>
+        public void OpenOpening(int victim, int finishMask, double score, double now, out bool dropped, out bool droppedRider)
+        {
+            Open(victim, -1, score, now, false, out dropped, out droppedRider);
+            int i = IndexOf(victim);
+            if (i < 0) return;
+            _w[i].Opening = true;
+            _w[i].FinishMask = finishMask & OpeningMath.AllAttacks;
+        }
+
         public void RemoveAt(int i)
         {
             if (i < 0 || i >= Count) return;
@@ -349,6 +448,20 @@ namespace TraxCombat.Core
 
         /// <summary>Step 104 follow-up: your couched-lance / braced-spear hits on a window man (never a perfect strike, the window kept).</summary>
         public int Couched;
+
+        /// <summary>Step 106d: OPENINGS' windows (opened by an opening's stagger), perfect strikes from them, wrong-side hits in them; the
+        /// relaxed sides used (a no-thrust weapon's left / right after an overhead, a spear's stab after a side swing - both games).</summary>
+        public int OpeningOpened, OpeningLanded, OpeningWrongSide, RelaxedLanded;
+
+        /// <summary>Step 106d: perfect strikes by the striker's weapon's directions (2 or fewer / 3 / 4 → 0 / 1 / 2).</summary>
+        public readonly int[] ByDirections = new int[3];
+
+        public void NoteWeapon(int weaponMask, bool relaxed)
+        {
+            int n = OpeningMath.DirectionCount(weaponMask);
+            ByDirections[n >= 4 ? 2 : n == 3 ? 1 : 0]++;
+            if (relaxed) RelaxedLanded++;
+        }
         public double MultiplierSum, MultiplierMin = double.NaN, MultiplierMax = double.NaN, ScoreSum;
         public double DamageBeforeSum, DamageAfterSum;
 
@@ -454,8 +567,13 @@ namespace TraxCombat.Core
             var c = CultureInfo.InvariantCulture;
             var t = new StringBuilder();
             int landed = LandedTotal;
-            t.Append("perfect strike (step 100g; ").Append(r.Enabled ? "ON" : "OFF (" + r.OffBecause + ")").Append("): windows opened by your timed blocks ")
-             .Append(Opened.ToString(c)).Append(", PERFECT STRIKES landed ").Append(landed.ToString(c))
+            t.Append("perfect strike (step 100g / 106d; ").Append(r.Enabled ? "ON" : "OFF (" + r.OffBecause + ")").Append(", openings ").Append(r.OpeningOn ? "ON" : "OFF")
+             .Append("; x by your weapon's directions 4 / 3 / 2: x").Append(r.FourMin.ToString("0.0#", c)).Append('-').Append(r.FourMax.ToString("0.0#", c)).Append(" / x")
+             .Append(r.ThreeMin.ToString("0.0#", c)).Append('-').Append(r.ThreeMax.ToString("0.0#", c)).Append(" / x").Append(r.TwoMin.ToString("0.0#", c)).Append('-')
+             .Append(r.TwoMax.ToString("0.0#", c)).Append("): windows opened ")
+             .Append(Opened.ToString(c)).Append(" (by an opening's stagger ").Append(OpeningOpened.ToString(c)).Append("), PERFECT STRIKES landed ").Append(landed.ToString(c))
+             .Append(" (after an opening ").Append(OpeningLanded.ToString(c)).Append("; by your weapon's directions 2 / 3 / 4: ").Append(ByDirections[0].ToString(c)).Append(" / ")
+             .Append(ByDirections[1].ToString(c)).Append(" / ").Append(ByDirections[2].ToString(c)).Append(", by the weapon's relaxed sides ").Append(RelaxedLanded.ToString(c)).Append(')')
              .Append(" (your left swing ").Append(Landed[PerfectStrikeMath.Left].ToString(c))
              .Append(", right swing ").Append(Landed[PerfectStrikeMath.Right].ToString(c))
              .Append(", overhead ").Append(Landed[PerfectStrikeMath.Up].ToString(c))
@@ -483,7 +601,8 @@ namespace TraxCombat.Core
             AppendAfter(t, PerfectStrikeMath.Down, c);
             AppendAfter(t, PerfectStrikeMath.Left, c);
             AppendAfter(t, PerfectStrikeMath.Right, c);
-            t.Append(" - strict opposites since step 103; the window stays open)");
+            t.Append(r.WeaponFinishes ? " - the opposite by your weapon since step 106d; the window stays open)" : " - strict opposites (step 103); the window stays open)");
+            if (OpeningWrongSide > 0) t.Append("; wrong-side hits on a man reeling from an opening ").Append(OpeningWrongSide.ToString(c));
             if (BlockedUnknown > 0) t.Append("; your hits after a blocked attack of unknown direction (nothing counts) ").Append(BlockedUnknown.ToString(c));
             if (NotOnBody > 0) t.Append("; your hits on a window man that did not land on his body (blocked, shield, kick / bash, 0 damage) ").Append(NotOnBody.ToString(c));
             if (Couched > 0) t.Append("; your couched-lance hits on a window man (never a perfect strike, the window kept) ").Append(Couched.ToString(c));

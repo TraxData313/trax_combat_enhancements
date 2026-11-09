@@ -832,6 +832,27 @@ namespace TraxCombat.Core
         /// <summary>AI vs AI correct blocks on foot (counted only); a man's guard read failed; errors.</summary>
         public int AiVsAi, GuardReadFailed, Errors;
 
+        /// <summary>
+        /// Step 106d - THE LIVE PAYOFF: opening staggers asked (our forced stagger queued, <see cref="ReelCause.Opening"/>), carried by the mod's own
+        /// stagger on the same hit (no second one), not given (the same hit knocked him down / he was already down / the impact system's riposte
+        /// family not live / a full queue); the forced stagger played by the engine, seen, never seen; the perfect-strike windows they opened;
+        /// "GUARD BROKEN" (a shield lowered by a won roll) and "OPENING!" shown.
+        /// </summary>
+        public int LiveAsked, LiveOnModStagger, LiveKnockedDown, LiveAlreadyDown, LiveNotLive, LiveNotApplied, LivePlayed, LiveSeen, LiveNotSeen, LiveWindows,
+            GuardBrokenShown, OpeningShown;
+
+        /// <summary>The live staggers' asked and measured seconds (sums / counts).</summary>
+        public double LiveAskedSum, LiveMeasuredSum;
+        public int LiveMeasured;
+
+        public void NoteLiveMeasured(double asked, double measured)
+        {
+            if (double.IsNaN(measured)) return;
+            LiveMeasured++;
+            LiveAskedSum += double.IsNaN(asked) ? 0 : asked;
+            LiveMeasuredSum += measured;
+        }
+
         public int StatesTotal
         {
             get
@@ -955,7 +976,7 @@ namespace TraxCombat.Core
         {
             var c = CultureInfo.InvariantCulture;
             var t = new StringBuilder();
-            t.Append("openings (step 106a2 SHADOW, the revised design - nothing applied; live ").Append(r.Enabled ? "ON (106b: the forced guard and the block roll; the stagger and the perfect strike still shadow)" : "OFF (" + r.OffBecause + ")")
+            t.Append("openings (step 106d; live ").Append(r.Enabled ? "ON - the forced guard, the block roll, the stagger and the perfect strike" : "OFF (" + r.OffBecause + ") - counted only")
              .Append(", the shadow log ").Append(r.ShadowOn ? "ON" : "OFF").Append("): your attacks the AI blocked correctly ").Append(BlocksTotal.ToString(c))
              .Append(" (shield ").Append(ShieldBlocks.ToString(c)).Append(", weapon ").Append(WeaponBlocks.ToString(c)).Append(") by link");
             for (int k = 1; k <= r.ChainMax; k++) t.Append(k == 1 ? " " : " / ").Append(Blocks[k].ToString(c));
@@ -1005,6 +1026,14 @@ namespace TraxCombat.Core
                  .Append(PerfectByDirections[0].ToString(c)).Append(" / ").Append(PerfectByDirections[1].ToString(c)).Append(" / ").Append(PerfectByDirections[2].ToString(c))
                  .Append(", by the weapon's relaxed sides ").Append(RelaxedFinishes.ToString(c)).Append(')');
             t.Append(", another side (step 105's knockdown roll) ").Append(FinishOther.ToString(c)).Append(", no hit before the reel ended ").Append(ReelsUnused.ToString(c));
+            t.Append("; LIVE STAGGERS asked ").Append(LiveAsked.ToString(c)).Append(" (played ").Append(LivePlayed.ToString(c)).Append(", seen ").Append(LiveSeen.ToString(c))
+             .Append(", never seen ").Append(LiveNotSeen.ToString(c)).Append(", not applied ").Append(LiveNotApplied.ToString(c));
+            if (LiveMeasured > 0)
+                t.Append(", asked ").Append((LiveAskedSum / LiveMeasured).ToString("0.00", c)).Append(" s -> measured ").Append((LiveMeasuredSum / LiveMeasured).ToString("0.00", c)).Append(" s");
+            t.Append("), carried by the mod's own stagger ").Append(LiveOnModStagger.ToString(c)).Append(", none - knocked down by the same hit ").Append(LiveKnockedDown.ToString(c))
+             .Append(" / already down ").Append(LiveAlreadyDown.ToString(c)).Append(" / the impact system's riposte not live ").Append(LiveNotLive.ToString(c))
+             .Append("; perfect-strike windows opened ").Append(LiveWindows.ToString(c)).Append(", OPENING! shown ").Append(OpeningShown.ToString(c))
+             .Append(", GUARD BROKEN shown ").Append(GuardBrokenShown.ToString(c));
             t.Append("; THE SIDE PAIRING (your attack -> his guard at contact: high / low / left / right / unread):");
             for (int a = 0; a < 4; a++)
             {

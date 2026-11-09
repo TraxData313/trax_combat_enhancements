@@ -234,10 +234,11 @@ namespace TraxCombat.Core
             "Timed blocks on horseback",
             "A well-timed block against a RIDER's blow makes him reel in the saddle - no attack and no guard for up to 1.5 s (1 s when the AI does it to you), his horse slowed to half speed; he still steers. A sharp block can make his horse rear, a perfect one can knock him off it (the AI's blocks only ever make YOU reel). Works whether you ride or stand. Off: riders shrug off timed blocks as before. The numbers and the animation: Advanced page, Impact.");
 
-        // Step 106 (Toni 2026-11-09 - OPENINGS, the offensive twin of the timed block; revised design 106a2): OpeningMath, DESIGN decision 95. Ships OFF until 106d.
+        // Step 106 (Toni 2026-11-09 - OPENINGS, the offensive twin of the timed block; revised design 106a2): OpeningMath, DESIGN decision 95. ON since
+        // step 106d (config format 30 turns a format-29 file's OFF on once).
         public static readonly ParamDef OpeningsEnabled = Bool("OpeningsEnabled", PlayerImpactGroup,
             "Openings after your blocked attacks",
-            "BEING BUILT - nothing changes in battle yet (the log records what it would do). When a man blocks your attack correctly he is thrown off balance: a red arrow flashes the side to hit - start your swing on the flash and he cannot block it; your hit staggers him and the arrow shows the side for a PERFECT STRIKE. Missing the moment makes the next try easier, up to the 4th. Shields need one block more. Hits from behind always stagger. The numbers: Advanced page, Impact.");
+            "When a man on foot blocks your attack correctly he is thrown off balance: a red arrow flashes the side to hit - start your swing on the flash and he cannot block it; your hit staggers him and the arrow shows the side for a PERFECT STRIKE. Missing the moment makes the next try easier, up to the 4th. Shields need one block more. Hits from behind always stagger. The numbers: Advanced page, Impact.");
 
         // Step 106c: the red arrow at the crosshair - the player page (a switch a player sets up his game with). Display only.
         public static readonly ParamDef OpeningArrowShow = Bool("OpeningArrowShow", PlayerImpactGroup,
@@ -2051,15 +2052,8 @@ namespace TraxCombat.Core
             "Timed blocks: animation test key",
             "The test tool's key (only while the test tool is on). Type its name: " + KeyNames.ListText + ".");
 
-        // Step 100g: the perfect strike's numbers (DESIGN decision 91 (j)).
-        public static readonly ParamDef PerfectStrikeMinMultiplier = Float("PerfectStrikeMinMultiplier", 1, 5, ImpactGroup,
-            "Perfect strike: damage multiplier (least timed block)",
-            "The perfect strike's damage multiplier after a block timed at the edge of the window (timing 0). It rises in a straight line to the one below for a perfectly timed block. Applied last, after the damage roll, tiredness and the overall reduction, so the hit lands exactly this many times what it would have.");
-
-        public static readonly ParamDef PerfectStrikeMaxMultiplier = Float("PerfectStrikeMaxMultiplier", 1, 5, ImpactGroup,
-            "Perfect strike: damage multiplier (perfect block)",
-            "The perfect strike's damage multiplier after a perfectly timed block (timing 1).");
-
+        // Step 100g: the perfect strike's numbers (DESIGN decision 91 (j)). Step 106d retired PerfectStrikeMin/MaxMultiplier (the flat x2-x3) for
+        // the weapon-direction multipliers PerfectStrike*Way* (ConfigFile.RetiredPerfectStrikeKeys).
         public static readonly ParamDef PerfectStrikeGraceSeconds = Float("PerfectStrikeGraceSeconds", 0, 1, ImpactGroup,
             "Perfect strike: seconds after the stagger",
             "How long after the staggered man's stagger ends your counter still counts (a swing already on its way). 0 = only while he still reels.");
@@ -2128,11 +2122,11 @@ namespace TraxCombat.Core
             "Horseback: a mounted blocker's push-out",
             "On: a mounted blocker's shield or weapon snaps out on a timed block (his guard's own heavy parry - the game has no bash on horseback).");
 
-        // Step 106 - OPENINGS (DESIGN decision 95, AI_NOTES "Step 106" - Toni's REVISED design, step 106a2): every number of the feature; the live
-        // parts come in 106b-106d. Step 106a's first-design keys are retired (ConfigFile.DropRetiredOpeningKeys).
+        // Step 106 - OPENINGS (DESIGN decision 95, AI_NOTES "Step 106" - Toni's REVISED design, step 106a2): every number of the feature; live
+        // since 106b-106d. Step 106a's first-design keys are retired (ConfigFile.DropRetiredOpeningKeys).
         public static readonly ParamDef OpeningsShadowLog = Bool("OpeningsShadowLog", ImpactGroup,
             "Openings: the shadow log",
-            "On: every attack of yours an AI man blocks correctly, and every hit of yours that would stagger him, is written to the log with what openings would do (where his balance went, your follow-up's side and timing, the stagger, the perfect strike) and counted in the battle summary - even while 'Openings after your blocked attacks' is off. Nothing changes in battle.");
+            "On: every attack of yours an AI man blocks correctly, and every hit of yours that would stagger him, is written to the log with what openings do (where his balance went, your follow-up's side and timing, the stagger, the perfect strike) and counted in the battle summary - also while 'Openings after your blocked attacks' is off (then nothing changes in battle).");
 
         public static readonly ParamDef OpeningFlashDelaySeconds = Float("OpeningFlashDelaySeconds", 0, 1, ImpactGroup,
             "Openings: the arrow flashes after (s)",
@@ -2208,7 +2202,7 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef PerfectStrikeFourWayMin = Float("PerfectStrikeFourWayMin", 1, 5, ImpactGroup,
             "Perfect strike: x with a 4-direction weapon, lowest",
-            "The perfect strike's damage multiplier with a weapon that attacks from all four directions (swords) at the weakest timing.");
+            "The perfect strike's damage multiplier with a weapon that attacks from all four directions (swords) at the weakest timing - after your timed block and after an opening alike. It rises in a straight line to the one below at perfect timing. Applied last, after the damage roll, tiredness and the overall reduction, so the hit lands exactly this many times what it would have.");
 
         public static readonly ParamDef PerfectStrikeFourWayMax = Float("PerfectStrikeFourWayMax", 1, 5, ImpactGroup,
             "Perfect strike: x with a 4-direction weapon, highest",
@@ -2963,7 +2957,7 @@ namespace TraxCombat.Core
             TimedBlockPushOutGuardSeconds, TimedBlockPushOutShieldAction, TimedBlockPushOutOneHandedAction, TimedBlockPushOutTwoHandedAction,
             TimedBlockPushOutPolearmAction, TimedBlockRecoil, TimedBlockRecoilSeconds, TimedBlockRecoilMaxPercent, TimedBlockRecoilVariant,
             TimedBlockAnimTest, TimedBlockAnimTestKey,
-            PerfectStrikeMinMultiplier, PerfectStrikeMaxMultiplier, PerfectStrikeGraceSeconds, PerfectStrikeCentreMessage,
+            PerfectStrikeGraceSeconds, PerfectStrikeCentreMessage,
             TimedBlockShowTiming, ReelingHitKnockdownPercent,
             TimedRiderReelMaxSeconds, TimedRiderReelAgainstYouMaxSeconds, TimedRiderReelOnYou, TimedRiderReelAction, TimedRiderReelAnimSpeed, TimedRiderReelAnimMaxSeconds,
             TimedRiderNoGuard, TimedRiderHorseCheckPercent, TimedRiderFromFoot, TimedRiderRearMinScore, TimedRiderRearPercent, TimedRiderDismountPercent,

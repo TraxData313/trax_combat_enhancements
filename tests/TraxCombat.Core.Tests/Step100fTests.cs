@@ -16,13 +16,13 @@ public class Step100fTests
     [Fact]
     public void The_recoil_ships_off_and_format_27_moves_a_format_26_files_true_once()
     {
-        Assert.Equal(29, ConfigFile.FormatVersion);
+        Assert.Equal(30, ConfigFile.FormatVersion);
         Assert.Contains("\"TimedBlockRecoil\": false,", DefaultsFile.ReadEmbeddedText(), StringComparison.Ordinal);
         // a format-26 file (step 100d wrote true into it) → false, said once
         var read = ConfigFile.Read("{ \"ConfigVersion\": 26, \"TimedBlockRecoil\": true }");
         var notes = ConfigFile.Migrate(read, ShippedDefault);
         Assert.Equal(0, read.Values["TimedBlockRecoil"], 9);
-        Assert.StartsWith("TimedBlockRecoil: true → false (format 26 → 29, the old default; step 100f", Assert.Single(notes), StringComparison.Ordinal);
+        Assert.StartsWith("TimedBlockRecoil: true → false (format 26 → 30, the old default; step 100f", Assert.Single(notes), StringComparison.Ordinal);
         // a format-27 file keeps whatever it holds (the switch turned back on by hand stays on)
         var mine = ConfigFile.Read("{ \"ConfigVersion\": 27, \"TimedBlockRecoil\": true }");
         Assert.Empty(ConfigFile.Migrate(mine, ShippedDefault));
