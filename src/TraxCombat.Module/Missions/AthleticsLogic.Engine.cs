@@ -1432,7 +1432,7 @@ namespace TraxCombat.Missions
         {
             try
             {
-                ImpactAgentHit(); // step 47: our own knockdown blow seen by the behaviours (counted)
+                ImpactAgentHit(affectedAgent); // step 47: our own knockdown blow seen by the behaviours (counted)
             }
             catch (Exception e)
             {

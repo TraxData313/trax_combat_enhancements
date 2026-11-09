@@ -714,9 +714,10 @@ namespace TraxCombat.Missions
 
         /// <summary>OnAgentHit's part: our own blow seen by the behaviours (the static mark) - counted; it is 1 damage, the rest of OnAgentHit
         /// (the health cap) treats it as any hit.</summary>
-        private void ImpactAgentHit()
+        private void ImpactAgentHit(Agent affected)
         {
-            if (ImpactHooks.InOwnBlow) _spike.OwnBlowHitsSeen++;
+            // step 104e: only a tracked man - step 104c's rear blow lands on a HORSE and is not one of the blows this counts against
+            if (ImpactHooks.InOwnBlow && Get(affected) != null) _spike.OwnBlowHitsSeen++;
         }
 
         // ------------------------------------------------------------------ the watches
