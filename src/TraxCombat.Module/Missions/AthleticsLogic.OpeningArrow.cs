@@ -41,7 +41,7 @@ namespace TraxCombat.Missions
         internal static bool OpeningMeleeNow(double now)
         {
             var logic = _current;
-            return logic != null && (logic._openPending || logic._openChain.Active || !double.IsNaN(logic._arrowFlashPeak) || logic._strikeBook.Count > 0);
+            return logic != null && (logic._openPending || logic._openChain.Active || (!double.IsNaN(logic._arrowFlashPeak) && !OpeningArrowMath.FlashOver(now, logic._arrowFlashPeak)) || logic._strikeBook.Count > 0);
         }
 
         /// <summary>The red arrow this frame for the HUD (main thread). False = nothing to show (or no logic running).</summary>
