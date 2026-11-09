@@ -10351,4 +10351,37 @@ Player page, "Staggers and knockdowns": `OpeningsEnabled` false (ships OFF until
 5. Player only (never AI vs AI)? Recommended YES (`OpeningAiVsAi` off) - AI vs AI only counted.
 
 ### 106a - built (2026-11-09)
-(filled in when the step closes)
+
+Commits aa53403 (Core + settings), c2c4a6c (the module's shadow + smoke). NOTHING is applied in game.
+
+**Core (`Openings.cs`).** `OpeningRules` (Enabled = ModEnabled FIRST, `OpeningsEnabled`; ShadowOn = ModEnabled, `OpeningsShadowLog`; the
+timed block's rules inside for the skill help). `OpeningMath` in the engine's `UsageDirection` numbers: `GuardBlocking` / `AttackBlockedBy`
+(vertical by name, sides by `OpeningSidesCrossed`), `OpeningFor` = `Opposite(AttackBlockedBy(guard))` - crossed gives exactly the brief's
+mapping; `ArrowFor`; `WeaponMask(swing, thrust)` (neither known = all); `Candidate` / `CandidateCount` / `ChooseGuard` (uniform by one die over
+the other guards whose opening the weapon can make - a two-handed axe never gets the high-guard opening; a pure thrust weapon against a high
+guard has none); `Window`, `SkillBonus` (weight x (PerfectFor(skill) − PerfectAt0)), `ReelSeconds`, `GuardBreakChance` / `GuardBreakStagger`,
+`HoldEnds`; `Plan` (skips: Mounted, ShieldTooEarly, NoOpeningForWeapon - no die drawn for a skip or a single candidate); `Verdict` (TooEarly
+before the force, TooLate after force + W, else the direction). `OpeningChain` (NoteBlock → the link, reset by another man / the gap).
+`OpeningStats` - fixed arrays, the [summary] line. No allocation (tested).
+
+**Module (`AthleticsLogic.Openings.cs`).** Hooks: `OpeningShadowBlock` right after `TimedBlockDecided` in `ImpactDecide` (so ONLY when the
+impact system decides blocks - with `ImpactEnabled` off nothing is seen); `OpeningContactSeen` at the top of `ImpactModelHitTaken` (BEFORE the
+decision, so a blocked swing closes the old opening and then opens the next); `OpeningWindUp` in step 13's `PhasesOnAction` at YOUR melee ready
+(so only with Athletics on - else the verdict is "direction unread" at contact); `OpeningMiss` at a melee release with no hit; `TickOpenings`
+in `TickImpact`. Your attack's direction = `TrackedAgent.RecoilDirection` (set at contact for every correct block, step 100d). Engine reads,
+each behind a seam the smoke replaces: his guard at contact `GetCurrentActionDirection(1)` (DefendUp..DefendRight = 4..7, else unread); your
+swing at its wind-up `GetCurrentActionDirection(1)`, falling back to `Agent.AttackDirection` (native `GetAttackDirectionUsage`) when that is
+not an attack; your weapon `WieldedWeapon.CurrentUsageItem` SwingDamage / ThrustDamage > 0 (an approximation of the usage set's directions - a
+one-handed spear's overhead stab counts as no swing). Lines: the first 40 of yours per battle at Info ("YOU: openings (shadow): ..."), the
+rest verbose (bucket "openings").
+
+**Engine facts still UNVERIFIED (D77 answers them):** (1) the SIDE pairing - whether the engine's correct block of your AttackLeft is his
+DefendRight (crossed) - the summary's side-pairing table counts your attack × his guard at contact; (2) whether channel 1's action direction
+during your ready is the attack's direction (the "agree / differ / unread" counts against the contact's `AttackDirection`); (3) whether an AI
+man's defend action on channel 1 at contact reports DefendUp..Right at all (else every guard reads "unread" and the previous guard is derived
+from your attack by the assumed pairing). Not added yet: `ReelCause.Opening` (106d - adding it now would shift step 105's by-cause arrays).
+
+**Tests / smoke.** Step106aTests (21 cases): defaults / gates, the mapping both ways, the choice's uniformity (30000 draws) and the weapon
+mask, the window / reel / guard-break numbers, the plan and its skips, the verdict's borders, the chain, the summary, no allocation, the
+settings' places; SettingsPagesTests 624 / player page 39; ImpactTests' group list + 23. Smoke "OPENINGS, THE SHADOW (step 106a)" through the
+real logic (232 steps green); deployed as the dev build. PLAYTEST D77.

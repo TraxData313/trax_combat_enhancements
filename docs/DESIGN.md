@@ -3773,6 +3773,12 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     `...MaxSeconds`. (f) You vs an AI man on foot only; riders skipped; AI vs AI counted only (`OpeningAiVsAi`). (g) The red arrow
     (`OpeningArrowShow`, `OpeningArrowAtCrosshair`) at the crosshair with vanilla's own direction-arrow sprites. Build: 106a Core + every setting
     + a SHADOW log (`OpeningsShadowLog`; `OpeningsEnabled` ships OFF) → 106b the forced guard → 106c the arrow → 106d the payoff live → 106e review.
+    (h) STEP 106a BUILT 2026-11-09 (AI_NOTES "106a - built"): Core `Openings.cs` (`OpeningRules`, `OpeningMath`, `OpeningChain`, `OpeningStats`);
+    the 24 parameter rows; THE SHADOW - every correct block of your melee attack by an AI man that the impact system decides is planned (the
+    link, the guard that would be forced, the window) and followed: your next melee wind-up (step 13's phases - its start and direction judged),
+    its contact (what it met, the time from its start), the chain's resets; the side pairing (your attack × his guard at contact) and AI vs AI
+    counted; the [impact] "YOU: openings (shadow)" lines and the [summary] "openings" line (PLAYTEST D77). NOTHING applied - no guard forced, no
+    arrow, no reel. New keys only - no config format change (106d's switch to ON will need one, as step 104b's).
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research
