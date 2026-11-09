@@ -65,24 +65,50 @@ public class PerfectStrikeTests
     }
 
     [Fact]
-    public void A_blocked_overhead_is_answered_by_either_side_swing_only()
+    public void Tonis_case_step_103_a_blocked_overhead_is_answered_by_your_thrust_from_below_x2_to_x3()
     {
-        Assert.Equal(StrikeVerdict.Perfect, PerfectStrikeMath.Verdict(Up, Left));
-        Assert.Equal(StrikeVerdict.Perfect, PerfectStrikeMath.Verdict(Up, Right));
-        Assert.Equal(StrikeVerdict.WrongSide, PerfectStrikeMath.Verdict(Up, Up));
-        Assert.Equal(StrikeVerdict.WrongSide, PerfectStrikeMath.Verdict(Up, Down));
+        // Toni 2026-11-09: "when I block a top swing and then hit from the bottom it doesn't perfect strike" - now it does
+        Assert.Equal(Down, PerfectStrikeMath.Opposite(Up));
+        Assert.Equal(StrikeVerdict.Perfect, PerfectStrikeMath.Verdict(blocked: Up, strike: Down));
+        var r = Rules();
+        Assert.Equal(2.0, PerfectStrikeMath.Multiplier(0, in r), 9);
+        Assert.Equal(3.0, PerfectStrikeMath.Multiplier(1, in r), 9);
+        Assert.Equal(60f, PerfectStrikeMath.Apply(20f, PerfectStrikeMath.Multiplier(1, in r)), 3);
     }
 
     [Fact]
-    public void A_blocked_thrust_or_an_unknown_direction_is_answered_by_any_swing_but_never_by_a_thrust()
+    public void Strict_opposites_a_blocked_overhead_counts_only_your_thrust_not_side_swings_or_an_overhead()
     {
-        foreach (int blocked in new[] { Down, -1, 7 })
-        {
-            Assert.Equal(StrikeVerdict.Perfect, PerfectStrikeMath.Verdict(blocked, Left));
-            Assert.Equal(StrikeVerdict.Perfect, PerfectStrikeMath.Verdict(blocked, Right));
-            Assert.Equal(StrikeVerdict.Perfect, PerfectStrikeMath.Verdict(blocked, Up));
-            Assert.Equal(StrikeVerdict.WrongSide, PerfectStrikeMath.Verdict(blocked, Down));
-        }
+        // Toni's correction 2026-11-09: "top-down, down-top, not top/down-left/right"
+        Assert.Equal(StrikeVerdict.WrongSide, PerfectStrikeMath.Verdict(Up, Left));
+        Assert.Equal(StrikeVerdict.WrongSide, PerfectStrikeMath.Verdict(Up, Right));
+        Assert.Equal(StrikeVerdict.WrongSide, PerfectStrikeMath.Verdict(Up, Up));
+    }
+
+    [Fact]
+    public void Strict_opposites_a_blocked_thrust_counts_only_your_overhead()
+    {
+        Assert.Equal(Up, PerfectStrikeMath.Opposite(Down));
+        Assert.Equal(StrikeVerdict.Perfect, PerfectStrikeMath.Verdict(Down, Up));
+        Assert.Equal(StrikeVerdict.WrongSide, PerfectStrikeMath.Verdict(Down, Left));
+        Assert.Equal(StrikeVerdict.WrongSide, PerfectStrikeMath.Verdict(Down, Right));
+        Assert.Equal(StrikeVerdict.WrongSide, PerfectStrikeMath.Verdict(Down, Down));
+    }
+
+    [Fact]
+    public void Side_swings_keep_the_same_engine_value_as_their_opposite()
+    {
+        Assert.Equal(Left, PerfectStrikeMath.Opposite(Left));
+        Assert.Equal(Right, PerfectStrikeMath.Opposite(Right));
+        Assert.Equal(-1, PerfectStrikeMath.Opposite(-1));
+    }
+
+    [Fact]
+    public void An_unknown_blocked_direction_counts_nothing()
+    {
+        foreach (int blocked in new[] { -1, 7 })
+            foreach (int strike in new[] { Up, Down, Left, Right })
+                Assert.Equal(StrikeVerdict.BlockedUnknown, PerfectStrikeMath.Verdict(blocked, strike));
     }
 
     [Fact]
@@ -210,12 +236,30 @@ public class PerfectStrikeTests
         st.NoteWrongSide(Left);
         st.ExpiredUnused = 1;
         string line = st.SummaryLine(Rules());
-        Assert.Contains("windows opened by your timed blocks 3, PERFECT STRIKES landed 2 (your left swing 1, right swing 1, overhead 0", line);
+        Assert.Contains("windows opened by your timed blocks 3, PERFECT STRIKES landed 2 (your left swing 1, right swing 1, overhead 0, thrust from below 0", line);
         Assert.Contains("after his blocked left 0 / right 1 / overhead 1 / thrust 0 / unknown 0", line);
         Assert.Contains("mean multiplier x2.50 (x2.20-x2.80, mean timing 0.50), damage 30 → 78", line);
         Assert.Contains("windows expired unused 1", line);
         Assert.Contains("wrong-side hits 1 (left 1, right 0", line);
         Assert.Contains("OFF (TimedBlocksEnabled)", st.SummaryLine(Rules(s => s.Set(SettingsSchema.TimedBlocksEnabled, 0, "test"))));
+    }
+
+    [Fact]
+    public void Step_103_the_summary_splits_the_mismatches_by_the_blocked_direction()
+    {
+        var st = new PerfectStrikeStats();
+        st.NoteWrongSide(Left, Up);   // a side swing after his blocked overhead - no longer counts
+        st.NoteWrongSide(Up, Up);
+        st.NoteWrongSide(Right, Down);
+        st.BlockedUnknown = 2;
+        string line = st.SummaryLine(Rules());
+        Assert.Contains("wrong-side hits 3 (left 1, right 1, overhead 1, thrust 0", line);
+        Assert.Contains("after his blocked overhead (wanted your thrust): your left 1 / right 0 / overhead 1 / thrust 0", line);
+        Assert.Contains("after his blocked thrust (wanted your overhead): your left 0 / right 1 / overhead 0 / thrust 0", line);
+        Assert.DoesNotContain("after his blocked left swing (", line);
+        Assert.Contains("strict opposites since step 103", line);
+        Assert.Contains("unknown direction (nothing counts) 2", line);
+        Assert.Equal(1, st.WrongSideAfter[Up * 4 + Left]);
     }
 
     [Fact]

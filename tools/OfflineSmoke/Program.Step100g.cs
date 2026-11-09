@@ -122,16 +122,22 @@ namespace TraxCombat.Tools
                 Check(Math.Abs(Hit(a2, Agent.UsageDirection.AttackLeft, 10f) - 10f * k2) < 1e-3 && st.Landed[PerfectStrikeMath.Left] == 1,
                     "your left swing after his blocked left swing did not land x" + k2);
 
-                // ---- 3. a blocked overhead: either side swing; your thrust never
+                // ---- 3. a blocked overhead (step 103, strict opposites): your side swings and your overhead are wrong sides, your thrust from below the perfect one
                 Tick(3);
                 var a3 = YourBlock(0.05, Agent.UsageDirection.AttackUp);
-                Check(Near(Hit(a3, Agent.UsageDirection.AttackDown), 20f) && Near(Hit(a3, Agent.UsageDirection.AttackUp), 20f) && st.WrongSide[PerfectStrikeMath.Down] == 1,
-                    "your thrust / overhead after his blocked overhead counted");
-                Check(Near(Hit(a3, Agent.UsageDirection.AttackLeft), 60f), "your side swing after his blocked overhead was not perfect");
+                Check(Near(Hit(a3, Agent.UsageDirection.AttackLeft), 20f) && Near(Hit(a3, Agent.UsageDirection.AttackRight), 20f) && Near(Hit(a3, Agent.UsageDirection.AttackUp), 20f)
+                      && st.WrongSideAfter[PerfectStrikeMath.Up * 4 + PerfectStrikeMath.Left] == 1 && st.WrongSideAfter[PerfectStrikeMath.Up * 4 + PerfectStrikeMath.Right] == 1,
+                    "your side swing / overhead after his blocked overhead counted (step 103: only your thrust from below)");
+                LogHas("[impact] perfect strike: WRONG-SIDE hit at ");
+                LogHas("after his blocked overhead (it came from above - answer from BELOW: YOUR thrust / stab)");
+                Check(Near(Hit(a3, Agent.UsageDirection.AttackDown), 60f) && st.Landed[PerfectStrikeMath.Down] == 1, "your thrust from below after his blocked overhead was not perfect (Toni's case)");
+                LogHas("your thrust after his blocked overhead");
 
-                // ---- 4. a blocked thrust: your overhead counts
+                // ---- 4. a blocked thrust: only your overhead counts
                 Tick(3);
                 var a4 = YourBlock(0.05, Agent.UsageDirection.AttackDown);
+                Check(Near(Hit(a4, Agent.UsageDirection.AttackLeft), 20f) && st.WrongSideAfter[PerfectStrikeMath.Down * 4 + PerfectStrikeMath.Left] == 1,
+                    "your side swing after his blocked thrust counted (step 103: only your overhead)");
                 Check(Near(Hit(a4, Agent.UsageDirection.AttackUp), 60f) && st.Landed[PerfectStrikeMath.Up] == 1, "your overhead after his blocked thrust was not perfect");
 
                 // ---- 5. the window closes when he stops reeling (+ the grace) - expired unused
@@ -178,8 +184,8 @@ namespace TraxCombat.Tools
                 // ---- 7. the [summary] line
                 string line = st.SummaryLine(PerfectStrikeRules.From(S));
                 Check(line.StartsWith("perfect strike (step 100g; ON): windows opened by your timed blocks ", StringComparison.Ordinal)
-                      && line.Contains("PERFECT STRIKES landed 4 (your left swing 2, right swing 1, overhead 1")
-                      && line.Contains("windows expired unused 1") && line.Contains("wrong-side hits 3"),
+                      && line.Contains("PERFECT STRIKES landed 4 (your left swing 1, right swing 1, overhead 1, thrust from below 1")
+                      && line.Contains("windows expired unused 1") && line.Contains("wrong-side hits 5") && line.Contains("after his blocked overhead (wanted your thrust): your left 1 / right 1 / overhead 1 / thrust 0"),
                     "the [summary] line: " + line);
                 Console.WriteLine("        step 100g: " + st.Opened + " windows, " + st.LandedTotal + " perfect strikes, " + st.WrongSideTotal + " wrong-side hits");
                 Console.WriteLine("        " + line);

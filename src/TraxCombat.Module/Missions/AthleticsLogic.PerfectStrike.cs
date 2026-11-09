@@ -29,7 +29,7 @@ namespace TraxCombat.Missions
     {
         private readonly PerfectStrikeBook _strikeBook = new PerfectStrikeBook();
         private readonly PerfectStrikeStats _strike = new PerfectStrikeStats();
-        private bool _strikeDisabled, _strikeFirstOpen, _strikeFirstWrong;
+        private bool _strikeDisabled, _strikeFirstOpen, _strikeFirstWrong, _strikeFirstBlockedUnknown;
         private string? _strikeShow;
         private bool _strikeShowCentre;
 
@@ -75,8 +75,9 @@ namespace TraxCombat.Missions
         {
             PerfectStrikeMath.Right => " (it came at your left - answer with YOUR right swing, from your right)",
             PerfectStrikeMath.Left => " (it came at your right - answer with YOUR left swing, from your left)",
-            PerfectStrikeMath.Up => " (answer with either side swing)",
-            _ => " (answer with any swing but a thrust)",
+            PerfectStrikeMath.Up => " (it came from above - answer from BELOW: YOUR thrust / stab)",
+            PerfectStrikeMath.Down => " (it came from below - answer from ABOVE: YOUR overhead)",
+            _ => " (its direction unknown - nothing counts)",
         };
 
         /// <summary>THE DECORATOR'S LAST QUESTION (main thread): the damage this hit lands.</summary>
@@ -122,14 +123,26 @@ namespace TraxCombat.Missions
                     _strike.UnknownDirection++;
                     return damage;
                 }
+                if (verdict == StrikeVerdict.BlockedUnknown) // step 103: his direction unknown - nothing counts, said once
+                {
+                    _strike.BlockedUnknown++;
+                    if (!_strikeFirstBlockedUnknown)
+                    {
+                        _strikeFirstBlockedUnknown = true;
+                        TraxLog.Info("impact", "perfect strike: first hit after a blocked attack of UNKNOWN direction at " + Sec(now) + " s - your " + PerfectStrikeMath.Name(strike)
+                            + " on " + Name(v) + " - nothing counts (strict opposites need his direction), normal damage");
+                    }
+                    return damage;
+                }
                 if (verdict == StrikeVerdict.WrongSide)
                 {
-                    _strike.NoteWrongSide(strike);
+                    _strike.NoteWrongSide(strike, w.Blocked);
                     w.WrongSide++;
-                    if (!_strikeFirstWrong)
+                    // step 103: every mismatch of yours is logged (yours only, inside a ~2 s window - a handful a battle), so a playtest shows what you hit
                     {
+                        string head = _strikeFirstWrong ? "perfect strike: WRONG-SIDE hit at " : "perfect strike: first WRONG-SIDE hit at ";
                         _strikeFirstWrong = true;
-                        TraxLog.Info("impact", "perfect strike: first WRONG-SIDE hit at " + Sec(now) + " s - your " + PerfectStrikeMath.Name(strike) + " on " + Name(v) + " after his blocked "
+                        TraxLog.Info("impact", head + Sec(now) + " s - your " + PerfectStrikeMath.Name(strike) + " on " + Name(v) + " after his blocked "
                             + PerfectStrikeMath.Name(w.Blocked) + StrikeWanted(w.Blocked) + " - normal damage, the window stays open");
                     }
                     return damage;

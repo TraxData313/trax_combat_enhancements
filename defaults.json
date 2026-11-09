@@ -271,9 +271,9 @@
   // When YOUR timed block staggers the attacker, your first swing from the opposite side (you
   // blocked his attack coming at your left - swing from your right) that lands on him while he
   // still reels does 2 to 3 times the damage (more for a better-timed block), and PERFECT
-  // STRIKE shows on screen. A blocked overhead: either side swing counts; a blocked thrust: any
-  // swing. A hit from the wrong side does not use it up. Off: no perfect strikes. The numbers:
-  // Advanced page, Impact.
+  // STRIKE shows on screen. Strict opposites: a blocked overhead is answered by your thrust
+  // from below, a blocked thrust by your overhead. A hit from the wrong side does not use it
+  // up. Off: no perfect strikes. The numbers: Advanced page, Impact.
   // (true or false)
   "PerfectStrikeEnabled": true,
 

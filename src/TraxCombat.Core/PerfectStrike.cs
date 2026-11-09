@@ -51,7 +51,7 @@ namespace TraxCombat.Core
         {
             var c = CultureInfo.InvariantCulture;
             if (!Enabled) return "perfect strike OFF (" + OffBecause + ")";
-            return "perfect strike ON: after YOUR timed block staggers him, your first swing from the opposite side that lands on his body while he reels (+"
+            return "perfect strike ON: after YOUR timed block staggers him, your first attack from the strict opposite (his right ↔ your right swing, left ↔ left, his overhead ↔ your thrust from below, his thrust ↔ your overhead) that lands on his body while he reels (+"
                    + GraceSeconds.ToString("0.00", c) + " s) does x" + MinMultiplier.ToString("0.0#", c) + " (timing 0) to x" + MaxMultiplier.ToString("0.0#", c)
                    + " (timing 1) damage; the line in the middle of the screen " + (CentreMessage ? "on" : "off");
         }
@@ -68,11 +68,14 @@ namespace TraxCombat.Core
         /// <summary>From the opposite side of the attack you blocked - the perfect strike (the window is used up).</summary>
         Perfect,
 
-        /// <summary>Another direction (the same side, or a thrust / overhead where it does not count) - counted, the window stays open.</summary>
+        /// <summary>Not the strict opposite (the same side, a side swing after an overhead / thrust, ...) - counted, the window stays open.</summary>
         WrongSide,
 
         /// <summary>Your attack's direction unreadable - nothing (not counted as a wrong side).</summary>
         Unknown,
+
+        /// <summary>Step 103: HIS blocked attack's direction was unknown - nothing counts (counted apart, the window stays open).</summary>
+        BlockedUnknown,
     }
 
     /// <summary>A side as seen from one man's own body.</summary>
@@ -84,18 +87,21 @@ namespace TraxCombat.Core
     }
 
     /// <summary>
-    /// Step 100g - the perfect strike's pure rules. THE DIRECTION MAPPING (verified in the v1.4.8 decompile - AI_NOTES "100g - built"):
-    /// the engine's <c>Agent.UsageDirection</c> (<see cref="Up"/> 0 overhead, <see cref="Down"/> 1 thrust, <see cref="Left"/> 2,
-    /// <see cref="Right"/> 3 - the same values as <see cref="TimedRecoilMath"/>) is the ATTACKER's own: AttackRight = wound up on HIS right,
-    /// sweeping right → left. Proof: the game's training field (TrainingFieldMissionController) has the trainer attack with
-    /// <c>MovementControlFlag.AttackRight</c> (0x80) and asks you to "Defend from left" (DefendLeft) - his right swing comes at the
-    /// defender's LEFT, because two men facing each other have mirrored left / right.
+    /// Step 100g - the perfect strike's pure rules. THE DIRECTION MAPPING (verified in the v1.4.8 decompile - AI_NOTES "100g - built",
+    /// "Step 103"): the engine's <c>Agent.UsageDirection</c> (<see cref="Up"/> 0 overhead, <see cref="Down"/> 1 the attack from below - a
+    /// thrust / stab, <see cref="Left"/> 2, <see cref="Right"/> 3 - the same values as <see cref="TimedRecoilMath"/>) is the ATTACKER's own:
+    /// AttackRight = wound up on HIS right, sweeping right → left. Proof: the game's training field (TrainingFieldMissionController) has the
+    /// trainer attack with <c>MovementControlFlag.AttackRight</c> (0x80) and asks you to "Defend from left" (DefendLeft) - his right swing comes
+    /// at the defender's LEFT, because two men facing each other have mirrored left / right.
     /// Toni's example: he blocked the enemy's RIGHT attack (AttackRight 3, coming at Toni's left), then swings from HIS right to his left -
     /// Toni's own AttackRight 3. So "the opposite side" in Toni's frame is the SAME engine value: a blocked AttackRight is answered by an
-    /// AttackRight, a blocked AttackLeft by an AttackLeft. Overhead / thrust (decided, the brief's recommendation): a blocked OVERHEAD is
-    /// answered by either side swing (not an overhead, not a thrust); a blocked THRUST by any swing - left, right or overhead (not a thrust);
-    /// an unknown blocked direction by any swing. YOUR THRUST NEVER COUNTS (a thrust has no side to come from); your overhead only after a
-    /// blocked thrust (or an unknown one).
+    /// AttackRight, a blocked AttackLeft by an AttackLeft.
+    /// STEP 103 (Toni 2026-11-09, "top-down, down-top, not top/down-left/right"): STRICT OPPOSITES - a blocked OVERHEAD is answered ONLY by
+    /// your attack from below (your AttackDown - the thrust / stab), a blocked THRUST (his attack from below) ONLY by your overhead; a side swing
+    /// after either is a wrong side (step 100g let either side swing answer an overhead and any swing answer a thrust). The game pairs them the
+    /// same way (TrainingFieldMissionController's opposite objective: AttackUp ↔ AttackDown, AttackLeft ↔ AttackRight). An UNKNOWN blocked
+    /// direction: nothing counts (<see cref="StrikeVerdict.BlockedUnknown"/> - counted, the window kept). A weapon with no attack from below
+    /// (an axe: its usage set has no <c>attack_down</c> on foot) never reports AttackDown, so it cannot answer a blocked overhead.
     /// </summary>
     public static class PerfectStrikeMath
     {
@@ -125,22 +131,28 @@ namespace TraxCombat.Core
         /// <summary>The side of the DEFENDER's body a side swing comes at - mirrored (the training field: AttackRight → "Defend from left").</summary>
         public static BodySide ArrivesAtDefenderSide(int dir) => dir == Right ? BodySide.Left : dir == Left ? BodySide.Right : BodySide.None;
 
+        /// <summary>Step 103: the engine value of YOUR answer to his blocked <paramref name="blocked"/> - the strict opposite: his overhead ↔
+        /// your attack from below (thrust), his thrust ↔ your overhead, his side swing ↔ the SAME value (your swing from the other side of your
+        /// body); -1 when his direction is unknown.</summary>
+        public static int Opposite(int blocked) => blocked switch
+        {
+            Up => Down,
+            Down => Up,
+            Left => Left,
+            Right => Right,
+            _ => -1,
+        };
+
         /// <summary>
-        /// Your landed swing (<paramref name="strike"/>, YOUR own direction) against the attack you blocked (<paramref name="blocked"/>, HIS own
-        /// direction; -1 unknown). A blocked side swing: perfect when your swing starts from the side of YOUR body opposite to the side his came
-        /// at (= the same engine value). A blocked overhead: either side swing. A blocked thrust or an unknown one: any swing but a thrust.
+        /// Your landed attack (<paramref name="strike"/>, YOUR own direction) against the attack you blocked (<paramref name="blocked"/>, HIS own
+        /// direction; -1 unknown): perfect only for the strict opposite (<see cref="Opposite"/>). Your direction unreadable = Unknown; his
+        /// unknown = BlockedUnknown (nothing counts).
         /// </summary>
         public static StrikeVerdict Verdict(int blocked, int strike)
         {
             if (!IsAttack(strike)) return StrikeVerdict.Unknown;
-            if (IsSideSwing(blocked))
-            {
-                var came = ArrivesAtDefenderSide(blocked);
-                var from = FromOwnSide(strike);
-                return from != BodySide.None && from != came ? StrikeVerdict.Perfect : StrikeVerdict.WrongSide;
-            }
-            if (blocked == Up) return IsSideSwing(strike) ? StrikeVerdict.Perfect : StrikeVerdict.WrongSide;
-            return strike != Down ? StrikeVerdict.Perfect : StrikeVerdict.WrongSide; // a thrust, or unknown
+            if (!IsAttack(blocked)) return StrikeVerdict.BlockedUnknown;
+            return strike == Opposite(blocked) ? StrikeVerdict.Perfect : StrikeVerdict.WrongSide;
         }
 
         public static double ClampMultiplier(double v) =>
@@ -259,6 +271,12 @@ namespace TraxCombat.Core
         /// <summary>Wrong-side hits by YOUR strike's direction.</summary>
         public readonly int[] WrongSide = new int[4];
 
+        /// <summary>Step 103: wrong-side hits by HIS blocked direction (0-3) x YOUR strike's (0-3) - index blocked * 4 + strike.</summary>
+        public readonly int[] WrongSideAfter = new int[16];
+
+        /// <summary>Step 103: your hits in a window whose blocked direction was unknown (nothing counts).</summary>
+        public int BlockedUnknown;
+
         public int Opened, Replaced, ExpiredUnused, ClosedBySwitch, NotOnBody, Mounted, OffMainThread, UnknownDirection, Errors;
         public double MultiplierSum, MultiplierMin = double.NaN, MultiplierMax = double.NaN, ScoreSum;
         public double DamageBeforeSum, DamageAfterSum;
@@ -295,9 +313,23 @@ namespace TraxCombat.Core
             DamageAfterSum += after;
         }
 
-        public void NoteWrongSide(int strike)
+        public void NoteWrongSide(int strike, int blocked = -1)
         {
-            if (PerfectStrikeMath.IsAttack(strike)) WrongSide[strike]++;
+            if (!PerfectStrikeMath.IsAttack(strike)) return;
+            WrongSide[strike]++;
+            if (PerfectStrikeMath.IsAttack(blocked)) WrongSideAfter[blocked * 4 + strike]++;
+        }
+
+        /// <summary>Step 103: the mismatches after one blocked direction - "after his blocked overhead (wanted your thrust): your left 1 / ...".</summary>
+        private void AppendAfter(StringBuilder t, int blocked, CultureInfo c)
+        {
+            int b = blocked * 4, n = WrongSideAfter[b] + WrongSideAfter[b + 1] + WrongSideAfter[b + 2] + WrongSideAfter[b + 3];
+            if (n == 0) return;
+            t.Append("; after his blocked ").Append(PerfectStrikeMath.Name(blocked)).Append(" (wanted your ")
+             .Append(PerfectStrikeMath.Name(PerfectStrikeMath.Opposite(blocked))).Append("): your left ").Append(WrongSideAfter[b + PerfectStrikeMath.Left].ToString(c))
+             .Append(" / right ").Append(WrongSideAfter[b + PerfectStrikeMath.Right].ToString(c))
+             .Append(" / overhead ").Append(WrongSideAfter[b + PerfectStrikeMath.Up].ToString(c))
+             .Append(" / thrust ").Append(WrongSideAfter[b + PerfectStrikeMath.Down].ToString(c));
         }
 
         public string SummaryLine(in PerfectStrikeRules r)
@@ -310,6 +342,7 @@ namespace TraxCombat.Core
              .Append(" (your left swing ").Append(Landed[PerfectStrikeMath.Left].ToString(c))
              .Append(", right swing ").Append(Landed[PerfectStrikeMath.Right].ToString(c))
              .Append(", overhead ").Append(Landed[PerfectStrikeMath.Up].ToString(c))
+             .Append(", thrust from below ").Append(Landed[PerfectStrikeMath.Down].ToString(c))
              .Append("; after his blocked left ").Append(LandedAfter[PerfectStrikeMath.Left + 1].ToString(c))
              .Append(" / right ").Append(LandedAfter[PerfectStrikeMath.Right + 1].ToString(c))
              .Append(" / overhead ").Append(LandedAfter[PerfectStrikeMath.Up + 1].ToString(c))
@@ -328,7 +361,13 @@ namespace TraxCombat.Core
              .Append(" (left ").Append(WrongSide[PerfectStrikeMath.Left].ToString(c))
              .Append(", right ").Append(WrongSide[PerfectStrikeMath.Right].ToString(c))
              .Append(", overhead ").Append(WrongSide[PerfectStrikeMath.Up].ToString(c))
-             .Append(", thrust ").Append(WrongSide[PerfectStrikeMath.Down].ToString(c)).Append(" - the window stays open)");
+             .Append(", thrust ").Append(WrongSide[PerfectStrikeMath.Down].ToString(c));
+            AppendAfter(t, PerfectStrikeMath.Up, c);
+            AppendAfter(t, PerfectStrikeMath.Down, c);
+            AppendAfter(t, PerfectStrikeMath.Left, c);
+            AppendAfter(t, PerfectStrikeMath.Right, c);
+            t.Append(" - strict opposites since step 103; the window stays open)");
+            if (BlockedUnknown > 0) t.Append("; your hits after a blocked attack of unknown direction (nothing counts) ").Append(BlockedUnknown.ToString(c));
             if (NotOnBody > 0) t.Append("; your hits on a window man that did not land on his body (blocked, shield, kick / bash, 0 damage) ").Append(NotOnBody.ToString(c));
             if (Mounted > 0) t.Append("; hits from horseback (never counted) ").Append(Mounted.ToString(c));
             if (UnknownDirection > 0) t.Append("; your direction unreadable ").Append(UnknownDirection.ToString(c));

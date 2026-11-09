@@ -214,7 +214,7 @@ namespace TraxCombat.Core
         // Step 100g (Toni 2026-11-08: "after I blocked him and he is staggered I do 2-3x damage against him and I see some notification like PERFECT STRIKE"): DESIGN decision 91 (j).
         public static readonly ParamDef PerfectStrikeEnabled = Bool("PerfectStrikeEnabled", PlayerImpactGroup,
             "Perfect strike after your timed block",
-            "When YOUR timed block staggers the attacker, your first swing from the opposite side (you blocked his attack coming at your left - swing from your right) that lands on him while he still reels does 2 to 3 times the damage (more for a better-timed block), and PERFECT STRIKE shows on screen. A blocked overhead: either side swing counts; a blocked thrust: any swing. A hit from the wrong side does not use it up. Off: no perfect strikes. The numbers: Advanced page, Impact.");
+            "When YOUR timed block staggers the attacker, your first swing from the opposite side (you blocked his attack coming at your left - swing from your right) that lands on him while he still reels does 2 to 3 times the damage (more for a better-timed block), and PERFECT STRIKE shows on screen. Strict opposites: a blocked overhead is answered by your thrust from below, a blocked thrust by your overhead. A hit from the wrong side does not use it up. Off: no perfect strikes. The numbers: Advanced page, Impact.");
 
         // Step 33 (Anton, 2026-10-12: "a short burst of speed, meant to feel a little like a dodge, and for the AI to make charges
         // sharper"): Core SprintMath, AI_NOTES "Step 33".
