@@ -2247,6 +2247,80 @@ namespace TraxCombat.Core
             "Openings: forced-guard test lasts (s)",
             "How long the test tool holds his forced guard (battle seconds).");
 
+        // Step 107 (Toni 2026-11-10): HOLD-BLOCK OPENINGS - your landed hit on an UNSHIELDED man forces him to hold a block; the red arrow shows the opening.
+        public static readonly ParamDef OpeningHoldsEnabled = Bool("OpeningHoldsEnabled", ImpactGroup,
+            "Openings: hold-block openings (no shield)",
+            "On: your hit that lands in front makes him hold a block in a random direction for a moment, the red arrow showing the opening (a man with a shield also when his shield blocks you - his first hold is short, shorter the bigger the shield). A sword must strike exactly that side, an axe, mace or spear any side but his guard - he staggers (his shield comes down) and the perfect strike opens. Strike into his guard and he blocks it - he holds longer. When the hold ends he may counter-swing. Off: the older openings (his block of your attack puts him off balance). Needs 'Openings' on.");
+
+        public static readonly ParamDef OpeningHoldFirstSeconds = Float("OpeningHoldFirstSeconds", 0.3, 3, ImpactGroup,
+            "Openings: first hold (s)",
+            "How long he holds his block after your first hit lands, with a weapon of average speed (95). Slower weapons get longer, faster ones shorter (the two factors below).");
+
+        public static readonly ParamDef OpeningHoldSpeedReference = Int("OpeningHoldSpeedReference", 50, 150, ImpactGroup,
+            "Openings: hold - weapon speed reference",
+            "The first hold is multiplied by this / your weapon's speed (its swing speed, the thrust speed for a thrust-only weapon): a slower weapon gets a longer hold.");
+
+        public static readonly ParamDef OpeningHoldSpeedFactorMin = Float("OpeningHoldSpeedFactorMin", 0.5, 1, ImpactGroup,
+            "Openings: hold - weapon speed factor, lowest",
+            "The weapon-speed factor on the first hold is never below this (a very fast weapon).");
+
+        public static readonly ParamDef OpeningHoldSpeedFactorMax = Float("OpeningHoldSpeedFactorMax", 1, 2.5, ImpactGroup,
+            "Openings: hold - weapon speed factor, highest",
+            "The weapon-speed factor on the first hold is never above this (a very slow weapon).");
+
+        public static readonly ParamDef OpeningHoldPerLinkSeconds = Float("OpeningHoldPerLinkSeconds", 0, 1.5, ImpactGroup,
+            "Openings: hold added per blocked strike (s)",
+            "Each time he blocks your strike into his held guard (or blocks you right after a hold ran out) he holds again, this much longer than before.");
+
+        public static readonly ParamDef OpeningHoldChainBonusSeconds = Float("OpeningHoldChainBonusSeconds", 0, 1.5, ImpactGroup,
+            "Openings: hold bonus for a fast next strike (s)",
+            "After such a block, starting your next strike quickly adds up to this much more hold: all of it within the 'full' time below, nothing at the 'none' time.");
+
+        public static readonly ParamDef OpeningHoldChainBonusFullSeconds = Float("OpeningHoldChainBonusFullSeconds", 0, 1, ImpactGroup,
+            "Openings: fast next strike - full bonus within (s)",
+            "Your next strike started within this long after his block gets the whole bonus.");
+
+        public static readonly ParamDef OpeningHoldChainBonusZeroSeconds = Float("OpeningHoldChainBonusZeroSeconds", 0.1, 3, ImpactGroup,
+            "Openings: fast next strike - no bonus after (s)",
+            "Started this long after his block, your next strike adds nothing (a straight line in between). The same speed also sets where the perfect strike lands in its range.");
+
+        public static readonly ParamDef OpeningHoldCapSeconds = Float("OpeningHoldCapSeconds", 0.5, 5, ImpactGroup,
+            "Openings: longest hold (s)",
+            "A hold never lasts longer than this, however long the chain.");
+
+        // Toni's addition 2026-11-10: SHIELDMEN hold too - a short first hold by the shield's size (its WeaponLength: small round 60, kite / tower 130).
+        public static readonly ParamDef OpeningHoldShieldSmallSeconds = Float("OpeningHoldShieldSmallSeconds", 0.1, 3, ImpactGroup,
+            "Openings: first hold with a small shield (s)",
+            "A man with a SMALL shield holds his shield in the unbalanced guard this long after your first hit or his first block (with a weapon of average speed - scaled like the hold without a shield). Later holds grow like the others.");
+
+        public static readonly ParamDef OpeningHoldShieldBigSeconds = Float("OpeningHoldShieldBigSeconds", 0.1, 3, ImpactGroup,
+            "Openings: first hold with a big shield (s)",
+            "... with a BIG shield (a kite or a tower shield) - short, so a big shield keeps its advantage.");
+
+        public static readonly ParamDef OpeningHoldShieldSmallLength = Int("OpeningHoldShieldSmallLength", 20, 200, ImpactGroup,
+            "Openings: a small shield's length (cm)",
+            "A shield this long or shorter counts as small (the game's own shield length: small round shields 60-70, kite shields 110-133); between small and big a straight line.");
+
+        public static readonly ParamDef OpeningHoldShieldBigLength = Int("OpeningHoldShieldBigLength", 20, 300, ImpactGroup,
+            "Openings: a big shield's length (cm)",
+            "A shield this long or longer counts as big.");
+
+        public static readonly ParamDef OpeningCounterSwingFirstPercent = Int("OpeningCounterSwingFirstPercent", 0, 100, ImpactGroup,
+            "Openings: counter-swing after the first hold (%)",
+            "When his first hold ends without a stagger, the chance that he swings at you at once (a chance to time your block against it).");
+
+        public static readonly ParamDef OpeningCounterSwingLaterPercent = Int("OpeningCounterSwingLaterPercent", 0, 100, ImpactGroup,
+            "Openings: counter-swing after a longer hold (%)",
+            "When a hold that you made longer with blocked strikes ends without a stagger, the chance that he swings at you at once.");
+
+        public static readonly ParamDef PerfectStrikeDefensiveMin = Float("PerfectStrikeDefensiveMin", 1, 5, ImpactGroup,
+            "Perfect strike after your timed block: x lowest",
+            "After YOUR timed block staggers him, the perfect strike multiplies the damage by this at the weakest timing - the same for every weapon (the openings keep the by-weapon ranges above).");
+
+        public static readonly ParamDef PerfectStrikeDefensiveMax = Float("PerfectStrikeDefensiveMax", 1, 5, ImpactGroup,
+            "Perfect strike after your timed block: x highest",
+            "... and at perfect timing.");
+
         public static readonly ParamDef ImpactMismatchWeight = Float("ImpactMismatchWeight", 0, 2, ImpactGroup,
             "Mismatch weight (pressure per doubling)",
             "How much an outmatched man suffers: every doubling of the mismatch beyond the even band adds this to the pressure on him (0.25: an enemy four times stronger counts as much as being about a third tired). 0 = only tiredness counts.");
@@ -2972,6 +3046,9 @@ namespace TraxCombat.Core
             OpeningReelBaseSeconds, OpeningReelPerChainSeconds, OpeningReelMaxSeconds, OpeningShieldMinChain, OpeningBackHitStaggers, OpeningUnguardedHitOpens,
             OpeningAiVsAi, PerfectStrikeFourWayMin, PerfectStrikeFourWayMax, PerfectStrikeThreeWayMin, PerfectStrikeThreeWayMax,
             PerfectStrikeTwoWayMin, PerfectStrikeTwoWayMax, PerfectStrikeWeaponFinishes, OpeningGuardTest, OpeningGuardTestKey, OpeningGuardTestSeconds,
+            OpeningHoldsEnabled, OpeningHoldFirstSeconds, OpeningHoldSpeedReference, OpeningHoldSpeedFactorMin, OpeningHoldSpeedFactorMax,
+            OpeningHoldPerLinkSeconds, OpeningHoldChainBonusSeconds, OpeningHoldChainBonusFullSeconds, OpeningHoldChainBonusZeroSeconds, OpeningHoldCapSeconds,
+            OpeningHoldShieldSmallSeconds, OpeningHoldShieldBigSeconds, OpeningHoldShieldSmallLength, OpeningHoldShieldBigLength, OpeningCounterSwingFirstPercent, OpeningCounterSwingLaterPercent, PerfectStrikeDefensiveMin, PerfectStrikeDefensiveMax,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
             ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,

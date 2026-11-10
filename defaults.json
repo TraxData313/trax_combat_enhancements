@@ -2991,6 +2991,97 @@
   // (range 0.5 to 5.0)
   "OpeningGuardTestSeconds": 2.0,
 
+  // On: your hit that lands in front makes him hold a block in a random direction for a moment,
+  // the red arrow showing the opening (a man with a shield also when his shield blocks you -
+  // his first hold is short, shorter the bigger the shield). A sword must strike exactly that
+  // side, an axe, mace or spear any side but his guard - he staggers (his shield comes down)
+  // and the perfect strike opens. Strike into his guard and he blocks it - he holds longer.
+  // When the hold ends he may counter-swing. Off: the older openings (his block of your attack
+  // puts him off balance). Needs 'Openings' on.
+  // (true or false)
+  "OpeningHoldsEnabled": true,
+
+  // How long he holds his block after your first hit lands, with a weapon of average speed
+  // (95). Slower weapons get longer, faster ones shorter (the two factors below).
+  // (range 0.3 to 3.0)
+  "OpeningHoldFirstSeconds": 1.2,
+
+  // The first hold is multiplied by this / your weapon's speed (its swing speed, the thrust
+  // speed for a thrust-only weapon): a slower weapon gets a longer hold.
+  // (range 50 to 150)
+  "OpeningHoldSpeedReference": 95,
+
+  // The weapon-speed factor on the first hold is never below this (a very fast weapon).
+  // (range 0.5 to 1.0)
+  "OpeningHoldSpeedFactorMin": 0.8,
+
+  // The weapon-speed factor on the first hold is never above this (a very slow weapon).
+  // (range 1.0 to 2.5)
+  "OpeningHoldSpeedFactorMax": 1.5,
+
+  // Each time he blocks your strike into his held guard (or blocks you right after a hold ran
+  // out) he holds again, this much longer than before.
+  // (range 0.0 to 1.5)
+  "OpeningHoldPerLinkSeconds": 0.4,
+
+  // After such a block, starting your next strike quickly adds up to this much more hold: all
+  // of it within the 'full' time below, nothing at the 'none' time.
+  // (range 0.0 to 1.5)
+  "OpeningHoldChainBonusSeconds": 0.4,
+
+  // Your next strike started within this long after his block gets the whole bonus.
+  // (range 0.0 to 1.0)
+  "OpeningHoldChainBonusFullSeconds": 0.3,
+
+  // Started this long after his block, your next strike adds nothing (a straight line in
+  // between). The same speed also sets where the perfect strike lands in its range.
+  // (range 0.1 to 3.0)
+  "OpeningHoldChainBonusZeroSeconds": 1.0,
+
+  // A hold never lasts longer than this, however long the chain.
+  // (range 0.5 to 5.0)
+  "OpeningHoldCapSeconds": 2.5,
+
+  // A man with a SMALL shield holds his shield in the unbalanced guard this long after your
+  // first hit or his first block (with a weapon of average speed - scaled like the hold without
+  // a shield). Later holds grow like the others.
+  // (range 0.1 to 3.0)
+  "OpeningHoldShieldSmallSeconds": 1.0,
+
+  // ... with a BIG shield (a kite or a tower shield) - short, so a big shield keeps its
+  // advantage.
+  // (range 0.1 to 3.0)
+  "OpeningHoldShieldBigSeconds": 0.5,
+
+  // A shield this long or shorter counts as small (the game's own shield length: small round
+  // shields 60-70, kite shields 110-133); between small and big a straight line.
+  // (range 20 to 200)
+  "OpeningHoldShieldSmallLength": 60,
+
+  // A shield this long or longer counts as big.
+  // (range 20 to 300)
+  "OpeningHoldShieldBigLength": 130,
+
+  // When his first hold ends without a stagger, the chance that he swings at you at once (a
+  // chance to time your block against it).
+  // (range 0 to 100)
+  "OpeningCounterSwingFirstPercent": 30,
+
+  // When a hold that you made longer with blocked strikes ends without a stagger, the chance
+  // that he swings at you at once.
+  // (range 0 to 100)
+  "OpeningCounterSwingLaterPercent": 100,
+
+  // After YOUR timed block staggers him, the perfect strike multiplies the damage by this at
+  // the weakest timing - the same for every weapon (the openings keep the by-weapon ranges
+  // above).
+  // (range 1.0 to 5.0)
+  "PerfectStrikeDefensiveMin": 2.0,
+
+  // ... and at perfect timing.
+  // (range 1.0 to 5.0)
+  "PerfectStrikeDefensiveMax": 3.0,
+
   // How much an outmatched man suffers: every doubling of the mismatch beyond the even band
   // adds this to the pressure on him (0.25: an enemy four times stronger counts as much as
   // being about a third tired). 0 = only tiredness counts.

@@ -48,6 +48,9 @@ namespace TraxCombat.Core
 
         /// <summary>Your hit landed from BEHIND - always a stagger and a perfect strike (<c>OpeningBackHitStaggers</c>).</summary>
         Back,
+
+        /// <summary>Step 107: your winning strike on a man HOLDING a forced block (<see cref="OpeningHold"/>).</summary>
+        Hold,
     }
 
     /// <summary>Step 106a2: where the chain stands.</summary>
@@ -655,6 +658,7 @@ namespace TraxCombat.Core
             OpeningEntry.Blocked => "weapon block",
             OpeningEntry.ShieldBlocked => "shield block",
             OpeningEntry.FrontUnguarded => "unguarded front hit",
+            OpeningEntry.Hold => "hold-block",
             _ => "back hit",
         };
 
@@ -780,6 +784,13 @@ namespace TraxCombat.Core
             return OpeningHit.Nothing;
         }
 
+        /// <summary>
+        /// Step 107: your WINNING strike landed on a man holding a forced block - he reels (link <paramref name="k"/>'s reel), the PERFECT STRIKE side =
+        /// the opposite of that swing by the weapon, the timing <paramref name="score"/> (the hold's chain speed). Any earlier chain is replaced.
+        /// </summary>
+        public void HoldStagger(int target, double now, in OpeningRules r, int k, int swing, int weaponMask, double score) =>
+            Stagger(target, now, in r, Math.Max(1, Math.Min(r.ChainMax, k)), OpeningEntry.Hold, swing, weaponMask, score);
+
         private void Stagger(int target, double now, in OpeningRules r, int k, OpeningEntry entry, int swing, int weaponMask, double score)
         {
             Target = target;
@@ -823,7 +834,7 @@ namespace TraxCombat.Core
         public int ShieldBlocks, WeaponBlocks;
 
         /// <summary>Off-balance states by entry (<see cref="OpeningEntry"/>), the balance guards, skips by <see cref="OpeningSkip"/>; shield states that still hold.</summary>
-        public readonly int[] Entries = new int[4];
+        public readonly int[] Entries = new int[5];
         public readonly int[] BalanceGuards = new int[4];
         public readonly int[] Skips = new int[3];
         public int ShieldHolds;
@@ -870,7 +881,7 @@ namespace TraxCombat.Core
         public readonly int[] ThroughByK = new int[OpeningMath.MaxChain + 1];
 
         /// <summary>Landed hits: staggers by entry, the mod's own stagger on the same hit too, off balance from an unguarded front hit.</summary>
-        public readonly int[] Staggers = new int[4];
+        public readonly int[] Staggers = new int[5];
         public int ModStaggerToo, UnguardedOffBalance;
 
         /// <summary>Step 106e: back / unguarded hits on a man still reeling or stagger-immune - no new opening.</summary>
@@ -1075,7 +1086,7 @@ namespace TraxCombat.Core
             }
             t.Append("; STAGGERS weapon-block chain ").Append(Staggers[(int)OpeningEntry.Blocked].ToString(c)).Append(", shield chain ")
              .Append(Staggers[(int)OpeningEntry.ShieldBlocked].ToString(c)).Append(", after an unguarded hit ").Append(Staggers[(int)OpeningEntry.FrontUnguarded].ToString(c))
-             .Append(", from behind ").Append(Staggers[(int)OpeningEntry.Back].ToString(c)).Append(" (the mod's own stagger on the same hit ").Append(ModStaggerToo.ToString(c))
+             .Append(", from behind ").Append(Staggers[(int)OpeningEntry.Back].ToString(c)).Append(", from a hold-block (step 107) ").Append(Staggers[(int)OpeningEntry.Hold].ToString(c)).Append(" (the mod's own stagger on the same hit ").Append(ModStaggerToo.ToString(c))
              .Append("); unguarded front hits -> off balance ").Append(UnguardedOffBalance.ToString(c))
              .Append("; back / unguarded hits on a man still reeling or stagger-immune (no new opening) ").Append(ImmuneRefused.ToString(c));
             t.Append("; during the reel: PERFECT STRIKE ").Append(FinishPerfect.ToString(c));

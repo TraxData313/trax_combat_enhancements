@@ -1807,6 +1807,24 @@ row goes to the Advanced page unless a player needs it to set up his game (CLAUD
 | `OpeningGuardTest` | false | Step 106b TEST TOOL (decision 95 (i)): in a battle `OpeningGuardTestKey` forces the nearest ENEMY on foot within 8 m into the next guard - low / high / left / right / lowered (every guard bit out of his input) / lowered by the agent's CanDefend flag (+ the input) - for `OpeningGuardTestSeconds`; Left Shift + the key = back; his channel-1 pose read back before, after 0.5 s and at the end (on screen and in the log). Works with `OpeningsEnabled` off (the master switch first). Live. |
 | `OpeningGuardTestKey` | K | Step 106b: the forced-guard test tool's key (a key name). Live. |
 | `OpeningGuardTestSeconds` | 2.0 | Step 106b: how long the test tool holds his forced guard (battle s, 0.5-5). Live. |
+| `OpeningHoldsEnabled` | true | Step 107 (decision 96): HOLD-BLOCK OPENINGS - your landed front hit on an AI man on foot forces him to HOLD a block in a random direction G (attack bits out, 'can defend' taken for a winning swing), the red arrow steady on the opening O = `OpeningMath.OpeningFor(G)`; a SHIELDMAN also by his correct shield block of your attack, his first hold short by the shield's size (Toni's addition, decision 96 (g)) and his shield LOWERED for a winning strike; replaces step 106's off-balance chain (unshielded and shield 4-move path) while on. Needs `OpeningsEnabled` and the openings live (decision 95 (m)). Off = step 106 for everyone. Live. |
+| `OpeningHoldFirstSeconds` | 1.2 | Step 107 (decision 96 (b)): the first hold at weapon speed `OpeningHoldSpeedReference`; x clamp(reference / YOUR weapon's swing speed - its thrust speed for a thrust-only weapon -, min, max). Range 0.3-3. Live. |
+| `OpeningHoldSpeedReference` | 95 | Step 107: the weapon speed at which the first hold is exactly `OpeningHoldFirstSeconds`. Range 50-150. Live. |
+| `OpeningHoldSpeedFactorMin` | 0.8 | Step 107: the weapon-speed factor's floor (a fast weapon). Range 0.5-1. Live. |
+| `OpeningHoldSpeedFactorMax` | 1.5 | Step 107: the weapon-speed factor's ceiling (a slow weapon). Range 1-2.5. Live. |
+| `OpeningHoldPerLinkSeconds` | 0.4 | Step 107 (decision 96 (c)): each LINK - he blocks your strike into his held guard, or blocks you within `OpeningChainResetSeconds` after a hold ran out - re-holds him from that block for the last hold's length + this. Range 0-1.5. Live. |
+| `OpeningHoldChainBonusSeconds` | 0.4 | Step 107 (decision 96 (c)): after a link, your NEXT wind-up started within `OpeningHoldChainBonusFullSeconds` of his block adds this much more hold, falling linearly to 0 at `OpeningHoldChainBonusZeroSeconds`. Range 0-1.5. Live. |
+| `OpeningHoldChainBonusFullSeconds` | 0.3 | Step 107: the chain-speed bonus is full up to this delay (block -> your wind-up). Range 0-1. Live. |
+| `OpeningHoldChainBonusZeroSeconds` | 1.0 | Step 107: the chain-speed bonus is 0 from this delay; the same share (wind-up after the hold's start / last link) is the perfect strike's timing score after a hold's stagger. Range 0.1-3. Live. |
+| `OpeningHoldCapSeconds` | 2.5 | Step 107: no hold lasts longer than this. Range 0.5-5. Live. |
+| `OpeningHoldShieldSmallSeconds` | 1.0 | Step 107 (decision 96 (g), Toni 2026-11-10): a SHIELDMAN's first hold with a SMALL shield (length ≤ `OpeningHoldShieldSmallLength`) at the reference weapon speed, x the same weapon-speed factor. Range 0.1-3. Live. |
+| `OpeningHoldShieldBigSeconds` | 0.5 | Step 107 (decision 96 (g)): ... with a BIG shield (length ≥ `OpeningHoldShieldBigLength`); a straight line between by the length. Range 0.1-3. Live. |
+| `OpeningHoldShieldSmallLength` | 60 | Step 107 (decision 96 (g)): the shield's engine `WeaponLength` (cm) counted small - v1.4.8's small round shields / adargas 60-70. Range 20-200. Live. |
+| `OpeningHoldShieldBigLength` | 130 | Step 107 (decision 96 (g)): ... counted big - kite / Sturgian / Vlandian infantry shields 128-133 (a longer one clamps). Range 20-300. Live. |
+| `OpeningCounterSwingFirstPercent` | 30 | Step 107 (decision 96 (e)): a hold that ends without a stagger and WITHOUT a link makes him counter-swing at once with this chance (forced through step 16's input hook). Range 0-100. Live. |
+| `OpeningCounterSwingLaterPercent` | 100 | Step 107: ... after a hold the chain made longer with at least one link. Range 0-100. Live. |
+| `PerfectStrikeDefensiveMin` | 2.0 | Step 107 (decision 96 (f), Toni: "the defensive game is the same for every weapon"): the PERFECT STRIKE after YOUR timed block (step 100g, riders' 104d too) at timing 0, the same for every weapon - the by-weapon ranges (`PerfectStrikeFourWay*` / `ThreeWay*` / `TwoWay*`) now apply to the openings only. Range 1-5. Live. |
+| `PerfectStrikeDefensiveMax` | 3.0 | Step 107: ... at timing 1. Range 1-5. Live. |
 | `ImpactMismatchWeight` | 0.25 | Step 48: x per doubling of the mismatch R beyond the even band. Range 0-2. |
 | `ImpactEvenBandDoublings` | 0.5 | Step 48: a mismatch within ± this many doublings (×1.41) = an even match (adds 0). Range 0-3. |
 | `ImpactBodyExponent` | 0.5 | Step 48: the body = his CURRENT points to this power. Range 0-2. |
@@ -3841,6 +3859,24 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     (your swing went another way at contact / his shield held / did not come down / his guard was the forced one / his own guard came back), a
     wrong-side shield block on a held follow-up counted too. THE RED ARROW (k) also shows in the walk-about mode (the training field, a town) while
     you fight a man who is off balance or reeling (and 2 s after) - never in a conversation, menu or film, never without you on the field.
+96. **Hold-block openings** (step 107; Toni 2026-11-10, approved; his shield addition the same day; AI_NOTES "Step 107"): (a) ENTRY - YOUR
+    landed FRONT hit on an AI man on foot (a SHIELDMAN also by his correct shield block of your attack) forces him to HOLD a block in a random
+    direction G (only guards whose opening O = `OpeningMath.OpeningFor(G)` your weapon can make); the red arrow STEADY on O for the whole hold. It
+    REPLACES 95's off-balance chain (the unshielded block entry AND the shield 4-move path) while `OpeningHoldsEnabled` is on - one rule for both.
+    A hit from BEHIND still reels at once (95 (f), 106e's immunity rule); an entry on a man reeling / stagger-immune opens nothing. (b) THE HOLD:
+    `OpeningHoldFirstSeconds` 1.2 x clamp(95 / YOUR weapon's swing speed - thrust speed if thrust-only -, 0.8, 1.5). (c) A LINK - he blocks your
+    strike into G (a shieldman: any strike his raised shield stops), or blocks you within `OpeningChainResetSeconds` after a hold ran out: re-held
+    from the block for the last length + 0.4 s, + up to 0.4 s more if your next wind-up starts within 0.3 s of his block (a line to 0 at 1.0 s),
+    capped 2.5 s; the same G. (d) WHO WINS: a 4-direction weapon (sword) EXACTLY O; any other weapon any direction G does not block → he staggers
+    (95 (d)'s reel, `ReelCause.Opening`, `OpeningEntry.Hold`), the PERFECT STRIKE side / window / 105 as built, the timing = the chain speed of your
+    winning wind-up; a sword's third side = a normal hit that starts a FRESH hold. His guard is held through your swing, 'can defend' taken for a
+    winning swing (95 (o)); a shieldman's shield LOWERED for it (GUARD BROKEN). (e) A hold over without a stagger → a FORCED counter-swing (30 % after
+    a first hold, 100 % after a lengthened one) through the input hook (ready 0.4 s, release 0.5 s; one of his weapon's directions at random); the 1 s
+    attack lock of 95 (n) applies to 95's off-balance force only. (f) PERFECT STRIKE after the DEFENSIVE timed block (and a rider's reel): x2-x3 for
+    EVERY weapon (`PerfectStrikeDefensiveMin` / `Max`); the openings keep the weapon table. (g) SHIELDS (Toni: "almost impossible to hit the first
+    time"): a shieldman's FIRST hold is short - 1.0 s with a small shield (engine `WeaponLength` ≤ 60 cm) to 0.5 s with a big one (≥ 130), a line
+    between, x the same weapon factor; later links grow as the others. Off (`OpeningHoldsEnabled`) = decision 95 exactly; holds only while the
+    openings are live (95 (m)).
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research

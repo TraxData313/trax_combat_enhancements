@@ -26,6 +26,8 @@ namespace TraxCombat.Core
             ThreeMax = Math.Max(ThreeMin, PerfectStrikeMath.ClampMultiplier(F(s.PerfectStrikeThreeWayMax)));
             TwoMin = PerfectStrikeMath.ClampMultiplier(F(s.PerfectStrikeTwoWayMin));
             TwoMax = Math.Max(TwoMin, PerfectStrikeMath.ClampMultiplier(F(s.PerfectStrikeTwoWayMax)));
+            DefensiveMin = PerfectStrikeMath.ClampMultiplier(F(s.PerfectStrikeDefensiveMin)); // step 107: the defensive game - every weapon the same
+            DefensiveMax = Math.Max(DefensiveMin, PerfectStrikeMath.ClampMultiplier(F(s.PerfectStrikeDefensiveMax)));
             WeaponFinishes = s.PerfectStrikeWeaponFinishes;
             OpeningsSwitch = s.OpeningsEnabled;
             GraceSeconds = Math.Max(0, Math.Min(PerfectStrikeMath.MaxGraceSeconds, Nan0(F(s.PerfectStrikeGraceSeconds))));
@@ -51,6 +53,11 @@ namespace TraxCombat.Core
         public double ThreeMax { get; }
         public double TwoMin { get; }
         public double TwoMax { get; }
+
+        /// <summary>Step 107 (Toni 2026-11-10): the PERFECT STRIKE after YOUR timed block (the defensive game, riders' too) - x2-x3 for EVERY weapon (the
+        /// by-weapon ranges above are the openings' only).</summary>
+        public double DefensiveMin { get; }
+        public double DefensiveMax { get; }
 
         /// <summary>Step 106d: <c>PerfectStrikeWeaponFinishes</c> - the finishing side follows the weapon (an axe finishes an overhead with
         /// left OR right, a spear a side swing with either stab); off = step 103's strict opposites.</summary>
@@ -121,7 +128,7 @@ namespace TraxCombat.Core
                    + (WeaponFinishes ? "; by your weapon: no thrust - an overhead answered by left OR right, a spear - a side answered by either stab" : "; strict opposites") + ") that lands on his body while he reels (+"
                    + GraceSeconds.ToString("0.00", c) + " s) does x" + FourMin.ToString("0.0#", c) + "-" + FourMax.ToString("0.0#", c) + " / x" + ThreeMin.ToString("0.0#", c) + "-"
                    + ThreeMax.ToString("0.0#", c) + " / x" + TwoMin.ToString("0.0#", c) + "-" + TwoMax.ToString("0.0#", c)
-                   + " damage by your weapon's 4 / 3 / 2 attack directions (timing 0 to 1); openings' windows " + (OpeningOn ? "ON" : "OFF (" + OpeningOffBecause + ")")
+                   + " damage by your weapon's 4 / 3 / 2 attack directions after an OPENING, x" + DefensiveMin.ToString("0.0#", c) + "-" + DefensiveMax.ToString("0.0#", c) + " for every weapon after your TIMED BLOCK (step 107; timing 0 to 1); openings' windows " + (OpeningOn ? "ON" : "OFF (" + OpeningOffBecause + ")")
                    + "; the line in the middle of the screen " + (CentreMessage ? "on" : "off")
                    + "; on horseback (step 104d) " + (MountedOn ? "ON - a rider reeling in the saddle after your timed block: " + (HorsebackAnySide ? "ANY side" : "strict opposites")
                                                                   + " on his body (never his horse); your strike may come from horseback (strict opposites on a man on foot)"
@@ -300,6 +307,11 @@ namespace TraxCombat.Core
             double s = double.IsNaN(score) ? 0 : Math.Max(0, Math.Min(1, score));
             return ClampMultiplier(min) + (ClampMultiplier(max) - ClampMultiplier(min)) * s;
         }
+
+        /// <summary>Step 107: the multiplier of a window - an OPENING's by the striker's weapon (<paramref name="weaponMask"/>), the DEFENSIVE game's
+        /// (your timed block, a rider's reel) the same for every weapon (<c>PerfectStrikeDefensiveMin</c> / <c>Max</c>).</summary>
+        public static double WindowMultiplier(double score, in PerfectStrikeRules r, int weaponMask, bool opening) =>
+            opening ? Multiplier(score, in r, weaponMask) : Multiplier(score, r.DefensiveMin, r.DefensiveMax);
 
         /// <summary>Step 106d: the multiplier by the striker's weapon (<paramref name="weaponMask"/> - its attack directions pick the range).</summary>
         public static double Multiplier(double score, in PerfectStrikeRules r, int weaponMask)

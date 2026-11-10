@@ -63,7 +63,7 @@ namespace TraxCombat.Missions
                     TraxLog.Info("impact", "perfect strike: first window at " + Sec(now) + " s - " + Name(attacker) + " reels after your timed block (timing " + F2(score)
                         + ") of his " + PerfectStrikeMath.Name(dir) + StrikeWanted(dir) + "; your weapon finishes with your "
                         + OpeningMath.MaskName(OpeningArrowMath.DefensiveFinishMask(dir, ReadWeaponMask(blocker.Agent), r.WeaponFinishes)) + "; open until his stagger ends + " + F2(r.GraceSeconds) + " s, x"
-                        + PerfectStrikeMath.Multiplier(score, in r, ReadWeaponMask(blocker.Agent)).ToString("0.00", CultureInfo.InvariantCulture) + " - " + r.Describe());
+                        + PerfectStrikeMath.WindowMultiplier(score, in r, ReadWeaponMask(blocker.Agent), false).ToString("0.00", CultureInfo.InvariantCulture) + " - " + r.Describe());
                 }
             }
             catch (Exception e)
@@ -110,7 +110,7 @@ namespace TraxCombat.Missions
                     TraxLog.Info("impact", "perfect strike: first window on a RIDER at " + Sec(now) + " s - " + Name(a) + " reels in the saddle after your timed block (timing " + F2(p.Score)
                         + ") of his " + PerfectStrikeMath.Name(dir) + (r.HorsebackAnySide ? " - ANY landed hit on his body counts (never his horse)" : StrikeWanted(dir))
                         + "; open until his reel ends (" + F2(p.Until - now) + " s) + " + F2(r.GraceSeconds) + " s, x"
-                        + PerfectStrikeMath.Multiplier(p.Score, in r, ReadWeaponMask(blocker.Agent)).ToString("0.00", CultureInfo.InvariantCulture) + " - " + r.Describe());
+                        + PerfectStrikeMath.WindowMultiplier(p.Score, in r, ReadWeaponMask(blocker.Agent), false).ToString("0.00", CultureInfo.InvariantCulture) + " - " + r.Describe());
                 }
             }
             catch (Exception e)
@@ -252,7 +252,7 @@ namespace TraxCombat.Missions
                     }
                     return damage;
                 }
-                double k = PerfectStrikeMath.Multiplier(w.Score, in r, weapon); // step 106d: x by your weapon's attack directions
+                double k = PerfectStrikeMath.WindowMultiplier(w.Score, in r, weapon, w.Opening); // step 106d: x by your weapon's attack directions (an opening); step 107: x2-x3 for every weapon after your timed block
                 float after = PerfectStrikeMath.Apply(damage, k);
                 bool relaxed = w.Opening ? OpeningMath.DirectionCount(w.FinishMask) > 1
                     : !w.Rider && PerfectStrikeMath.IsAttack(w.Blocked) && strike != PerfectStrikeMath.Opposite(w.Blocked);

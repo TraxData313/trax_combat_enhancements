@@ -10707,3 +10707,68 @@ the 106a / 106b / 106c / 106d smokes set `OpeningCommitRead` (judged at the wind
 read the other way still opens him at the release (held, flag off), a contact from another side = BLOCKED ANYWAY "another way" with the flag back,
 a wind-up read into the side that commits elsewhere = another side, the arrow on the training ground (not in a conversation, not without you, gone
 after). Tests 1653, the offline smoke all passed. PLAYTEST D81.
+
+## Step 107 — HOLD-BLOCK OPENINGS (Toni's new openings design 2026-11-10, approved; 107a built - records, Core, tests; 107b live; 107c smoke; 107d review)
+
+Toni walked the openings again after D81 and replaced the trigger: not HIS block of your attack, but YOUR landed hit. DESIGN decision 96. Player vs
+AI, on foot, only YOUR actions trigger anything; AI vs AI and riders unchanged.
+
+### 1. The design (Toni 2026-11-10 + his shield addition the same day)
+- **ENTRY.** Your landed FRONT hit on an AI man on foot → he is forced to HOLD a block in a random direction G (`OpeningMath.ChooseGuard` with no
+  previous guard and YOUR weapon's mask - so the opening O = `OpeningFor(G)` is always a side your weapon can make) for the hold time; the red arrow
+  shows O (the existing mapping incl. `OpeningSidesCrossed`) STEADY for the whole hold. A SHIELDMAN also enters by his correct shield block of your
+  attack (Toni: "when the player hits/opens a shieldman") - his shield held in the unbalanced guard. This REPLACES step 106's block-triggered off
+  balance (and its shield 4-move path) while `OpeningHoldsEnabled` is on: ONE rule for both, only the first hold's length differs. A hit from BEHIND
+  still reels at once (step 106 with 106e's stunlock guard - kept, Toni). An entry hit on a man still reeling / inside the stagger immunity opens no
+  hold (the 106e rule).
+- **DURING THE HOLD** (Core `OpeningHoldMath.Classify`): a 4-direction weapon (a sword) must strike EXACTLY O → he staggers (step 106's reel,
+  `ReelCause.Opening`, through `OpeningChain.HoldStagger` - the PERFECT STRIKE arrow + window, 105's knockdown - all as built); any other weapon (no
+  thrust: axes, maces; spears) wins with ANY direction G does not block. Into G = he blocks it = a LINK (more hold). A sword's third side (neither O
+  nor G) = a normal hit, no stagger, and as a landed hit it starts a FRESH hold. Against a shieldman every non-winning strike is stopped by his raised
+  shield (a raised shield blocks any side - step 64) = a link. The hold keeps 106f's forcing: his guard held through YOUR swing (to its contact / miss,
+  at most `OpeningHoldMaxSeconds` after it commits), 'can defend' taken for a WINNING swing (`OpeningHoldTakesDefend`), attack lock while held; a
+  shieldman's shield LOWERED for a winning swing (106b's route: every guard bit out; "GUARD BROKEN").
+- **HOLD TIMES** (all settings): the first hold `OpeningHoldFirstSeconds` 1.2 x clamp(`OpeningHoldSpeedReference` 95 / YOUR weapon's swing speed -
+  its thrust speed for a thrust-only weapon -, 0.8, 1.5). A SHIELDMAN's first hold: `OpeningHoldShieldSmallSeconds` 1.0 (shield length ≤
+  `OpeningHoldShieldSmallLength` 60) → `OpeningHoldShieldBigSeconds` 0.5 (≥ `OpeningHoldShieldBigLength` 130), a line between, x the same weapon
+  factor ("almost impossible to hit the first time"). Shield size = the shield usage's engine `WeaponLength` (cm) - the cleanest property; v1.4.8's
+  SandBoxCore shields.xml: small round / adarga / steppe 60-70, horseman's kites 78-85, kites / heaters 110-130, Sturgian / Vlandian infantry 133,
+  old kite 170, southern oval 435 (clamped). Each LINK re-holds him FROM HIS BLOCK for the last hold's length + `OpeningHoldPerLinkSeconds` 0.4,
+  plus the CHAIN-SPEED BONUS at your next wind-up after that block: + `OpeningHoldChainBonusSeconds` 0.4 x share, share 1 within
+  `...FullSeconds` 0.3, a line to 0 at `...ZeroSeconds` 1.0. Cap `OpeningHoldCapSeconds` 2.5. A block of yours within `OpeningChainResetSeconds`
+  (2 s) after a hold ran out is a link too (re-held). Swing timing (research 2026-11-10): Toni's quick cycle 0.94-1.1 s, next wind-up after a block
+  0.61 s mean → a typical link gets ~0.2 s bonus.
+- **A HOLD ENDS WITHOUT A STAGGER** → he is FORCED to counter-swing: `OpeningCounterSwingFirstPercent` 30 after a hold with no link,
+  `OpeningCounterSwingLaterPercent` 100 after a hold the chain lengthened. Through step 16's `AiInputComponent.Filter` (after the forced guard, before a
+  kick, the reel lock last): READY - his attack + guard bits replaced by the attack bit of a direction (one of HIS weapon's, at random) for
+  `OpeningHoldMath.CounterReadySeconds` 0.4, then RELEASE - every attack and guard bit out for `CounterReleaseSeconds` 0.5 (clearing a held attack
+  bit releases it - step 16: "a guard raised in a ready = cancel, never release", so no guard bit in the release). 106's 1 s attack lock
+  (`OpeningAttackLock`) is NOT applied to holds or the counter-swing (it caps the 106 Balance force only). Released on every exit.
+- **PERFECT STRIKE MULTIPLIERS.** After the DEFENSIVE timed block (step 100g, riders' 104d too): every weapon x`PerfectStrikeDefensiveMin` 2 -
+  `...Max` 3 (Core `PerfectStrikeMath.WindowMultiplier(.., opening: false)`). The openings keep the weapon table (4-dir 2-4, no-thrust 2-3, spears
+  1.5-2). The timing score of a hold's stagger = the chain-speed share of your winning swing's wind-up after the hold's start (the entry hit / the last
+  block) - a quick follow-up = the top of the range.
+
+### 2. Claude's choices where the design was silent
+- G at a link stays the same (one hold = one guard; the arrow already shows O); a fresh hold (a sword's third side, a hit after the chain lapsed)
+  rolls a new G.
+- The bonus applies once per hold (the first wind-up after a link) - a first hold (no block) gets none, only its timing share.
+- A strike into G that LANDS anyway (the forced guard not honoured) = a normal hit, a fresh hold, counted ("into the guard, landed anyway").
+- A winning swing he blocks anyway = a link (counted "a winning swing blocked anyway").
+- The counter-swing direction: random among HIS weapon's directions (not aimed at your open side - the AI has no "open side" read we trust).
+- ONE SHIELD RULE (Toni's addition): a shieldman enters like anyone (your landed hit) AND by his correct shield block of your attack (106's entry -
+  "opens"); 106's `OpeningShieldMinChain` / block roll / off-balance are NOT used while holds are on - the short first hold is the shield's advantage
+  instead, and his shield is lowered only for a WINNING strike (106b's route, GUARD BROKEN). Holds off = 106's 4-move path exactly.
+- Holds run only when the openings are LIVE (decision 95 (m): the impact system can carry the stagger); in shadow, step 106's shadow runs as before.
+- `OpeningHoldsEnabled` (Advanced, Impact, on) is the 107 switch; off = step 106 exactly (the 106 smokes run with it off). No config-format bump:
+  no existing default changed; the defensive game no longer reads `PerfectStrikeFourWay*` etc. (their meaning narrowed to the openings - a player's
+  tuned FourWay no longer changes the timed block's strike).
+
+### 107a - built (2026-11-10)
+Core `OpeningHolds.cs`: `OpeningHoldRules` (the 16 hold keys + the link window / flight cap / sides from 106's), `HoldSwing`, `HoldEnd`, `HoldPhase`,
+`OpeningHoldMath` (SpeedFactor, FirstHold, ShieldSizeShare / ShieldFirstHold, ChainSpeedShare / ChainBonus, LinkHold / Extend, Classify / WinMask,
+CounterChance / CounterThrown / CounterDirection, the engine's attack bits + CounterFrame, ClassIndex), `OpeningHold` (the chain state: Begin, Link,
+NoteWindUp → the bonus and the score, HoldOver, EndHold → After, LinkOpen, Lapsed), `OpeningHoldStats` + the [summary] "openings - hold-block" line;
+`OpeningEntry.Hold` + `OpeningChain.HoldStagger` (the stats' entry arrays 4 → 5); `PerfectStrikeRules.DefensiveMin/Max` +
+`PerfectStrikeMath.WindowMultiplier` (the module's three call sites: the defensive / rider window x2-x3, an opening's by the weapon). 18 settings
+(648), Advanced / Impact after `OpeningGuardTestSeconds`. Step107Tests 16; the 100g smoke now expects x3 for a sword after a timed block.
