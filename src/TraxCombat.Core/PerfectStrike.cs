@@ -31,6 +31,7 @@ namespace TraxCombat.Core
             WeaponFinishes = s.PerfectStrikeWeaponFinishes;
             OpeningsSwitch = s.OpeningsEnabled;
             GraceSeconds = Math.Max(0, Math.Min(PerfectStrikeMath.MaxGraceSeconds, Nan0(F(s.PerfectStrikeGraceSeconds))));
+            FlightSeconds = Math.Max(0, Math.Min(PerfectStrikeMath.MaxFlightSeconds, Nan0(F(s.PerfectStrikeFlightSeconds)))); // step 111
             CentreMessage = s.PerfectStrikeCentreMessage;
             HorsebackSwitch = s.TimedBlocksOnHorseback;
             OnHorsebackSwitch = s.PerfectStrikeOnHorseback;
@@ -96,6 +97,11 @@ namespace TraxCombat.Core
 
         /// <summary>Battle seconds the window stays open after his stagger's end (a counter already on its way).</summary>
         public double GraceSeconds { get; }
+
+        /// <summary>Step 111 (Toni's pic 5: his perfect-strike overhead met a raised shield - the reel ran out while it was in the air): a swing of
+        /// YOURS begun while the window is open keeps the window open and HIS GUARD DOWN until it lands or misses, at most this long after the window's
+        /// own end (s; <c>PerfectStrikeFlightSeconds</c>; 0 = step 100g's window exactly).</summary>
+        public double FlightSeconds { get; }
 
         /// <summary>Also the big line in the middle of the screen (the game's quick information), not only the gold line in the feed.</summary>
         public bool CentreMessage { get; }
@@ -206,6 +212,9 @@ namespace TraxCombat.Core
         public const double MinAllowedMultiplier = 1, MaxAllowedMultiplier = 5;
 
         public const double MaxGraceSeconds = 1;
+
+        /// <summary>Step 111: the longest flight (s) a perfect-strike swing may outlast the window by.</summary>
+        public const double MaxFlightSeconds = 3;
 
         /// <summary>Open windows kept at once (yours only - a handful at most; the oldest replaced when full).</summary>
         public const int MaxWindows = 8;
@@ -332,6 +341,22 @@ namespace TraxCombat.Core
         public static bool Open(double now, double reelingUntil, double grace) =>
             !double.IsNaN(reelingUntil) && now <= reelingUntil + Math.Max(0, grace) + 1e-9;
 
+        /// <summary>Step 111: the window is open (<see cref="Open"/>) OR a swing of yours begun inside it is still in the air (<paramref name="flightUntil"/>
+        /// - <see cref="PerfectStrikeWindow.FlightUntil"/>, 0 = none).</summary>
+        public static bool OpenFor(double now, double reelingUntil, double grace, double flightUntil) =>
+            Open(now, reelingUntil, grace) || (flightUntil > 0 && now <= flightUntil + 1e-9);
+
+        /// <summary>Step 111: a swing begun at <paramref name="now"/> inside the window may stay in the air until the window's end + <paramref name="flight"/>
+        /// (never before now); 0 = no flight (the setting off, or the window already shut).</summary>
+        public static double FlightEnd(double now, double reelingUntil, double grace, double flight)
+        {
+            if (!(flight > 0) || !Open(now, reelingUntil, grace)) return 0;
+            return Math.Max(now, reelingUntil + Math.Max(0, grace)) + flight;
+        }
+
+        /// <summary>Step 111: the flight outlasted his reel (+ the grace) - his guard is kept down only by it (the reel no longer stops his block).</summary>
+        public static bool Outlasted(double now, double reelingUntil, double grace) => !Open(now, reelingUntil, grace);
+
         /// <summary>The on-screen line: "PERFECT STRIKE x2.8".</summary>
         public static string Text(double k) => "PERFECT STRIKE x" + k.ToString("0.0", CultureInfo.InvariantCulture);
 
@@ -370,6 +395,10 @@ namespace TraxCombat.Core
 
         /// <summary>Step 106d: an opening's finishing sides (attack bits, YOUR frame - the opposite of the staggering swing, by the weapon).</summary>
         public int FinishMask;
+
+        /// <summary>Step 111: a swing of yours begun inside the window keeps it open (and his guard down) until this (mission s; 0 = none) - ended
+        /// at its contact / miss.</summary>
+        public double FlightUntil;
     }
 
     /// <summary>Step 100g: the open windows (a fixed array, no allocation after construction). Main thread.</summary>
@@ -464,6 +493,11 @@ namespace TraxCombat.Core
         /// <summary>Step 106d: OPENINGS' windows (opened by an opening's stagger), perfect strikes from them, wrong-side hits in them; the
         /// relaxed sides used (a no-thrust weapon's left / right after an overhead, a spear's stab after a side swing - both games).</summary>
         public int OpeningOpened, OpeningLanded, OpeningWrongSide, RelaxedLanded;
+
+        /// <summary>Step 111: your swings begun in a window (the flight), those that outlasted his reel (his guard kept down by the flight alone), how
+        /// they ended - landed on his body / blocked or not on the body / a miss / the flight's time ran out; perfect strikes that landed AFTER his
+        /// reel thanks to the flight.</summary>
+        public int Flights, FlightsOutlasted, FlightsLanded, FlightsBlocked, FlightsMissed, FlightsExpired, FlightStrikesAfterReel;
 
         /// <summary>Step 106d: perfect strikes by the striker's weapon's directions (2 or fewer / 3 / 4 → 0 / 1 / 2).</summary>
         public readonly int[] ByDirections = new int[3];
@@ -614,6 +648,11 @@ namespace TraxCombat.Core
             AppendAfter(t, PerfectStrikeMath.Left, c);
             AppendAfter(t, PerfectStrikeMath.Right, c);
             t.Append(r.WeaponFinishes ? " - the opposite by your weapon since step 106d; the window stays open)" : " - strict opposites (step 103); the window stays open)");
+            t.Append("; STEP 111 - your swings begun in a window ").Append(Flights.ToString(c)).Append(" (+").Append(r.FlightSeconds.ToString("0.0#", c))
+             .Append(" s at most past it; outlasted his reel - his guard kept down by the flight ").Append(FlightsOutlasted.ToString(c)).Append("): landed ")
+             .Append(FlightsLanded.ToString(c)).Append(", blocked / not on his body ").Append(FlightsBlocked.ToString(c)).Append(", missed ").Append(FlightsMissed.ToString(c))
+             .Append(", the flight ran out ").Append(FlightsExpired.ToString(c)).Append("; perfect strikes landed after his reel thanks to the flight ")
+             .Append(FlightStrikesAfterReel.ToString(c));
             if (OpeningWrongSide > 0) t.Append("; wrong-side hits on a man reeling from an opening ").Append(OpeningWrongSide.ToString(c));
             if (BlockedUnknown > 0) t.Append("; your hits after a blocked attack of unknown direction (nothing counts) ").Append(BlockedUnknown.ToString(c));
             if (NotOnBody > 0) t.Append("; your hits on a window man that did not land on his body (blocked, shield, kick / bash, 0 damage) ").Append(NotOnBody.ToString(c));

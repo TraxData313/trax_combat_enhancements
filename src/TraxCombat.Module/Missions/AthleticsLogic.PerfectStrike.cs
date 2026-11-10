@@ -187,8 +187,9 @@ namespace TraxCombat.Missions
                 if (w.Opening ? !r.OpeningOn : !r.Enabled) return damage; // the tick closes the windows (step 106d: an opening's by its own switches)
                 double now = SpikeNow;
                 var v = GetByIndex(victim.Index);
-                if (v == null || v.Removed || !PerfectStrikeMath.Open(now, v.Impact.ReelingUntil, r.GraceSeconds))
+                if (v == null || v.Removed || !PerfectStrikeMath.OpenFor(now, v.Impact.ReelingUntil, r.GraceSeconds, w.FlightUntil)) // step 111: a swing begun in it keeps it open
                 {
+                    FlightWindowClosing(w.Victim, now);
                     StrikeExpired(w.Rider);
                     _strikeBook.RemoveAt(i);
                     return damage;
@@ -259,6 +260,7 @@ namespace TraxCombat.Missions
                 _strike.NoteLanded(strike, w.Blocked, w.Score, k, damage, after);
                 _strike.NoteWeapon(weapon, relaxed);
                 if (w.Opening) _strike.OpeningLanded++;
+                if (!PerfectStrikeMath.Open(now, v.Impact.ReelingUntil, r.GraceSeconds)) _strike.FlightStrikesAfterReel++; // step 111: landed thanks to the flight
                 if (w.Rider) _strike.NoteRiderLanded(w.Score, k, damage, after, attackerMounted);
                 else if (attackerMounted) _strike.FootLandedFromHorseback++;
                 var c = CultureInfo.InvariantCulture;
@@ -306,8 +308,9 @@ namespace TraxCombat.Missions
                     continue;
                 }
                 var v = GetByIndex(_strikeBook[i].Victim);
-                if (v == null || v.Removed || !PerfectStrikeMath.Open(now, v.Impact.ReelingUntil, r.GraceSeconds))
+                if (v == null || v.Removed || !PerfectStrikeMath.OpenFor(now, v.Impact.ReelingUntil, r.GraceSeconds, _strikeBook[i].FlightUntil)) // step 111: the flight
                 {
+                    FlightWindowClosing(_strikeBook[i].Victim, now);
                     _strikeBook.RemoveAt(i);
                     StrikeExpired(rider);
                 }

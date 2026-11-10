@@ -22,6 +22,10 @@ namespace TraxCombat.Core
         /// <summary>Step 107: a HOLD-BLOCK opening - his guard held in G for the hold (lowered for your winning strike if he has a shield). Not under
         /// <see cref="OpeningAttackLock"/>.</summary>
         Hold,
+
+        /// <summary>Step 111: YOUR perfect-strike swing begun while he reels is in the air - every guard bit out and his 'can defend' off until it
+        /// lands / misses (<c>PerfectStrikeFlightSeconds</c> past the window at most). Not under <see cref="OpeningAttackLock"/>; no pose read.</summary>
+        Strike,
     }
 
     /// <summary>Step 106b: how a forced guard ended (the summary counts them).</summary>

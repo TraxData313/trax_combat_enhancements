@@ -203,7 +203,7 @@ namespace TraxCombat.Missions
         /// <summary>A live force began / changed: the pose to read back (a held guard that keeps the balance pose keeps the read already running).</summary>
         private void BeginPoseRead(TrackedAgent st, OpeningForceKind kind, int guard, bool lower, double now)
         {
-            if (kind == OpeningForceKind.Test) return;
+            if (kind == OpeningForceKind.Test || kind == OpeningForceKind.Strike) return; // step 111: a reeling man's flight - no pose to read
             if (_poseReading && !lower && !_poseLowered && guard == _poseGuard) return; // the same pose goes on
             if (_poseReading) FinishPose(OpeningPoseResult.EndedFirst, st, null);
             _poseReading = true;
@@ -257,6 +257,7 @@ namespace TraxCombat.Missions
             EnsureInput(st);
             AiInputHook.SetOpening(st, true, OpeningForceMath.GuardFlag(guard), lower, now);
             NoteHooked(st, body.Hook(st));
+            if (kind != OpeningForceKind.Test) CutAiKickFor(st, now); // step 111: a kick / bash of his still running never plays over a forced guard
             _forceSt = st;
             _forceKind = kind;
             _forceGuard = guard;
@@ -324,7 +325,9 @@ namespace TraxCombat.Missions
                 EndForce(OpeningForceEnd.Off, now, false);
                 return;
             }
-            bool on = _forceKind == OpeningForceKind.Test ? r.ModEnabled && TraxSettings.Shared.OpeningGuardTest : OpeningsLive(in r); // step 106e: the impact system too
+            bool on = _forceKind == OpeningForceKind.Test ? r.ModEnabled && TraxSettings.Shared.OpeningGuardTest
+                      : _forceKind == OpeningForceKind.Strike ? StrikeFlightRulesOn() // step 111: the perfect strike's own switches (both games)
+                      : OpeningsLive(in r); // step 106e: the impact system too
             if (!on)
             {
                 EndForce(OpeningForceEnd.Off, now, true);
@@ -356,6 +359,11 @@ namespace TraxCombat.Missions
                 EndForce(_openChain.Phase == OpeningPhase.Reeling ? OpeningForceEnd.Reels : OpeningForceEnd.ChainEnded, now, true);
             else if (_forceKind == OpeningForceKind.Held && _openChain.Phase == OpeningPhase.Reeling) EndForce(OpeningForceEnd.Reels, now, true);
             else if (_forceKind == OpeningForceKind.Hold && !_hold.Forced(st.AgentIndex)) EndForce(OpeningForceEnd.ChainEnded, now, true); // step 107: a backstop - the hold is over (step 108: recovering counts as held)
+            else if (_forceKind == OpeningForceKind.Strike && !FlightOn(st, now)) // step 111: a backstop - the flight is over
+            {
+                if (_flightVictim == st.AgentIndex) ResolveFlight(3, now);
+                else EndForce(OpeningForceEnd.Resolved, now, true);
+            }
         }
 
         private void ForceFailed(Exception e, double now)

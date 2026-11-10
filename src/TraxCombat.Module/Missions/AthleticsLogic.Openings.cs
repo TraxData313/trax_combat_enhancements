@@ -283,6 +283,7 @@ namespace TraxCombat.Missions
         /// </summary>
         internal void OpeningWindUp(TrackedAgent st, double now)
         {
+            YourSwingBegan(st, now); // step 111: the arrow latched, a perfect-strike flight (its own try)
             HoldWindUp(st, now); // step 107: a wind-up during a hold (its own try)
             if (!_openPending && !_openChain.Active) return;
             try
@@ -361,6 +362,7 @@ namespace TraxCombat.Missions
         /// (and with <c>OpeningMissKeepsChain</c> off the chain starts over).</summary>
         internal void OpeningMiss(double now)
         {
+            YourSwingResolved(null, false, now); // step 111: the arrow free again, the flight over (a miss)
             if (_holdFlight || _holdWound) HoldBlowResolved(now); // step 107: your swing in a hold met nothing
             if (!_openPending && !_openChain.Active) return;
             try
@@ -390,6 +392,12 @@ namespace TraxCombat.Missions
         internal void OpeningContactSeen(Agent attacker, Agent victim, in AttackCollisionData cd)
         {
             if (cd.IsMissile || cd.IsHorseCharge || cd.IsAlternativeAttack || attacker == null || victim == null) return;
+            if (_arrowLatch.Active || _flightVictim >= 0) // step 111: your swing resolved - the arrow free again, the flight over
+            {
+                var sa = Get(attacker);
+                if (sa != null && IsPlayer(sa) && YouDrive(sa))
+                    YourSwingResolved(Get(victim), !cd.AttackBlockedWithShield && cd.CollisionResult == CombatCollisionResult.StrikeAgent, SpikeNow);
+            }
             if (_hold.Active || _holdFlight) // step 107: the hold's blow resolved, a target switch, his blow on you
             {
                 var ha = Get(attacker);

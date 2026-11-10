@@ -34,6 +34,68 @@ namespace TraxCombat.Core
     }
 
     /// <summary>
+    /// Step 111 (Toni's training field 2026-11-10, pic 4: "while I'm swinging from the top down, the indicator changes to from the left"): the red
+    /// arrow NEVER TURNS while your swing is in the air. <see cref="Begin"/> at your melee wind-up notes what it shows; until the swing resolves
+    /// (<see cref="End"/> at its contact / miss) or <c>OpeningArrowSwingHoldMaxSeconds</c> passes, a DIFFERENT direction is held back - the noted one
+    /// stays (<see cref="Filter"/>); the arrow may still appear (none was shown) or go (its hold / window ended). The 106 flash is never held. A struct:
+    /// no allocation.
+    /// </summary>
+    public struct ArrowLatch
+    {
+        public bool Active;
+        public double SwingAt;
+        public ArrowCue Cue;
+        public int Mask;
+
+        /// <summary>A change was held back during this swing (counted once a swing).</summary>
+        public bool Held;
+
+        public bool InSwing(double now, double max) => Active && max > 0 && now - SwingAt <= max + 1e-9;
+
+        /// <summary>Your swing's wind-up at <paramref name="now"/>, the arrow showing <paramref name="live"/> (none = nothing noted yet).</summary>
+        public void Begin(double now, in ArrowReading live)
+        {
+            Active = true;
+            SwingAt = now;
+            bool keep = live.Shows && live.Cue != ArrowCue.Flash;
+            Cue = keep ? live.Cue : ArrowCue.None;
+            Mask = keep ? live.Mask : 0;
+            Held = false;
+        }
+
+        /// <summary>Your swing resolved (its contact, a miss) - the arrow follows the game again.</summary>
+        public void End()
+        {
+            Active = false;
+            Cue = ArrowCue.None;
+            Mask = 0;
+            Held = false;
+        }
+
+        /// <summary>The reading to show this frame for the <paramref name="live"/> one; <paramref name="heldNow"/> = a different direction was held back.</summary>
+        public ArrowReading Filter(double now, double max, in ArrowReading live, out bool heldNow)
+        {
+            heldNow = false;
+            if (!InSwing(now, max))
+            {
+                if (Active) End(); // the cap ran out (a feint, a held swing): the latch let go
+                return live;
+            }
+            if (!live.Shows || live.Cue == ArrowCue.Flash) return live; // the arrow goes (its hold / window ended) - never a turn
+            if (Mask == 0 || Cue == ArrowCue.None)
+            {
+                Cue = live.Cue; // none was shown: it may appear - and from now on it stays
+                Mask = live.Mask;
+                return live;
+            }
+            if (live.Mask == Mask) return live;
+            heldNow = true;
+            Held = true;
+            return new ArrowReading { Cue = Cue, Mask = Mask, Alpha = 1f };
+        }
+    }
+
+    /// <summary>
     /// Step 106c - THE RED ARROW, the pure part (AI_NOTES "106c - built", DESIGN decision 95 (k)). Drawn by the module's TraxOpeningArrow.xml at
     /// vanilla's direction-indicator places (Native Crosshair.xml: <c>crosshair_arrow_vertical</c> top / bottom - the bottom one vertically
     /// flipped -, <c>crosshair_arrow</c> left / right - the right one horizontally flipped -, 131 x 31 px, 350 px from the centre), in red. Two cues:

@@ -2392,6 +2392,19 @@ namespace TraxCombat.Core
             "Openings: log lines per battle",
             "How many of the openings' own lines (your holds, links, his guard showing, counter-swings, his pose read back) are written to the log in one battle before the rest go to the verbose log only. They are only for your own fights.");
 
+        // Step 111: the opening chain makes sense - a hold ends when you reel, the arrow keeps its direction through your swing, the perfect-strike swing's flight.
+        public static readonly ParamDef OpeningHoldEndsWhenYouReel = Bool("OpeningHoldEndsWhenYouReel", ImpactGroup,
+            "Openings: a hold ends when you reel",
+            "On: when you reel or fall (his riposte after his block, a kick, a hit) his unbalanced block ends at once and the arrow goes - he is clearly not off balance any more; no new one starts while you reel.");
+
+        public static readonly ParamDef OpeningArrowSwingHoldMaxSeconds = Float("OpeningArrowSwingHoldMaxSeconds", 0, 5, ImpactGroup,
+            "Openings: the arrow keeps its side through your swing (s)",
+            "From your swing's wind-up until it hits or misses, the red arrow never turns to another side (it may still appear or go); this is the longest it waits for a swing that never comes (a feint). 0 = the arrow follows every change at once.");
+
+        public static readonly ParamDef PerfectStrikeFlightSeconds = Float("PerfectStrikeFlightSeconds", 0, 3, ImpactGroup,
+            "Perfect strike: a swing begun in time keeps him open (s)",
+            "A swing you START while he reels keeps his guard down and the perfect-strike chance open until it lands or misses, at most this long after his reel ends - so a slow overhead begun in time is not blocked by a reel that ran out while it was in the air. 0 = the window closes with his reel.");
+
         public static readonly ParamDef ImpactMismatchWeight = Float("ImpactMismatchWeight", 0, 2, ImpactGroup,
             "Mismatch weight (pressure per doubling)",
             "How much an outmatched man suffers: every doubling of the mismatch beyond the even band adds this to the pressure on him (0.25: an enemy four times stronger counts as much as being about a third tired). 0 = only tiredness counts.");
@@ -3132,7 +3145,7 @@ namespace TraxCombat.Core
             OpeningHoldsEnabled, OpeningHoldSwingSeconds, OpeningHoldReadMarginAtSkill0, OpeningHoldReadMarginAtSkill200, OpeningHoldRecoveryCapSeconds, OpeningHoldSpeedReference, OpeningHoldSpeedFactorMin, OpeningHoldSpeedFactorMax,
             OpeningHoldPerLinkSeconds, OpeningHoldChainBonusSeconds, OpeningHoldChainBonusFullSeconds, OpeningHoldChainBonusZeroSeconds, OpeningHoldCapSeconds,
             OpeningHoldShieldSmallSeconds, OpeningHoldShieldBigSeconds, OpeningHoldShieldSmallLength, OpeningHoldShieldBigLength, OpeningCounterSwingFirstPercent, OpeningCounterSwingLaterPercent, PerfectStrikeDefensiveMin, PerfectStrikeDefensiveMax,
-            OpeningHoldArrowShow, OpeningHoldMessage, OpeningLogInfoLines,
+            OpeningHoldArrowShow, OpeningHoldMessage, OpeningLogInfoLines, OpeningHoldEndsWhenYouReel, OpeningArrowSwingHoldMaxSeconds, PerfectStrikeFlightSeconds,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
             ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,

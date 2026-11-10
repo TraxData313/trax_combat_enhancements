@@ -50,7 +50,26 @@ namespace TraxCombat.Core
         /// mission ended, an error.</summary>
         Off,
 
+        /// <summary>Step 111 (Toni's training field 2026-11-10, pic 9): YOU reel or lie down (his riposte, a kick, a hit) - he is no longer off balance.</summary>
+        YouReel,
+
         Count,
+    }
+
+    /// <summary>Step 111: why a hold was NOT started (or a link not taken) - one rule for every route a hold starts by (your hit, his shield block,
+    /// a chain after GUARD BROKEN).</summary>
+    public enum HoldRefusal : byte
+    {
+        None,
+
+        /// <summary>He reels now (our stagger - an opening, a riposte, a back hit, any <c>ImpactState</c> reel): the PERFECT STRIKE window, never a hold.</summary>
+        HeReels,
+
+        /// <summary>His reel is over but he is still inside the stagger immunity after it: not recovered yet (his block there is a plain block).</summary>
+        HeImmune,
+
+        /// <summary>You reel or lie down (his riposte - "X ripostes - you reel" -, a kick, a hit): he is clearly not off balance.</summary>
+        YouReel,
     }
 
     /// <summary>Step 107: where the hold chain on one man stands.</summary>
@@ -104,6 +123,8 @@ namespace TraxCombat.Core
             ShieldBigSeconds = Pos(s.OpeningHoldShieldBigSeconds);
             ShieldSmallSize = Pos(s.OpeningHoldShieldSmallLength);
             ShieldBigSize = Math.Max(ShieldSmallSize + 1, Pos(s.OpeningHoldShieldBigLength));
+            EndsWhenYouReel = s.OpeningHoldEndsWhenYouReel;
+            ArrowSwingMax = Pos(s.OpeningArrowSwingHoldMaxSeconds);
         }
 
         public static OpeningHoldRules From(TraxSettings s) => new OpeningHoldRules(s);
@@ -171,6 +192,13 @@ namespace TraxCombat.Core
         public double ShieldSmallSize { get; }
         public double ShieldBigSize { get; }
 
+        /// <summary>Step 111: YOU reeling or down ends his hold and refuses a new one (<c>OpeningHoldEndsWhenYouReel</c>).</summary>
+        public bool EndsWhenYouReel { get; }
+
+        /// <summary>Step 111: the red arrow keeps its direction through your swing (wind-up to contact / miss) at most this long (s;
+        /// <c>OpeningArrowSwingHoldMaxSeconds</c>; 0 = no latch - step 108's arrow).</summary>
+        public double ArrowSwingMax { get; }
+
         public string Describe()
         {
             var c = CultureInfo.InvariantCulture;
@@ -187,7 +215,9 @@ namespace TraxCombat.Core
                    + (100 * CounterLater).ToString("0", c) + "% (a lengthened one); a SHIELDMAN (your hit, or his correct shield block of your attack) holds his shield "
                    + "in the unbalanced guard for " + ShieldSmallSeconds.ToString("0.0#", c) + " s (a small shield, length " + ShieldSmallSize.ToString("0", c) + ") to "
                    + ShieldBigSeconds.ToString("0.0#", c) + " s (a big one, " + ShieldBigSize.ToString("0", c) + ") x the same weapon factor, links as above; a winning "
-                   + "strike LOWERS his shield (GUARD BROKEN)";
+                   + "strike LOWERS his shield (GUARD BROKEN); step 111: no hold while he reels or is stagger-immune (every route, his shield block too)"
+                   + (EndsWhenYouReel ? ", a hold ends when YOU reel" : string.Empty) + ", no kick / bash while he is held"
+                   + (ArrowSwingMax > 0 ? ", the arrow never turns while your swing is in the air (at most " + ArrowSwingMax.ToString("0.0#", c) + " s)" : string.Empty);
         }
 
         private static double Pos(double v) => double.IsNaN(v) ? 0 : Math.Max(0, Math.Round(v, 5));
@@ -406,7 +436,29 @@ namespace TraxCombat.Core
             HoldEnd.BackHit => "a hit from behind",
             HoldEnd.Gap => "no link after the hold",
             HoldEnd.Off => "off / gone",
+            HoldEnd.YouReel => "you reeled",
             _ => "?",
+        };
+
+        /// <summary>
+        /// Step 111 (Toni's training field 2026-11-10): ONE gate for every route a hold starts by (your landed hit, his shield block, a link after it):
+        /// you reeling or down first (with <paramref name="endsWhenYouReel"/>), then he reels (our stagger - the perfect-strike window), then he is
+        /// still inside the stagger immunity after it (not recovered). <see cref="HoldRefusal.None"/> = a hold may start; step 108's recovery then waits
+        /// for his guard to SHOW.
+        /// </summary>
+        public static HoldRefusal Refuse(bool heReels, bool heImmune, bool youReel, bool endsWhenYouReel)
+        {
+            if (youReel && endsWhenYouReel) return HoldRefusal.YouReel;
+            if (heReels) return HoldRefusal.HeReels;
+            return heImmune ? HoldRefusal.HeImmune : HoldRefusal.None;
+        }
+
+        public static string RefusalName(HoldRefusal r) => r switch
+        {
+            HoldRefusal.HeReels => "he still reels (the perfect-strike window)",
+            HoldRefusal.HeImmune => "he is not recovered (inside the stagger immunity)",
+            HoldRefusal.YouReel => "you reel",
+            _ => "none",
         };
 
         /// <summary>The weapon class index by attack directions: 0 = 2 or fewer (spears), 1 = 3 (no thrust - axes, maces), 2 = 4 (swords).</summary>
@@ -623,6 +675,20 @@ namespace TraxCombat.Core
         /// <summary>Step 108: the "Unbalanced ..." line shown; holds whose arrow was off by its switch.</summary>
         public int MessagesShown, ArrowOff;
 
+        /// <summary>Step 111: holds REFUSED by <see cref="OpeningHoldMath.Refuse"/> - by your hit / by his block x the refusal (None unused).</summary>
+        public readonly int[] RefusedByHit = new int[4], RefusedByBlock = new int[4];
+
+        /// <summary>Step 111: your swings whose arrow change was HELD (the arrow kept its direction until the swing resolved); "Unbalanced" lines
+        /// deferred until your swing resolved; step 81's kick / bash rolls refused for a man under a hold / forced guard; running kick / bash
+        /// attempts cut when a forced guard began on him.</summary>
+        public int ArrowSwingsHeld, MessagesDeferred, KickRollsRefused, KicksCut;
+
+        public void NoteRefused(HoldRefusal r, bool byBlock)
+        {
+            if (r == HoldRefusal.None || (int)r >= 4) return;
+            (byBlock ? RefusedByBlock : RefusedByHit)[(int)r]++;
+        }
+
         public void NoteRecovery(double seconds, bool capped)
         {
             if (capped) RecoveryCapped++;
@@ -712,6 +778,13 @@ namespace TraxCombat.Core
              .Append(", after the hold - his forced counter-swing ").Append(HitYouAfterCounter.ToString(c)).Append(", his own attack ").Append(HitYouAfterOwn.ToString(c));
             t.Append("; no hold: reeling / stagger-immune ").Append(Immune.ToString(c)).Append(", his parries with no hold on him (step 106's off balance replaced) ")
              .Append(BlocksNoHold.ToString(c));
+            t.Append("; STEP 111 - no hold (your hit / his block): he reels ").Append(RefusedByHit[(int)HoldRefusal.HeReels].ToString(c)).Append(" / ")
+             .Append(RefusedByBlock[(int)HoldRefusal.HeReels].ToString(c)).Append(", not recovered (stagger-immune) ").Append(RefusedByHit[(int)HoldRefusal.HeImmune].ToString(c))
+             .Append(" / ").Append(RefusedByBlock[(int)HoldRefusal.HeImmune].ToString(c)).Append(", you reel ").Append(RefusedByHit[(int)HoldRefusal.YouReel].ToString(c))
+             .Append(" / ").Append(RefusedByBlock[(int)HoldRefusal.YouReel].ToString(c)).Append(" (").Append(r.EndsWhenYouReel ? "on" : "OFF - OpeningHoldEndsWhenYouReel")
+             .Append("); your swings whose arrow change was held until they resolved ").Append(ArrowSwingsHeld.ToString(c)).Append(", 'Unbalanced' lines deferred past your swing ")
+             .Append(MessagesDeferred.ToString(c)).Append("; kick / bash rolls refused for a held man ").Append(KickRollsRefused.ToString(c)).Append(", his running kick / bash cut by the forced guard ")
+             .Append(KicksCut.ToString(c)).Append(" (both must stay the only way: a held man never kicks)");
             t.Append("; ended by");
             for (int i = 0; i < (int)HoldEnd.Count; i++)
                 t.Append(i == 0 ? " " : ", ").Append(OpeningHoldMath.EndName((HoldEnd)i)).Append(' ').Append(Ends[i].ToString(c));

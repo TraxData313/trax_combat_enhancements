@@ -3176,6 +3176,25 @@
   // (range 0 to 100000)
   "OpeningLogInfoLines": 5000,
 
+  // On: when you reel or fall (his riposte after his block, a kick, a hit) his unbalanced block
+  // ends at once and the arrow goes - he is clearly not off balance any more; no new one starts
+  // while you reel.
+  // (true or false)
+  "OpeningHoldEndsWhenYouReel": true,
+
+  // From your swing's wind-up until it hits or misses, the red arrow never turns to another
+  // side (it may still appear or go); this is the longest it waits for a swing that never comes
+  // (a feint). 0 = the arrow follows every change at once.
+  // (range 0.0 to 5.0)
+  "OpeningArrowSwingHoldMaxSeconds": 1.5,
+
+  // A swing you START while he reels keeps his guard down and the perfect-strike chance open
+  // until it lands or misses, at most this long after his reel ends - so a slow overhead begun
+  // in time is not blocked by a reel that ran out while it was in the air. 0 = the window
+  // closes with his reel.
+  // (range 0.0 to 3.0)
+  "PerfectStrikeFlightSeconds": 0.8,
+
   // How much an outmatched man suffers: every doubling of the mismatch beyond the even band
   // adds this to the pressure on him (0.25: an enemy four times stronger counts as much as
   // being about a third tired). 0 = only tiredness counts.

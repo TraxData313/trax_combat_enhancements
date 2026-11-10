@@ -58,6 +58,23 @@ namespace TraxCombat.Missions
             if (_arrowFailed) return false;
             try
             {
+                var live = ReadArrowLive(player, now);
+                a = LatchArrow(now, in live); // step 111: never a turn while your swing is in the air
+                return a.Shows;
+            }
+            catch (Exception e)
+            {
+                _arrowFailed = true; // off for the battle - the arrow is display only
+                Failed("hud.opening-arrow", e);
+                return false;
+            }
+        }
+
+        /// <summary>What the arrow would show this frame, before step 111's latch (none = default).</summary>
+        private ArrowReading ReadArrowLive(Agent? player, double now)
+        {
+            ArrowReading a = default;
+            {
                 var r = OpeningRules.From(TraxSettings.Shared);
                 if (!double.IsNaN(_arrowFlashPeak))
                 {
@@ -70,31 +87,25 @@ namespace TraxCombat.Missions
                             a.Cue = ArrowCue.Flash;
                             a.Mask = OpeningMath.Bit(_arrowFlashAttack);
                             a.Alpha = alpha;
-                            return true;
+                            return a;
                         }
                     }
                 }
-                if (!OpeningArrowMath.ShowsFinish(in r)) return false;
+                if (!OpeningArrowMath.ShowsFinish(in r)) return default;
                 int hold = HoldArrowMask(); // step 107: the opening of a hold, steady while he holds
                 if (hold != 0 && OpeningsLive(in r))
                 {
                     a.Cue = ArrowCue.Hold;
                     a.Mask = hold;
                     a.Alpha = 1f;
-                    return true;
+                    return a;
                 }
                 int mask = FinishMaskNow(player, now, in r);
-                if (mask == 0) return false;
+                if (mask == 0) return default;
                 a.Cue = ArrowCue.Finish;
                 a.Mask = mask;
                 a.Alpha = 1f;
-                return true;
-            }
-            catch (Exception e)
-            {
-                _arrowFailed = true; // off for the battle - the arrow is display only
-                Failed("hud.opening-arrow", e);
-                return false;
+                return a;
             }
         }
 
@@ -113,7 +124,7 @@ namespace TraxCombat.Missions
                 if (w.Rider && !pr.MountedOn) continue;
                 if ((!w.Opening && !PerfectStrikeMath.IsAttack(w.Blocked)) || w.OpenedAt < bestAt) continue;
                 var v = GetByIndex(w.Victim);
-                if (v == null || v.Removed || !PerfectStrikeMath.Open(now, v.Impact.ReelingUntil, pr.GraceSeconds)) continue;
+                if (v == null || v.Removed || !PerfectStrikeMath.OpenFor(now, v.Impact.ReelingUntil, pr.GraceSeconds, w.FlightUntil)) continue; // step 111: the flight keeps it
                 best = i;
                 bestAt = w.OpenedAt;
             }

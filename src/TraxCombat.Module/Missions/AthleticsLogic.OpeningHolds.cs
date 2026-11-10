@@ -153,6 +153,14 @@ namespace TraxCombat.Missions
             if (!HoldsLive(out var hr) || f.AttackerMounted || f.DefenderMounted) return false;
             try
             {
+                var gate = HoldGate(v, d.Riposte.Happens, now, in hr); // step 111: no hold by his block while he reels / is not recovered / you reel
+                if (gate != HoldRefusal.None)
+                {
+                    CloseOpening(now);
+                    NoteHoldRefused(v, gate, true, now, "his " + (d.Event == ImpactEvent.Parry ? "parry" : "shield") + " blocked your " + OpeningMath.AttackName(ContactSwing(a, now))
+                                                       + (d.Riposte.Happens ? " and you reel (his riposte)" : string.Empty));
+                    return true;
+                }
                 bool shieldBlock = d.Event == ImpactEvent.RightBlock || d.Event == ImpactEvent.WrongBlock;
                 CloseOpening(now);
                 if (_openChain.Active && _openChain.Target != v.AgentIndex) EndChain(OpeningReset.TargetSwitch);
@@ -237,7 +245,15 @@ namespace TraxCombat.Missions
                     if (immune || d.Stagger.Happens || d.Knockdown.Happens)
                     {
                         _openHoldStats.Immune++;
+                        _openHoldStats.NoteRefused(immune ? HoldRefusal.HeImmune : HoldRefusal.HeReels, false);
                         EndHoldForce(v, now);
+                        return true;
+                    }
+                    var gate1 = HoldGate(v, false, now, in hr); // step 111: you reel - no fresh hold
+                    if (gate1 == HoldRefusal.YouReel)
+                    {
+                        EndHoldForce(v, now);
+                        NoteHoldRefused(v, gate1, false, now, "your " + OpeningMath.AttackName(swing) + " landed");
                         return true;
                     }
                     BeginHold(a, v, now, SafeShield(v), false, in hr, "your " + OpeningMath.AttackName(swing) + " landed - " + OpeningHoldMath.SwingName(cls) + ", a normal hit");
@@ -247,7 +263,14 @@ namespace TraxCombat.Missions
                 if (immune || d.Stagger.Happens || d.Knockdown.Happens)
                 {
                     _openHoldStats.Immune++;
+                    _openHoldStats.NoteRefused(immune ? HoldRefusal.HeImmune : HoldRefusal.HeReels, false); // step 111: counted with the block route's
                     return true; // he reels / falls from this hit or is still immune: no hold (the 106e rule)
+                }
+                var gate = HoldGate(v, false, now, in hr); // step 111: the same gate as his block's (you reel; he reels / is not recovered)
+                if (gate != HoldRefusal.None)
+                {
+                    NoteHoldRefused(v, gate, false, now, "your " + OpeningMath.AttackName(swing) + " landed");
+                    return true;
                 }
                 if (onHim) EndHoldChain(HoldEnd.FreshHold, now, false);
                 BeginHold(a, v, now, SafeShield(v), false, in hr, "your " + OpeningMath.AttackName(swing) + " landed");
@@ -529,6 +552,7 @@ namespace TraxCombat.Missions
                     EndHoldChain(HoldEnd.Off, now, true);
                     return;
                 }
+                if (HoldEndsYouReel(v, now, in hr)) return; // step 111: you reel - he is not off balance any more
                 if (_hold.Phase == HoldPhase.Recovering) // step 108: his guard pushed until it SHOWS - then the hold's clock, the arrow, the words
                 {
                     bool visible = SafeGuardShown(v, _hold.Guard);
@@ -592,7 +616,9 @@ namespace TraxCombat.Missions
         {
             var text = _holdText;
             if (text == null) return;
+            if (_hold.Active && HoldTextWaits(now)) return; // step 111: never while your swing is in the air - shown once it resolves
             _holdText = null;
+            _holdTextDeferred = false;
             if (!_hold.Active || !TraxSettings.Shared.OpeningHoldMessage) return;
             try
             {
@@ -714,6 +740,9 @@ namespace TraxCombat.Missions
         /// <summary>The mission's end (before the summary) / an error: every hold, force, flag and counter-swing let go.</summary>
         private void CloseHolds(double now)
         {
+            _arrowLatch.End(); // step 111
+            _flightVictim = -1;
+            _holdTextDeferred = false;
             EndHoldChain(HoldEnd.Off, now, true);
             if (_counterSt != null) EndCounter(_counterSt, now, true, true);
         }

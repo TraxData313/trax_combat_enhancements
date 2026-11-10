@@ -181,6 +181,7 @@ namespace TraxCombat.Missions
                 _openHoldStats.CounterKickRollsSkipped++; // step 107d: his wind-up IS the forced counter-swing - a kick / bash / push here would cancel it
                 return;
             }
+            if (OpeningNoKick(st, now)) return; // step 111: a man under a hold, a forced guard or the recovery never kicks or bashes
             var body = AiKickBody;
             if (IsPlayer(st) || !body.IsActive(st) || !body.IsAiControlled(st)) return;
             _aiKickStats.Looks++;

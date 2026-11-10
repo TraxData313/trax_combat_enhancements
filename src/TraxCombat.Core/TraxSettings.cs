@@ -729,6 +729,9 @@ namespace TraxCombat.Core
         public bool OpeningHoldArrowShow => GetBool(SettingsSchema.OpeningHoldArrowShow); // step 108
         public bool OpeningHoldMessage => GetBool(SettingsSchema.OpeningHoldMessage); // step 108
         public int OpeningLogInfoLines => GetInt(SettingsSchema.OpeningLogInfoLines); // step 108
+        public bool OpeningHoldEndsWhenYouReel => GetBool(SettingsSchema.OpeningHoldEndsWhenYouReel); // step 111
+        public float OpeningArrowSwingHoldMaxSeconds => GetFloat(SettingsSchema.OpeningArrowSwingHoldMaxSeconds); // step 111
+        public float PerfectStrikeFlightSeconds => GetFloat(SettingsSchema.PerfectStrikeFlightSeconds); // step 111
         public int OpeningHoldSpeedReference => GetInt(SettingsSchema.OpeningHoldSpeedReference); // step 107
         public float OpeningHoldSpeedFactorMin => GetFloat(SettingsSchema.OpeningHoldSpeedFactorMin); // step 107
         public float OpeningHoldSpeedFactorMax => GetFloat(SettingsSchema.OpeningHoldSpeedFactorMax); // step 107
