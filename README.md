@@ -31,6 +31,10 @@ below) for a PERFECT STRIKE at 2-3x damage.
   away.
 - **Skill and timing decide the end of a long fight.** When both men are spent, every wrong block and every
   swing into a good guard counts.
+- **A duel is won face to face.** Once players get good, the usual way to win is to find a man looking the
+  other way and hit him in the back. This mod wants the fight in front of him to be the one worth having:
+  time your block and he reels, break his guard and he opens up, read his balance and finish him with a
+  perfect strike. Your skill wins the 1v1, not running round the AI.
 - **Heroes matter.** They tire slowest; late in a battle they are often the freshest men on the field.
 
 ## How a battle plays
