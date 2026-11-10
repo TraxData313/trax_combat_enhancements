@@ -292,7 +292,8 @@ namespace TraxCombat.Tools
                 double t0 = 17900;
                 for (int i = 0; i < men; i++)
                 {
-                    logic.Track(FakeAgent(9000 + i));
+                    var man = logic.Track(FakeAgent(9000 + i))!;
+                    man.Input = new AiInputState(); // step 109: made once, at his first hook - not the tick's cost (steps 65 / 82 do the same; the state grew past 256 KB for 428 walk-backs)
                     body.Facts[9000 + i] = WallMan(ahead: (i % 7) * 0.1);
                     body.Stamps[9000 + i] = 0f;
                     body.Enemies[9000 + i] = (0, 2.2);
