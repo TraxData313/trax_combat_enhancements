@@ -75,3 +75,4 @@ Board = TASKS_TODO.md BUILD ORDER step 100 (manager protocol in CLAUDE.md).
   * PERFECT STRIKE after the defensive timed block: ALL weapons 2x-3x (swords like axes, since that game is the same for them).
   * When the red hold ends he is FORCED to counter-swing: 30 % after the first hold, 100 % after each later one -> lets the player counter him, unfreezes stare duels.
   * Open: hold times X (Toni asked first for swings/second of fast and slow weapons).
+- Swing timing research (2026-11-10): ~1 swing/s normal (dagger ~1.4, glaive ~0.8); Toni's measured quick cycle 0.94-1.1 s (usually 1.2-1.7), wind-up 0.23-0.35 s, release 0.41-0.67 s, next wind-up after a block 0.61 s avg; AI cycle 1.9-2.8 s. Skill 300 ~17% faster anims. Suggested hold 1.2-1.5 s per link, x 95/speed for slow weapons. Waiting Toni's hold times.
