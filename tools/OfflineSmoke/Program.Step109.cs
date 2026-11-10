@@ -76,6 +76,7 @@ namespace TraxCombat.Tools
         {
             foreach (var p in SettingsSchema.All.Where(p => p.Key.StartsWith("KeepDistance", StringComparison.Ordinal))) S.Set(p, p.Default, SettingSources.File);
             S.Set(SettingsSchema.KeepDistanceEnabled, true, SettingSources.File);
+            S.Set(SettingsSchema.KeepDistanceTiredBelowPercent, 0, SettingSources.File); // step 109 exactly: its men stand at 40% (step 110's tired rule has Program.Step110.cs)
             S.Set(SettingsSchema.RestEnabled, false, SettingSources.File); // the rest is driven by courage's looks - here it is set by hand where it matters
             S.Set(SettingsSchema.RestMaxBackMetres, 4.0, SettingSources.File);
         }
