@@ -517,6 +517,8 @@ namespace TraxCombat.Core
         public float KeepDistanceMaxBackMetres => GetFloat(SettingsSchema.KeepDistanceMaxBackMetres);
         public float KeepDistanceMaxHoldSeconds => GetFloat(SettingsSchema.KeepDistanceMaxHoldSeconds);
         public float KeepDistanceReachMetres => GetFloat(SettingsSchema.KeepDistanceReachMetres);
+        public int KeepDistanceTiredBelowPercent => GetInt(SettingsSchema.KeepDistanceTiredBelowPercent);
+        public int KeepDistanceTiredRecoverPercent => GetInt(SettingsSchema.KeepDistanceTiredRecoverPercent);
         // step 55: cavalry flocking
         public bool CavalryFlockEnabled => GetBool(SettingsSchema.CavalryFlockEnabled);
         public int CavalryFlockFreeEagerPercent => GetInt(SettingsSchema.CavalryFlockFreeEagerPercent);
@@ -799,6 +801,8 @@ namespace TraxCombat.Core
         public float RegenMultiplierAtFullRun => GetFloat(SettingsSchema.RegenMultiplierAtFullRun);
         public float WalkEffortFraction => GetFloat(SettingsSchema.WalkEffortFraction);
         public bool HideoutBossFightRefill => GetBool(SettingsSchema.HideoutBossFightRefill);
+        public bool TrainingFieldRefill => GetBool(SettingsSchema.TrainingFieldRefill);
+        public int TrainingFieldRefillHealthJumpPercent => GetInt(SettingsSchema.TrainingFieldRefillHealthJumpPercent);
 
         /// <summary>Step 103: the crouch rest - the refill rate x this while crouched (Core <see cref="CrouchRestMath"/>).</summary>
         public float CrouchRefillMultiplier => GetFloat(SettingsSchema.CrouchRefillMultiplier);

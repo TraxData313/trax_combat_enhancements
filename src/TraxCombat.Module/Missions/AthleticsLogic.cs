@@ -103,6 +103,7 @@ namespace TraxCombat.Missions
                     SweepAgents();
                     NoteStepBackMission();
                     NoteHideoutMission(); // step 19: a hideout? watch for its boss fight
+                    NoteTrainingField(); // step 110: the training field? a fresh start for every bout
                 }
                 catch (Exception e)
                 {
@@ -402,6 +403,15 @@ namespace TraxCombat.Missions
             catch (Exception e)
             {
                 Failed("hideout.summary", e);
+            }
+            // Step 110: the training field's fresh starts. Own try.
+            try
+            {
+                WriteTrainingFieldSummary();
+            }
+            catch (Exception e)
+            {
+                Failed("training.summary", e);
             }
             // Step 103: the crouch rest. Own try.
             try

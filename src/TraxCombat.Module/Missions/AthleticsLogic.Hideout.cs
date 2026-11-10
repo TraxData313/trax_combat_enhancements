@@ -197,8 +197,9 @@ namespace TraxCombat.Missions
 
         /// <summary>Whatever runs on a man who starts fresh ends, each on its own path: his step back (released to his
         /// formation; a queued one refused), his AI pause (lifted; a queued or deferred one dropped), your pause.</summary>
-        private void ReleaseForFreshStart(TrackedAgent st, double now)
+        private int ReleaseForFreshStart(TrackedAgent st, double now, bool hideout = true)
         {
+            int released = 0;
             var sb = st.StepBack;
             if (sb != null)
             {
@@ -213,13 +214,13 @@ namespace TraxCombat.Missions
                         Failed("hideout.stepback", e);
                         SafeFinish(st, StepBackEnd.Error, now);
                     }
-                    _hideout.StepBacksReleased++;
+                    { released++; if (hideout) _hideout.StepBacksReleased++; }
                 }
                 if (sb.Pending)
                 {
                     _stepPending.Remove(st);
                     Refuse(st, sb, StepBackRefusal.NoLongerEligible);
-                    _hideout.StepBacksDropped++;
+                    { released++; if (hideout) _hideout.StepBacksDropped++; }
                 }
             }
             var ps = st.Pace;
@@ -236,18 +237,18 @@ namespace TraxCombat.Missions
                         Failed("hideout.pause", e);
                         SafeEndHold(st, now);
                     }
-                    _hideout.PausesReleased++;
+                    { released++; if (hideout) _hideout.PausesReleased++; }
                 }
                 if (ps.Pending)
                 {
                     ps.Pending = false; // the tick's queue skips it
-                    _hideout.PausesDropped++;
+                    { released++; if (hideout) _hideout.PausesDropped++; }
                 }
                 if (ps.Deferred)
                 {
                     ps.Deferred = false;
                     _paceDeferred.Remove(st);
-                    _hideout.PausesDropped++;
+                    { released++; if (hideout) _hideout.PausesDropped++; }
                 }
             }
             BraceFreshStart(st, now); // step 23: a brace ends too
@@ -255,8 +256,10 @@ namespace TraxCombat.Missions
             if (_playerTimer.Holding && ReferenceEquals(_playerTimerOwner, st))
             {
                 ReleasePlayerTimer(PlayerTimerEnd.FreshStart, now);
-                _hideout.YourPauseReleased = true;
+                released++;
+                if (hideout) _hideout.YourPauseReleased = true;
             }
+            return released;
         }
 
         /// <summary>The game's teams at the fight's start: the player's side (his team or an allied one), the boss's (a

@@ -480,6 +480,7 @@ namespace TraxCombat.Missions
             long start = Stopwatch.GetTimestamp();
             TrackPlayer(in r);
             TickHideout(now); // step 19: a hideout's boss fight began → the player's side starts fresh (before this tick's passes)
+            TickTrainingField(now); // step 110: the training field reset your health / a bout began or ended → everyone starts fresh
 
             // Step 33: the sprint - your key, the order poll, the 0.1 s pass (marks the men whose speed steps) - before the loop
             // below applies this tick's recomputes.

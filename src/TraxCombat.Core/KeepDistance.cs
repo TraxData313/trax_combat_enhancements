@@ -12,7 +12,8 @@ namespace TraxCombat.Core
     public readonly struct KeepDistanceRules
     {
         public KeepDistanceRules(bool modEnabled, bool athleticsEnabled, bool keepEnabled, double quietMinSeconds = 2, double quietMaxSeconds = 3,
-            double weaponLengths = 2, double fallbackLengthMetres = 1, double maxBackMetres = 4, double maxHoldSeconds = 10, double reachMetres = 3)
+            double weaponLengths = 2, double fallbackLengthMetres = 1, double maxBackMetres = 4, double maxHoldSeconds = 10, double reachMetres = 3,
+            double tiredBelowPercent = 50, double tiredRecoverPercent = 15)
         {
             ModEnabled = modEnabled;
             AthleticsEnabled = athleticsEnabled;
@@ -24,11 +25,14 @@ namespace TraxCombat.Core
             MaxBackMetres = Clamp(maxBackMetres, 0, 10);
             MaxHoldSeconds = Clamp(maxHoldSeconds, 1, 60);
             ReachMetres = Clamp(reachMetres, 1, 8);
+            TiredBelowPercent = Clamp(tiredBelowPercent, 0, 100);
+            TiredRecoverPercent = Clamp(tiredRecoverPercent, 0, 50);
         }
 
         public static KeepDistanceRules From(TraxSettings s) =>
             new KeepDistanceRules(s.ModEnabled, s.AthleticsEnabled, s.KeepDistanceEnabled, s.KeepDistanceQuietMinSeconds, s.KeepDistanceQuietMaxSeconds,
-                s.KeepDistanceWeaponLengths, s.KeepDistanceFallbackLengthMetres, s.KeepDistanceMaxBackMetres, s.KeepDistanceMaxHoldSeconds, s.KeepDistanceReachMetres);
+                s.KeepDistanceWeaponLengths, s.KeepDistanceFallbackLengthMetres, s.KeepDistanceMaxBackMetres, s.KeepDistanceMaxHoldSeconds, s.KeepDistanceReachMetres,
+                s.KeepDistanceTiredBelowPercent, s.KeepDistanceTiredRecoverPercent);
 
         public bool ModEnabled { get; }
         public bool AthleticsEnabled { get; }
@@ -55,13 +59,20 @@ namespace TraxCombat.Core
         /// <summary>KeepDistanceReachMetres: he backs off only from the enemy he fights while that enemy stands within this.</summary>
         public double ReachMetres { get; }
 
+        /// <summary>KeepDistanceTiredBelowPercent (step 110): at or below this bar (% of his FULL pool) a man who could swing but stands quiet counts as
+        /// waiting too. 0 = step 109 exactly.</summary>
+        public double TiredBelowPercent { get; }
+
+        /// <summary>KeepDistanceTiredRecoverPercent (step 110): a keep begun while tired ends ready at the mark + this (his wound cap − 2 points at most).</summary>
+        public double TiredRecoverPercent { get; }
+
         public bool On => ModEnabled && AthleticsEnabled && KeepEnabled;
 
         public string? OffBecause => !ModEnabled ? "ModEnabled" : !AthleticsEnabled ? "AthleticsEnabled" : !KeepEnabled ? "KeepDistanceEnabled" : null;
 
         public string Describe() =>
             "keep your distance (step 109): an AI man on foot (not held in a shield wall, not routing, not resting) who cannot attack now (his pause, an empty "
-            + "swing stack or a brace) and whose enemy stands within " + F(ReachMetres) + " m backs off after his own quiet wait of " + F(QuietMinSeconds) + "-"
+            + "swing stack or a brace)" + (TiredBelowPercent > 0 ? " or is tired (his bar at or below " + F(TiredBelowPercent) + "%, back in at +" + F(TiredRecoverPercent) + " - step 110)" : string.Empty) + " and whose enemy stands within " + F(ReachMetres) + " m backs off after his own quiet wait of " + F(QuietMinSeconds) + "-"
             + F(QuietMaxSeconds) + " s with no swing, kick, bash, block or hit between them: " + F(WeaponLengths) + " x his weapon's length (" + F(FallbackLengthMetres)
             + " m when unknown), at most " + F(MaxBackMetres) + " m, walking backwards facing him, never past the rest's limit behind his own front; he then keeps "
             + "that gap until he can attack again (or an action, a new target, " + F(MaxHoldSeconds) + " s); the rest wins while it runs - "
@@ -146,6 +157,9 @@ namespace TraxCombat.Core
         /// <summary>A spear (polearm) in his hand at the start - the summary's weapon class.</summary>
         public bool Spear;
 
+        /// <summary>Step 110: this keep counts his tiredness - he is ready only once his bar reaches the tired ready mark too.</summary>
+        public bool ForTired;
+
         /// <summary>He was a candidate at his last look (cannot attack, enemy in reach, not keeping) and when that look was - the "quiet spells broken" count.</summary>
         public bool Candidate;
         public double LastLook = double.NaN;
@@ -167,6 +181,7 @@ namespace TraxCombat.Core
             QuietFrom = now;
             Since = BackSince = double.NaN;
             Candidate = false;
+            ForTired = false;
         }
     }
 
@@ -215,6 +230,24 @@ namespace TraxCombat.Core
 
         /// <summary>He cannot attack now: his step-13 pause runs, his step-32 stack is empty, or he braces (step 23).</summary>
         public static bool CannotAttack(bool pauseRunning, bool stackEmpty, bool braced) => pauseRunning || stackEmpty || braced;
+
+        /// <summary>Step 110: the bar a tired keep comes back in at - the mark + the recover points, never above his wound cap − 2 points (0..1).</summary>
+        public static double TiredReadyAt(in KeepDistanceRules r, double usable)
+        {
+            double at = (r.TiredBelowPercent + r.TiredRecoverPercent) / 100.0;
+            double cap = (double.IsNaN(usable) ? 1.0 : usable) - 0.02;
+            return at < cap ? at : cap;
+        }
+
+        /// <summary>Step 110 (Toni's training field: the tired rookie trainer stood close and stared): a TIRED man waits too, whatever his pause, stack
+        /// or brace say - his bar (0..1 of his FULL pool) at or below the mark starts it, and a keep begun while tired (<paramref name="keepingTired"/>)
+        /// lasts until the bar reaches <see cref="TiredReadyAt"/>. A man at his wound cap has nothing to gather - never. The mark 0 = never (step 109).</summary>
+        public static bool TiredWaits(in KeepDistanceRules r, double fraction, double usable, bool keepingTired)
+        {
+            if (!(r.TiredBelowPercent > 0) || double.IsNaN(fraction)) return false;
+            if (fraction >= TiredReadyAt(in r, usable) - 1e-9) return false;
+            return keepingTired || fraction <= r.TiredBelowPercent / 100.0 + 1e-9;
+        }
 
         /// <summary>The weapon length he counts in (m): his own when known (above 0.1 m), else the fallback.</summary>
         public static double Length(in KeepDistanceRules r, double weaponMetres) =>
@@ -321,6 +354,11 @@ namespace TraxCombat.Core
         /// <summary>Quiet spells broken by an action (a candidate's clock restarted), the enemy stepping in while he held, would-back-offs with the feature OFF.</summary>
         public long QuietBroken, SteppedIn, WouldOff;
 
+        /// <summary>Step 110: keeps begun from tiredness ALONE (he could swing); candidate looks (an eligible man, his enemy within reach) by why he
+        /// waited - [0] pause, [1] empty stack, [2] brace, [3] tired only; quiet waits that ran out (a back-off or an OFF count).</summary>
+        public long TiredKeeps, QuietDone;
+        public readonly long[] CandidateLooks = new long[4];
+
         /// <summary>The distance to his enemy while waiting (his pause or an empty stack), by [0 = OFF, 1 = ON][0 = other, 1 = spear]: sums and looks.</summary>
         public readonly double[,] WaitSum = new double[2, 2];
         public readonly long[,] WaitN = new long[2, 2];
@@ -396,6 +434,9 @@ namespace TraxCombat.Core
                 if (Ends[i] > 0 || i <= (int)KeepEnd.Rest) sb.Append(' ').Append(KeepDistanceMath.EndName((KeepEnd)i)).Append(' ').Append(Ends[i]).Append(',');
             sb.Append(" quiet spells broken by action ").Append(QuietBroken).Append(", the enemy stepped in while he held ").Append(SteppedIn)
               .Append(", would have backed off with it OFF ").Append(WouldOff)
+              .Append("; step 110 - from tiredness alone (he could swing) ").Append(TiredKeeps).Append(" keeps, waits that ran out ").Append(QuietDone)
+              .Append(", candidate looks by why: pause ").Append(CandidateLooks[0]).Append(", empty stack ").Append(CandidateLooks[1]).Append(", brace ")
+              .Append(CandidateLooks[2]).Append(", tired only ").Append(CandidateLooks[3])
               .Append("; the distance to his enemy while waiting (his pause or an empty stack): ON spear ").Append(Wait(true, true)).Append(", other ").Append(Wait(true, false))
               .Append("; OFF spear ").Append(Wait(false, true)).Append(", other ").Append(Wait(false, false))
               .Append("; input frames walked ").Append(MoveFrames).Append(", clamped ").Append(ClampFrames)

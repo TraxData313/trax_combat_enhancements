@@ -1409,6 +1409,16 @@ namespace TraxCombat.Core
             "Keep distance: his enemy within (m)",
             "He backs off only from the enemy he fights while that enemy stands within this - farther off there is nothing to keep away from.");
 
+        // Step 110 (Toni 2026-11-10 in the training field: the tired rookie trainer stood close and stared): a TIRED man who could swing but
+        // stands quiet counts as waiting too (KeepDistanceMath.TiredWaits, AI_NOTES "Step 110").
+        public static readonly ParamDef KeepDistanceTiredBelowPercent = Int("KeepDistanceTiredBelowPercent", 0, 100, CourageGroup,
+            "Keep distance: tired men too, below (%)",
+            "A man whose Athletics bar is at or below this (% of his full bar) also keeps his distance after his quiet wait, even when he could swing - a tired man who only stands and stares backs off and catches his breath. 0 = only men who cannot swing now (their pause, no stored swings, bracing).");
+
+        public static readonly ParamDef KeepDistanceTiredRecoverPercent = Int("KeepDistanceTiredRecoverPercent", 0, 50, CourageGroup,
+            "Keep distance: a tired man comes back after (+%)",
+            "A man keeping his distance because he is tired comes back in once his bar is this many points above the mark before (his wounds cap it; the time limit still applies).");
+
         // ------------------------------------------------------------------ cavalry flocking (step 55)
         // Anton, 2026-10-18: fresh, eager riders dance as in vanilla; the more tired a rider, the bigger the group of his own kind he wants
         // before he attacks again - the flock rides on, pulled toward the unit's centre by its tired riders and toward the goal by its rested
@@ -2523,6 +2533,16 @@ namespace TraxCombat.Core
             "Crouched: the AI refills faster too",
             "The faster refill while crouched for AI fighters too. The game's AI does not crouch in battles (only in scripted scenes), so this rarely matters.");
 
+        // Step 110 (Toni 2026-11-10: "upon resetting my health after a fight with a training master, reset my [Athletics] while I test more"):
+        // the training field's fresh start (TrainingFieldMath, AI_NOTES "Step 110").
+        public static readonly ParamDef TrainingFieldRefill = Bool("TrainingFieldRefill", RefillGroup,
+            "Training field: a fresh start for every bout",
+            "In the game's training field, whenever the game restores your health after a fight with a trainer, and when a trainer's fight begins or ends, you and the trainers refill to a full Athletics bar - stored swings and sprint full, any pause ended - so every bout starts fresh. Off: you carry your tiredness from bout to bout.");
+
+        public static readonly ParamDef TrainingFieldRefillHealthJumpPercent = Int("TrainingFieldRefillHealthJumpPercent", 1, 100, RefillGroup,
+            "Training field: a health reset is a rise of (%)",
+            "Your health rising by this much of your maximum in one moment counts as the training field restoring it (nothing else heals you there).");
+
         // ------------------------------------------------------------------ your Athletics bar (step 6; its switch ShowPlayerBar on the player page since step 59)
 
         // Step 12 (Anton's playtest: no bar in the training field - it runs in the game's walk-about
@@ -3064,7 +3084,7 @@ namespace TraxCombat.Core
             WarCryBackInPercent, WarCryAnswerPercent, WarCryAnswerDelaySeconds, WarCryChargeSharePercent, WarCryChargeMaxMen, WarCryChargeStaggerSeconds,
             WarCryChargeUnitCooldownSeconds, WarCryManCooldownSeconds, WarCryUnitPerSecond, WarCryBattlePerSecond,
             KeepDistanceQuietMinSeconds, KeepDistanceQuietMaxSeconds, KeepDistanceWeaponLengths, KeepDistanceFallbackLengthMetres, KeepDistanceMaxBackMetres,
-            KeepDistanceMaxHoldSeconds, KeepDistanceReachMetres,
+            KeepDistanceMaxHoldSeconds, KeepDistanceReachMetres, KeepDistanceTiredBelowPercent, KeepDistanceTiredRecoverPercent,
             CavalryFlockFreeEagerPercent, CavalryFlockHysteresisPercent, CavalryFlockMidEagerPercent, CavalryFlockMidGroupSize,
             CavalryFlockExhaustedSharePercent, CavalryFlockTimid, CavalryFlockTimidRadiusMetres, CavalryFlockGatherRadiusMetres, CavalryFlockSeparationMetres,
             CavalryFlockLeadSeconds, CavalryFlockTightenWeights, CavalryFlockWaveSeconds, CavalryFlockMaxSeconds,
@@ -3119,7 +3139,7 @@ namespace TraxCombat.Core
             ImpactGuardShieldRight, ImpactGuardParry, ImpactGuardShieldWrong, ImpactGuardNone,
             ImpactStaggerFrom, ImpactShieldDropFrom, ImpactKnockdownFrom,
             RegenDelayBlowTimes, BlowTimeSeconds, FullRegenSecondsStanding, RegenRateNearFullPercent, RegenMultiplierAtFullRun,
-            WalkEffortFraction, HideoutBossFightRefill, CrouchRefillMultiplier, CrouchRefillForAi,
+            WalkEffortFraction, HideoutBossFightRefill, CrouchRefillMultiplier, CrouchRefillForAi, TrainingFieldRefill, TrainingFieldRefillHealthJumpPercent,
             ShowPlayerBarOutsideBattles, ShowAttackRecoveryBar, FlashBarOnEarlyAttack, ShowSprintBar, SprintShowKeyHint,
             BarYellowBelowPercent, BarOrangeBelowPercent, BarRedBelowPercent,
             ShowInOrderMenu, ShowFormationHealth, ShowFormationSpread, FormationSpreadStdDevs, ShowReadyCount, ReadyYellowBelowPercent, ReadyRedBelowPercent, OrderStripUnderCards,

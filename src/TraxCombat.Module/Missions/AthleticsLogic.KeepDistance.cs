@@ -26,7 +26,7 @@ namespace TraxCombat.Missions
         private string _seenKeepText = string.Empty;
         private int _keepCursor;
         private double _keepLastTick = double.NaN, _keepCarry;
-        private bool _keepClosed, _firstKeep, _firstKeepHold, _firstKeepEnd, _firstKeepReady, _firstKeepStepIn, _firstKeepOff, _firstKeepAgain;
+        private bool _keepClosed, _firstKeepTired, _firstKeep, _firstKeepHold, _firstKeepEnd, _firstKeepReady, _firstKeepStepIn, _firstKeepOff, _firstKeepAgain;
 
         internal KeepDistanceStats KeepStats => _keepStats;
 
@@ -137,7 +137,11 @@ namespace TraxCombat.Missions
             var m = st.Keep;
             KeepWaits(st, in ar, in sr, out bool pause, out bool empty, out bool braced);
             bool cannot = KeepDistanceMath.CannotAttack(pause, empty, braced);
-            if (!cannot && !m.Keeping)
+            // Step 110: a TIRED man who could swing but stands quiet waits too (managed reads: his bar, his wound cap)
+            double bar = st.Fraction;
+            bool tired = KeepDistanceMath.TiredWaits(in r, bar, AthleticsMath.UsableFraction(in ar, st), m.Keeping && m.ForTired);
+            bool waiting = cannot || tired;
+            if (!waiting && !m.Keeping)
             {
                 m.Candidate = false; // he can attack - the game's own (nothing read)
                 return;
@@ -170,15 +174,25 @@ namespace TraxCombat.Missions
             double last = KeepLastAction(st, foeSt, now);
             if (m.Keeping)
             {
-                var v = KeepDistanceMath.Verdict(in r, resting, eligible, last > m.Since + 1e-9, foe != null && ReferenceEquals(foe, m.Target), cannot, now - m.Since);
+                if (tired) m.ForTired = true; // a keep begun for a pause that finds him tired waits for his bar too
+                var v = KeepDistanceMath.Verdict(in r, resting, eligible, last > m.Since + 1e-9, foe != null && ReferenceEquals(foe, m.Target), waiting, now - m.Since);
                 if (v != KeepEnd.Count) EndKeep(st, v, now, native: true);
                 return;
             }
-            if (!KeepDistanceMath.Candidate(in r, eligible, resting, cannot, dist))
+            if (!KeepDistanceMath.Candidate(in r, eligible, resting, waiting, dist))
             {
                 m.Candidate = false;
                 m.LastLook = now;
                 return;
+            }
+            _keepStats.CandidateLooks[pause ? 0 : empty ? 1 : braced ? 2 : 3]++;
+            if (tired && !cannot && !_firstKeepTired)
+            {
+                _firstKeepTired = true;
+                TraxLog.Info("keep", "first TIRED man near his enemy who could swing (step 110) at " + Sec(now) + " s: " + Name(st) + " - bar " + Pct(bar) + " (at or below "
+                    + F1(r.TiredBelowPercent) + "%; no pause, swings stored, no brace), his enemy " + F2(dist) + " m off; he backs off after his quiet "
+                    + F1(KeepDistanceMath.QuietSeconds(in r, 0)) + "-" + F1(KeepDistanceMath.QuietSeconds(in r, 1)) + " s and comes back at " + Pct(KeepDistanceMath.TiredReadyAt(in r, AthleticsMath.UsableFraction(in ar, st)))
+                    + (r.On ? string.Empty : " - OFF (" + r.OffBecause + "): counted only"));
             }
             if (m.Candidate && !double.IsNaN(m.LastLook) && last > m.LastLook + 1e-9)
             {
@@ -189,6 +203,7 @@ namespace TraxCombat.Missions
             m.Candidate = true;
             m.LastLook = now;
             if (!KeepDistanceMath.Quiet(now, KeepDistanceMath.QuietStart(last, m.QuietFrom), m.QuietRoll)) return;
+            _keepStats.QuietDone++;
             if (!r.On)
             {
                 _keepStats.WouldOff++;
@@ -203,6 +218,11 @@ namespace TraxCombat.Missions
                 return;
             }
             BeginKeep(st, m, foe!, dist, px, py, length, spear, pause, empty, braced, now, in r);
+            if (m.Keeping)
+            {
+                m.ForTired = tired;
+                if (tired && !cannot) _keepStats.TiredKeeps++;
+            }
         }
 
         private void BeginKeep(TrackedAgent st, KeepMind m, Agent foe, double dist, double px, double py, double length, bool spear, bool pause, bool empty,
@@ -228,7 +248,7 @@ namespace TraxCombat.Missions
             if (!_firstKeep)
             {
                 _firstKeep = true;
-                TraxLog.Info("keep", "first man KEEPS HIS DISTANCE at " + Sec(now) + " s: " + Name(st) + " (" + (pause ? "his pause" : empty ? "an empty swing stack" : "bracing")
+                TraxLog.Info("keep", "first man KEEPS HIS DISTANCE at " + Sec(now) + " s: " + Name(st) + " (" + (pause ? "his pause" : empty ? "an empty swing stack" : braced ? "bracing" : "tired - bar " + Pct(st.Fraction) + ", he could swing (step 110)")
                     + (braced && pause ? " + bracing" : string.Empty) + ", " + (spear ? "a spear" : "not a spear") + " " + (double.IsNaN(length) ? "length unknown" : F2(length) + " m")
                     + ") " + F2(dist) + " m from his enemy after a quiet " + F1(now - KeepDistanceMath.QuietStart(KeepLastAction(st, Get(foe), now), m.QuietFrom)) + " s - he walks back "
                     + F2(m.Back) + " m facing him, to " + F2(m.Goal) + " m");
