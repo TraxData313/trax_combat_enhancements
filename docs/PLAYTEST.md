@@ -2241,6 +2241,35 @@ vs the committed swing: agree N, differ N` and `the judged direction vs the cont
 "the judged direction vs the contact's: differ" stay near 0? If the pose read-back says "NOT shown" a lot, send the log - that is the engine
 refusing the forced guard and needs another route.
 
+**D82. OPENINGS - THE HOLD-BLOCK (step 107, ~15 min - the training field first, then a 1 v 1 on foot or a tournament round: a sword, a two-handed axe, then a shieldman).**
+*What changed:* step 106's "after his block" openings are replaced (`OpeningHoldsEnabled`, Advanced > Impact, on; off = the old ones). Now YOUR
+HIT that lands in front makes him HOLD a block in a random direction - his guard (or his shield) stays there, he cannot attack, and the red arrow
+shows the OPENING steady the whole time (1.2 s with a sword of speed 95; longer with a slow weapon, at most x1.5). A shieldman also starts one when
+his shield blocks you - but short: about 0.5 s behind a big kite, 1.0 s behind a small round shield. With a SWORD strike EXACTLY the arrow's side;
+with an axe, a mace or a spear ANY side but the one his guard covers - he reels ("OPENING!"), and the arrow then shows your PERFECT STRIKE side (x2-4
+sword, x2-3 axe, x1.5-2 spear - the quicker you started the winning swing after the hold began, the higher). Strike INTO his guard and he blocks it:
+he holds again, 0.4 s longer, +0.4 s more if your next swing starts within 0.3 s of his block (none after 1 s), at most 2.5 s. A sword striking a
+third side just lands normally and starts a fresh hold. When a hold runs out he may COUNTER-SWING at once: 30 % after a first hold, always after a
+hold you made longer - time your block on it (the defensive game). After YOUR timed block the PERFECT STRIKE is now x2-x3 for every weapon.
+**Try 1 - a sword on the training field:** hit a sparring partner once - does his guard freeze in one direction with the red arrow steady on the
+opposite side? Swing exactly at the arrow - he reels, finish him on the new arrow (x4 if you were quick).
+**Try 2 - swing INTO his guard on purpose two or three times quickly:** each block should make him hold longer (watch the arrow stay); then stop and
+wait - when the hold ends he should attack you at once (always, after you made it longer). Block it in time - your timed block's riposte.
+**Try 3 - a two-handed axe:** any side but his guard wins; note how the slower axe's hold feels longer.
+**Try 4 - a shieldman (a kite shield, then a small round one):** his first block starts a short hold - try to strike the arrow before it ends
+("almost impossible" behind the kite); a winning strike shows "GUARD BROKEN" and his shield comes down; strikes he catches on the shield each
+lengthen the hold. **Try 5:** a hit from behind still makes him reel at once.
+**Log:** `[impact] openings: first HOLD-BLOCK at ...`; `YOU: openings (hold-block): your right swing landed -> X HOLDS his guard in the high guard
+for 1.20 s (your weapon's speed 95 -> x1.00); the red arrow on your thrust - your sword must strike exactly there`; `... your thrust commits against
+X's high guard - WINS the hold, his 'can defend' off until the blow`; `... BLOCKED your overhead into his held guard - LINK 1: held again 1.60 s ...`;
+`... your wind-up 0.25 s after his block - chain-speed bonus +0.40 s`; `... X's hold ran out (lengthened by 2 link(s)) - counter-swing chance 100%: he
+COUNTER-SWINGS - his left swing ...`. The [summary] "openings - hold-block (step 107; ON)" line: holds, LINKS, hold lengths, the chain-speed bonus,
+your swings in a hold by weapon (WINS / into his guard / a third side), STAGGERS by weapon, 'a winning swing blocked anyway', COUNTER-SWINGS
+rolled / thrown / released, SHIELDMEN holds and first-hold mean, shields lowered; the "openings - the forced guard" line's live pose read-back
+(`the balance guard with a weapon - shown at 0.2 s N ...`) tells whether his guard really showed. **Tell Claude:** do you SEE his guard hold for the
+whole arrow? Does he really swing when a hold ends (the counter-swing is new engine ground - if "released" counts but he never swings, say so)? Is
+the kite's 0.5 s too hard / the 1.2 s too easy? And is "a winning swing blocked anyway" near 0?
+
 ---
 
 ## E. Your Athletics bar, the orders-menu strip and the ALT markers (20 min)

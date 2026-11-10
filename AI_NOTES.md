@@ -10800,3 +10800,14 @@ Module `AthleticsLogic.OpeningHolds.cs` (one hold record, one counter-swing reco
 bits) - the [summary] "released" count says the logic ran, the eye / the timed-block lines say whether he swung; (2) that the forced guard is shown
 for a whole 1-2.5 s hold (106f's live pose read-back covers it); (3) that a shield lowered at your COMMIT (not at the wind-up as in 106b) is down in
 time for the blow - "a winning swing blocked anyway" counts it; (4) left / right guards (`OpeningSidesCrossed`) as before.
+
+### 107c - built (2026-11-10)
+Smoke "OPENINGS, THE HOLD-BLOCK (step 107)" (`tools/OfflineSmoke/Program.Step107.cs`, 238 steps green): the engine's attack bits checked against
+`MovementControlFlag` and the counter phase bits above every movement bit; a SWORD (the hold's frame and arrow, a third side = a fresh hold, the exact
+side takes 'can defend' at the commit, the stagger 0.8 s, the perfect strike x4); an AXE at speed 80 (x95/80; into his guard = link 1 re-held
++0.4 from his block; the full bonus; any other side wins, 1.1 s at link 2); LINKS (the partial bonus 0.7 s after the block, link 2, the hold runs out
+at its end, the 100 % counter-swing: ready frame = one attack bit with his guard out, release = all out, let go; a block right after = link 3; the
+lapse); the first hold's 30 % (thrown at 0.29, not at 0.31); a SHIELDMAN (a kite's block = 0.5 s, the shield turned, a winning strike lowers it and
+keeps it down while the swing is in the air past the hold's end, the stagger, GUARD BROKEN; a small shield 1.0 s; his shield stopping a strike = a
+link); a back hit still reels; the exits (OpeningHoldsEnabled, the master switch, OpeningsEnabled cutting a counter-swing, a target switch, removed
+without an engine call, the mission end); the [summary] line. PLAYTEST D82. Next: 107d - an independent review.
