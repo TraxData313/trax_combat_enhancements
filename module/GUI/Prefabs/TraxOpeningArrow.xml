@@ -8,6 +8,8 @@
     RED: the brush's own colour (Brush.Color - the default style layer's colour, which the brush renderer multiplies onto
     the sprite; vanilla binds Brush.Color the same way in Compass.xml / PowerLevelComparer.xml). A widget's plain Color is NOT
     drawn by a BrushWidget, so it is not used.
+    Step 112: the colour is BOUND (@ArrowColor, a Color) - the arrow's role picks it: the opening to hit red (OpeningArrowColor),
+    the perfect-strike side gold (PerfectStrikeArrowColor) - Core ArrowColours.
     The strength: Brush.GlobalAlphaFactor (@...Alpha, float - vanilla's SPChatLog.xml binds it the same way); IsVisible
     (@...Shown) keeps an unlit arrow from drawing at all.
     The places are attacker-relative like vanilla's: TOP = your overhead (AttackUp), BOTTOM = your thrust (AttackDown),
@@ -16,10 +18,10 @@
   <Window>
     <Widget Id="TraxOpeningArrow" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" DoNotAcceptEvents="true" DoNotPassEventsToChildren="true">
       <Children>
-        <BrushWidget Id="TopArrow" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="31" SuggestedHeight="131" HorizontalAlignment="Center" VerticalAlignment="Center" PositionYOffset="-350" Sprite="crosshair_arrow_vertical" Brush.Color="#F01E1EFF" Brush.GlobalAlphaFactor="@TopAlpha" IsVisible="@TopShown" DoNotAcceptEvents="true" />
-        <BrushWidget Id="BottomArrow" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="31" SuggestedHeight="131" HorizontalAlignment="Center" VerticalAlignment="Center" PositionYOffset="350" Sprite="crosshair_arrow_vertical" Brush.VerticalFlip="true" Brush.Color="#F01E1EFF" Brush.GlobalAlphaFactor="@BottomAlpha" IsVisible="@BottomShown" DoNotAcceptEvents="true" />
-        <BrushWidget Id="LeftArrow" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="131" SuggestedHeight="31" HorizontalAlignment="Center" VerticalAlignment="Center" PositionXOffset="-350" Sprite="crosshair_arrow" Brush.Color="#F01E1EFF" Brush.GlobalAlphaFactor="@LeftAlpha" IsVisible="@LeftShown" DoNotAcceptEvents="true" />
-        <BrushWidget Id="RightArrow" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="131" SuggestedHeight="31" HorizontalAlignment="Center" VerticalAlignment="Center" PositionXOffset="350" Sprite="crosshair_arrow" Brush.HorizontalFlip="true" Brush.Color="#F01E1EFF" Brush.GlobalAlphaFactor="@RightAlpha" IsVisible="@RightShown" DoNotAcceptEvents="true" />
+        <BrushWidget Id="TopArrow" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="31" SuggestedHeight="131" HorizontalAlignment="Center" VerticalAlignment="Center" PositionYOffset="-350" Sprite="crosshair_arrow_vertical" Brush.Color="@ArrowColor" Brush.GlobalAlphaFactor="@TopAlpha" IsVisible="@TopShown" DoNotAcceptEvents="true" />
+        <BrushWidget Id="BottomArrow" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="31" SuggestedHeight="131" HorizontalAlignment="Center" VerticalAlignment="Center" PositionYOffset="350" Sprite="crosshair_arrow_vertical" Brush.VerticalFlip="true" Brush.Color="@ArrowColor" Brush.GlobalAlphaFactor="@BottomAlpha" IsVisible="@BottomShown" DoNotAcceptEvents="true" />
+        <BrushWidget Id="LeftArrow" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="131" SuggestedHeight="31" HorizontalAlignment="Center" VerticalAlignment="Center" PositionXOffset="-350" Sprite="crosshair_arrow" Brush.Color="@ArrowColor" Brush.GlobalAlphaFactor="@LeftAlpha" IsVisible="@LeftShown" DoNotAcceptEvents="true" />
+        <BrushWidget Id="RightArrow" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="131" SuggestedHeight="31" HorizontalAlignment="Center" VerticalAlignment="Center" PositionXOffset="350" Sprite="crosshair_arrow" Brush.HorizontalFlip="true" Brush.Color="@ArrowColor" Brush.GlobalAlphaFactor="@RightAlpha" IsVisible="@RightShown" DoNotAcceptEvents="true" />
       </Children>
     </Widget>
   </Window>

@@ -72,7 +72,8 @@ namespace TraxCombat.Core
             Held = false;
         }
 
-        /// <summary>The reading to show this frame for the <paramref name="live"/> one; <paramref name="heldNow"/> = a different direction was held back.</summary>
+        /// <summary>The reading to show this frame for the <paramref name="live"/> one; <paramref name="heldNow"/> = a different direction (or, step 112,
+        /// a different role on the same side - its colour) was held back.</summary>
         public ArrowReading Filter(double now, double max, in ArrowReading live, out bool heldNow)
         {
             heldNow = false;
@@ -88,8 +89,8 @@ namespace TraxCombat.Core
                 Mask = live.Mask;
                 return live;
             }
-            if (live.Mask == Mask) return live;
-            heldNow = true;
+            if (live.Mask == Mask && live.Cue == Cue) return live;
+            heldNow = true; // step 112: a ROLE change on the same side (the hold's red opening -> the gold perfect-strike side) is held back too - the colour never changes mid-swing
             Held = true;
             return new ArrowReading { Cue = Cue, Mask = Mask, Alpha = 1f };
         }
@@ -176,5 +177,91 @@ namespace TraxCombat.Core
             if (Lit(mask, OpeningArrow.Right)) s += (s.Length > 0 ? " + " : string.Empty) + "right";
             return s.Length > 0 ? s : "none";
         }
+    }
+
+    /// <summary>Step 112 (Toni 2026-11-10: "Make the PERFECT STRIKE [arrow] gold"): what the arrow at the crosshair is FOR - its colour follows it.</summary>
+    public enum ArrowRole : byte
+    {
+        /// <summary>THE OPENING - the side to hit: step 107's hold (he holds an unbalanced block) and step 106's flash. Red by default.</summary>
+        Opening,
+
+        /// <summary>THE PERFECT STRIKE SIDE - he staggers (an opening's reel, a timed block's riposte, a rider's reel): the side to finish him from.
+        /// Gold by default, like the "PERFECT STRIKE x2.8" line.</summary>
+        PerfectStrike,
+    }
+
+    /// <summary>
+    /// Step 112 - THE ARROW'S COLOUR BY ITS ROLE, the pure part (AI_NOTES "Step 112", DESIGN decision 101). The role is the cue's
+    /// (<see cref="RoleOf"/>: <see cref="ArrowCue.Finish"/> = the perfect strike, a hold / a flash = the opening); the cue the HUD draws is the one
+    /// after step 111's <see cref="ArrowLatch"/>, which now holds a role change on the same side too, so the colour changes only with the role and
+    /// never while your swing is in the air. The colours are settings (<c>OpeningArrowColor</c> / <c>PerfectStrikeArrowColor</c>, hex RRGGBB or
+    /// RRGGBBAA, '#' optional); a text that is not one falls back to the setting's default. No allocation (<see cref="TryParse"/> walks the characters).
+    /// </summary>
+    public static class ArrowColours
+    {
+        /// <summary>The role of a cue: the perfect-strike side for <see cref="ArrowCue.Finish"/>, the opening for everything else.</summary>
+        public static ArrowRole RoleOf(ArrowCue cue) => cue == ArrowCue.Finish ? ArrowRole.PerfectStrike : ArrowRole.Opening;
+
+        /// <summary>"opening" / "PERFECT STRIKE" - log lines.</summary>
+        public static string RoleName(ArrowRole role) => role == ArrowRole.PerfectStrike ? "PERFECT STRIKE" : "opening";
+
+        /// <summary>The setting that colours <paramref name="role"/>.</summary>
+        public static ParamDef SettingFor(ArrowRole role) => role == ArrowRole.PerfectStrike ? SettingsSchema.PerfectStrikeArrowColor : SettingsSchema.OpeningArrowColor;
+
+        /// <summary>The colour text set for <paramref name="role"/> (as typed - <see cref="TryParse"/> reads it).</summary>
+        public static string TextFor(ArrowRole role, TraxSettings s) => role == ArrowRole.PerfectStrike ? s.PerfectStrikeArrowColor : s.OpeningArrowColor;
+
+        /// <summary>The default colour text of <paramref name="role"/> (defaults.json) - the fallback for a text that is not a colour.</summary>
+        public static string DefaultTextFor(ArrowRole role)
+        {
+            var p = SettingFor(role);
+            return p.Format(p.Default);
+        }
+
+        /// <summary>
+        /// The colour of <paramref name="role"/> as 0-1 channels: the set text, else (not a colour) the default's, else opaque white.
+        /// <paramref name="usedDefault"/> = the set text was not a colour.
+        /// </summary>
+        public static void Resolve(ArrowRole role, TraxSettings s, out float r, out float g, out float b, out float a, out bool usedDefault)
+        {
+            usedDefault = !TryParse(TextFor(role, s), out r, out g, out b, out a);
+            if (usedDefault && !TryParse(DefaultTextFor(role), out r, out g, out b, out a))
+                r = g = b = a = 1f;
+        }
+
+        /// <summary>
+        /// A hex colour: RRGGBB (opaque) or RRGGBBAA, an optional leading '#', spaces around ignored, either case. False (white, opaque) for anything
+        /// else.
+        /// </summary>
+        public static bool TryParse(string? text, out float r, out float g, out float b, out float a)
+        {
+            r = g = b = a = 1f;
+            if (text == null) return false;
+            int start = 0, end = text.Length;
+            while (start < end && char.IsWhiteSpace(text[start])) start++;
+            while (end > start && char.IsWhiteSpace(text[end - 1])) end--;
+            if (start < end && text[start] == '#') start++;
+            int n = end - start;
+            if (n != 6 && n != 8) return false;
+            uint v = 0;
+            for (int i = start; i < end; i++)
+            {
+                int d = HexDigit(text[i]);
+                if (d < 0) return false;
+                v = (v << 4) | (uint)d;
+            }
+            if (n == 6) v = (v << 8) | 0xFF;
+            r = ((v >> 24) & 0xFF) / 255f;
+            g = ((v >> 16) & 0xFF) / 255f;
+            b = ((v >> 8) & 0xFF) / 255f;
+            a = (v & 0xFF) / 255f;
+            return true;
+        }
+
+        private static int HexDigit(char c) =>
+            c >= '0' && c <= '9' ? c - '0'
+            : c >= 'a' && c <= 'f' ? c - 'a' + 10
+            : c >= 'A' && c <= 'F' ? c - 'A' + 10
+            : -1;
     }
 }

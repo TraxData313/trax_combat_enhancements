@@ -2405,6 +2405,15 @@ namespace TraxCombat.Core
             "Perfect strike: a swing begun in time keeps him open (s)",
             "A swing you START while he reels keeps his guard down and the perfect-strike chance open until it lands or misses, at most this long after his reel ends - so a slow overhead begun in time is not blocked by a reel that ran out while it was in the air. 0 = the window closes with his reel.");
 
+        // Step 112: the arrow's colour by its role - the opening to hit (red) and the perfect-strike side (gold, like the PERFECT STRIKE line).
+        public static readonly ParamDef OpeningArrowColor = Text("OpeningArrowColor", ImpactGroup,
+            "Arrow colour: the opening to hit",
+            "The colour of the arrow at your crosshair while it shows the side to hit - his unbalanced block (and the flash when he goes off balance). A hex colour RRGGBB or RRGGBBAA (# optional), for example F01E1E (red); anything else = the default. It is multiplied onto the game's own arrow picture.");
+
+        public static readonly ParamDef PerfectStrikeArrowColor = Text("PerfectStrikeArrowColor", ImpactGroup,
+            "Arrow colour: the perfect strike",
+            "The colour of the arrow at your crosshair while he staggers and it shows the side for a PERFECT STRIKE (after an OPENING, a timed block's riposte, a rider's reel). A hex colour RRGGBB or RRGGBBAA (# optional), for example FFD700 (gold, like the PERFECT STRIKE line); anything else = the default. The colour changes only with the arrow's role, never while your swing is in the air.");
+
         public static readonly ParamDef ImpactMismatchWeight = Float("ImpactMismatchWeight", 0, 2, ImpactGroup,
             "Mismatch weight (pressure per doubling)",
             "How much an outmatched man suffers: every doubling of the mismatch beyond the even band adds this to the pressure on him (0.25: an enemy four times stronger counts as much as being about a third tired). 0 = only tiredness counts.");
@@ -3145,7 +3154,7 @@ namespace TraxCombat.Core
             OpeningHoldsEnabled, OpeningHoldSwingSeconds, OpeningHoldReadMarginAtSkill0, OpeningHoldReadMarginAtSkill200, OpeningHoldRecoveryCapSeconds, OpeningHoldSpeedReference, OpeningHoldSpeedFactorMin, OpeningHoldSpeedFactorMax,
             OpeningHoldPerLinkSeconds, OpeningHoldChainBonusSeconds, OpeningHoldChainBonusFullSeconds, OpeningHoldChainBonusZeroSeconds, OpeningHoldCapSeconds,
             OpeningHoldShieldSmallSeconds, OpeningHoldShieldBigSeconds, OpeningHoldShieldSmallLength, OpeningHoldShieldBigLength, OpeningCounterSwingFirstPercent, OpeningCounterSwingLaterPercent, PerfectStrikeDefensiveMin, PerfectStrikeDefensiveMax,
-            OpeningHoldArrowShow, OpeningHoldMessage, OpeningLogInfoLines, OpeningHoldEndsWhenYouReel, OpeningArrowSwingHoldMaxSeconds, PerfectStrikeFlightSeconds,
+            OpeningHoldArrowShow, OpeningHoldMessage, OpeningLogInfoLines, OpeningHoldEndsWhenYouReel, OpeningArrowSwingHoldMaxSeconds, PerfectStrikeFlightSeconds, OpeningArrowColor, PerfectStrikeArrowColor,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
             ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,

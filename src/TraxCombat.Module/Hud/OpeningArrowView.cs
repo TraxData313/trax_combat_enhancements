@@ -12,7 +12,8 @@ namespace TraxCombat.Hud
     /// tool) and the PERFECT STRIKE side steady while a man you can finish reels (the defensive game's reel too). Its switch is
     /// <c>OpeningArrowShow</c> (the player page); the strength is read EVERY FRAME (<see cref="OnLayerFrame"/>) - a flash lives 0.2 s.
     ///
-    /// Log: the first flash and the first steady arrow in full; the [summary] "opening arrow" line (flashes, steady cues, seconds shown).
+    /// Step 112: the colour by the ROLE (<see cref="ArrowColours"/>): the opening to hit red, the perfect-strike side gold - both settings.
+    /// Log: the first flash and the first steady arrow in full, each with its role and colour; the [summary] "opening arrow" line (flashes, steady cues, seconds shown).
     /// </summary>
     public sealed class OpeningArrowView : TraxHudView
     {
@@ -25,6 +26,12 @@ namespace TraxCombat.Hud
         private int _flashes, _finishes;
         private double _flashSeconds, _finishSeconds;
         private bool _firstFlashLogged, _firstFinishLogged, _firstHoldLogged;
+
+        // step 112: the colour shown - its role and the setting's text it was read from (a change of either re-reads it; reference compares, no allocation)
+        private ArrowRole _colorRole;
+        private string? _colorText;
+        private int _roleChanges;
+        private bool _badColorLogged;
 
         public OpeningArrowView()
             : base("opening arrow", Movie, SettingsSchema.OpeningArrowShow)
@@ -60,6 +67,8 @@ namespace TraxCombat.Hud
             _vm = new OpeningArrowVM();
             _lastCue = ArrowCue.None;
             _lastMask = 0;
+            _colorText = null; // step 112: the colour is read at the first frame
+            _colorRole = ArrowRole.Opening;
             return _vm;
         }
 
@@ -75,6 +84,7 @@ namespace TraxCombat.Hud
             AthleticsLogic.TryGetOpeningArrow(f.Player, f.Now, out var r);
             vm.Set(in r);
             var cue = r.Shows ? r.Cue : ArrowCue.None;
+            UpdateColor(vm, cue);
             if (cue != ArrowCue.None && (cue != _lastCue || r.Mask != _lastMask))
             {
                 if (cue == ArrowCue.Hold) // step 107: the opening of a hold-block, steady for the hold
@@ -84,7 +94,7 @@ namespace TraxCombat.Hud
                     {
                         _firstHoldLogged = true;
                         TraxLog.Limited("hud", "opening arrow: first HOLD-BLOCK opening at " + S1(f.Now) + " s - " + OpeningArrowMath.ArrowsName(r.Mask)
-                            + " (the side he left open, steady while he holds his block)", "hud-arrow");
+                            + " (the side he left open, steady while he holds his block) - " + RoleText(ArrowRole.Opening), "hud-arrow");
                     }
                 }
                 else if (cue == ArrowCue.Flash)
@@ -94,7 +104,7 @@ namespace TraxCombat.Hud
                     {
                         _firstFlashLogged = true;
                         TraxLog.Limited("hud", "opening arrow: first FLASH at " + S1(f.Now) + " s - " + OpeningArrowMath.ArrowsName(r.Mask) + " (the side to hit; fade in "
-                            + F2(OpeningArrowMath.FadeInSeconds) + " s to the perfect moment, out " + F2(OpeningArrowMath.FadeOutSeconds) + " s)", "hud-arrow");
+                            + F2(OpeningArrowMath.FadeInSeconds) + " s to the perfect moment, out " + F2(OpeningArrowMath.FadeOutSeconds) + " s) - " + RoleText(ArrowRole.Opening), "hud-arrow");
                     }
                 }
                 else
@@ -104,7 +114,7 @@ namespace TraxCombat.Hud
                     {
                         _firstFinishLogged = true;
                         TraxLog.Limited("hud", "opening arrow: first PERFECT STRIKE side at " + S1(f.Now) + " s - " + OpeningArrowMath.ArrowsName(r.Mask)
-                            + ", steady while he reels", "hud-arrow");
+                            + ", steady while he reels - " + RoleText(ArrowRole.PerfectStrike), "hud-arrow");
                     }
                 }
             }
@@ -119,15 +129,39 @@ namespace TraxCombat.Hud
             if (_vm == null) return false;
             if (first)
                 TraxLog.Limited("hud", "opening arrow: layer up at " + S1(f.Now) + " s - vanilla's crosshair arrows (" + OpeningArrowMath.ArrowLength + " x "
-                    + OpeningArrowMath.ArrowThickness + " px, " + OpeningArrowMath.ArrowOffset + " px from the centre) in red; the flash with OpeningsEnabled "
+                    + OpeningArrowMath.ArrowThickness + " px, " + OpeningArrowMath.ArrowOffset + " px from the centre); " + RoleText(ArrowRole.Opening) + ", " + RoleText(ArrowRole.PerfectStrike) + "; the flash with OpeningsEnabled "
                     + (TraxSettings.Shared.OpeningsEnabled ? "on" : "off - only the K test tool's") + ", the perfect-strike side always", "hud-arrow");
             return true;
         }
 
+        /// <summary>Step 112: the colour follows the ROLE of the cue shown (after step 111's latch - never mid-swing); a hidden arrow keeps its colour.
+        /// The setting's text is re-read when it changes (MCM mid-battle): live.</summary>
+        private void UpdateColor(OpeningArrowVM vm, ArrowCue cue)
+        {
+            var role = cue != ArrowCue.None ? ArrowColours.RoleOf(cue) : _colorRole;
+            string text = ArrowColours.TextFor(role, TraxSettings.Shared);
+            if (_colorText != null && role == _colorRole && ReferenceEquals(text, _colorText)) return;
+            if (_colorText != null && role != _colorRole) _roleChanges++;
+            _colorRole = role;
+            _colorText = text;
+            ArrowColours.Resolve(role, TraxSettings.Shared, out float cr, out float cg, out float cb, out float ca, out bool usedDefault);
+            vm.SetColor(cr, cg, cb, ca);
+            if (usedDefault && !_badColorLogged)
+            {
+                _badColorLogged = true;
+                TraxLog.Limited("hud", "opening arrow: " + ArrowColours.SettingFor(role).Key + " \"" + text + "\" is not a hex colour (RRGGBB or RRGGBBAA) - the default "
+                    + ArrowColours.DefaultTextFor(role) + " is used", "hud-arrow");
+            }
+        }
+
+        /// <summary>"role: PERFECT STRIKE, colour FFD700" - the first-time lines (allocates; log only).</summary>
+        private static string RoleText(ArrowRole role) => "role: " + ArrowColours.RoleName(role) + ", colour " + ArrowColours.TextFor(role, TraxSettings.Shared);
+
         internal override void AddSummaryLines(List<string> lines)
         {
             lines.Add("hud: opening arrow (step 106c) - flashes " + _flashes + " (" + F2(_flashSeconds) + " s lit), perfect-strike sides shown " + _finishes
-                      + " (" + F2(_finishSeconds) + " s steady)");
+                      + " (" + F2(_finishSeconds) + " s steady); colour by role (step 112): " + RoleText(ArrowRole.Opening) + ", " + RoleText(ArrowRole.PerfectStrike)
+                      + ", the colour changed " + _roleChanges + " times");
         }
     }
 }

@@ -3195,6 +3195,21 @@
   // (range 0.0 to 3.0)
   "PerfectStrikeFlightSeconds": 0.8,
 
+  // The colour of the arrow at your crosshair while it shows the side to hit - his unbalanced
+  // block (and the flash when he goes off balance). A hex colour RRGGBB or RRGGBBAA (#
+  // optional), for example F01E1E (red); anything else = the default. It is multiplied onto the
+  // game's own arrow picture.
+  // (an item id (letters, digits, _ . -; empty = none))
+  "OpeningArrowColor": "F01E1E",
+
+  // The colour of the arrow at your crosshair while he staggers and it shows the side for a
+  // PERFECT STRIKE (after an OPENING, a timed block's riposte, a rider's reel). A hex colour
+  // RRGGBB or RRGGBBAA (# optional), for example FFD700 (gold, like the PERFECT STRIKE line);
+  // anything else = the default. The colour changes only with the arrow's role, never while
+  // your swing is in the air.
+  // (an item id (letters, digits, _ . -; empty = none))
+  "PerfectStrikeArrowColor": "FFD700",
+
   // How much an outmatched man suffers: every doubling of the mismatch beyond the even band
   // adds this to the pressure on him (0.25: an enemy four times stronger counts as much as
   // being about a third tired). 0 = only tiredness counts.

@@ -13,6 +13,7 @@ namespace TraxCombat.Hud
     {
         private float _topAlpha, _bottomAlpha, _leftAlpha, _rightAlpha;
         private bool _topShown, _bottomShown, _leftShown, _rightShown;
+        private Color _arrowColor = new Color(1f, 1f, 1f, 1f);
 
         /// <summary>One frame's reading (an empty one hides all four).</summary>
         internal void Set(in ArrowReading r)
@@ -24,6 +25,9 @@ namespace TraxCombat.Hud
             Apply(on && OpeningArrowMath.Lit(r.Mask, OpeningArrow.Left), a, ref _leftShown, ref _leftAlpha, nameof(LeftShown), nameof(LeftAlpha));
             Apply(on && OpeningArrowMath.Lit(r.Mask, OpeningArrow.Right), a, ref _rightShown, ref _rightAlpha, nameof(RightShown), nameof(RightAlpha));
         }
+
+        /// <summary>Step 112: the arrows' colour (the role's - Core <see cref="ArrowColours"/>); a change only when it really changed.</summary>
+        internal void SetColor(float r, float g, float b, float a) => ArrowColor = new Color(r, g, b, a);
 
         private void Apply(bool lit, float alpha, ref bool shown, ref float stored, string shownName, string alphaName)
         {
@@ -38,6 +42,14 @@ namespace TraxCombat.Hud
                 shown = lit;
                 OnPropertyChangedWithValue(lit, shownName);
             }
+        }
+
+        /// <summary>Step 112: the brush colour of all four arrows (<c>Brush.Color</c>, a Color - multiplied onto vanilla's sprite).</summary>
+        [DataSourceProperty]
+        public Color ArrowColor
+        {
+            get => _arrowColor;
+            set { if (value != _arrowColor) { _arrowColor = value; OnPropertyChangedWithValue(value, nameof(ArrowColor)); } }
         }
 
         [DataSourceProperty]

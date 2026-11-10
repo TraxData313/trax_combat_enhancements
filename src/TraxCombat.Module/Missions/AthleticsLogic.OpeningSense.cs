@@ -136,7 +136,8 @@ namespace TraxCombat.Missions
                 {
                     _senseFirstArrowHeld = true;
                     TraxLog.Info("impact", "openings: first ARROW HELD during your swing at " + Sec(now) + " s (step 111) - it showed " + OpeningArrowMath.ArrowsName(_arrowLatch.Mask)
-                                           + " at your wind-up and would have turned to " + OpeningArrowMath.ArrowsName(live.Mask) + " in the air; it turns only when your swing lands or misses");
+                                           + " (" + ArrowColours.RoleName(ArrowColours.RoleOf(_arrowLatch.Cue)) + ") at your wind-up and would have turned to " + OpeningArrowMath.ArrowsName(live.Mask)
+                                           + " (" + ArrowColours.RoleName(ArrowColours.RoleOf(live.Cue)) + ") in the air; it turns - and changes colour (step 112) - only when your swing lands or misses");
                 }
             }
             return shown;

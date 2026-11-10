@@ -48,7 +48,7 @@ namespace TraxCombat.Core
             }
             foreach (char c in t)
             {
-                if (char.IsLetterOrDigit(c) || c == '_' || c == '.' || c == '-') continue;
+                if (char.IsLetterOrDigit(c) || c == '_' || c == '.' || c == '-' || c == '#') continue; // step 112: '#' too - a colour typed as #FFD700
                 why = "'" + c + "' is not allowed in an item id";
                 return false;
             }
