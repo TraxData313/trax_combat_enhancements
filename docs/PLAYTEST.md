@@ -2367,6 +2367,17 @@ the flight N`.
 **Tell Claude:** did a swing begun in the stagger ever meet his shield ("blocked / not on his body" above 0)? Did any "Unbalanced" appear right after
 OPENING! or while you reeled? Can you tell the perfect-strike arrow (during his stagger) from a hold's arrow, or should they look different?
 
+**D87. THE PERFECT STRIKE ARROW IS GOLD (step 112, ~5 min - the training field's VETERAN trainer, or any opponent you can stagger).**
+*What changed:* the arrow at your crosshair has two colours by what it is for: RED while he holds an unbalanced block (the side to hit) and GOLD -
+like the "PERFECT STRIKE x2.8" line - while he staggers and it shows the side for a perfect strike. It never changes colour while your swing is
+in the air. Both colours are settings (Advanced, Impact: "Arrow colour: the opening to hit" F01E1E, "Arrow colour: the perfect strike" FFD700).
+**Try 1:** win a hold (red arrow), land the winning strike: OPENING! - the arrow turns GOLD on the finishing side. Swing it: a PERFECT STRIKE.
+**Try 2:** time a block ("Your riposte - X reels"): the arrow shows GOLD at once.
+**Try 3:** start a swing on a red arrow whose side then becomes his perfect-strike side: it stays red until your swing lands, then turns gold.
+**Log:** `opening arrow: first HOLD-BLOCK opening ... - role: opening, colour F01E1E`, `opening arrow: first PERFECT STRIKE side ... - role: PERFECT
+STRIKE, colour FFD700`; the [summary] `hud: opening arrow ... colour by role (step 112): ..., the colour changed N times`.
+**Tell Claude:** does the gold read clearly gold (not brown / pale) on the arrow? Is the red still right?
+
 ---
 
 ## E. Your Athletics bar, the orders-menu strip and the ALT markers (20 min)

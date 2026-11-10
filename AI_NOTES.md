@@ -11198,3 +11198,43 @@ DESIGN decision 100. Toni's 10 screenshots at the start of the veteran bout and 
 - A slow swing begun right at the end of the window: the flight gives at most 0.8 s past the window - an overhead ~0.9 s from wind-up to contact.
 - Pic 7's confusion (the perfect-strike arrow read as a new hold): the two arrows look the same. Toni may want the finishing arrow told apart
   (another colour / a pulse) - asked, not built.
+
+## Step 112 — THE PERFECT STRIKE ARROW IS GOLD (Toni 2026-11-10: "Make the PERFECT STRIKE [arrow] gold"; BUILT 2026-11-10)
+
+DESIGN decision 101. Answers step 111's open point (pic 7: the perfect-strike arrow was read as a new hold - the two looked the same).
+
+### Where the arrow's role is decided (all of them)
+- `AthleticsLogic.ReadArrowLive` (Module, `AthleticsLogic.OpeningArrow.cs`) picks the CUE each frame: `ArrowCue.Flash` (step 106's off-balance flash,
+  the K test tool), `ArrowCue.Hold` (step 107's hold - the side his unbalanced block leaves open), else `ArrowCue.Finish` (`FinishMaskNow` - the
+  newest open perfect-strike window in step 100g's book: an opening's reel, a timed block's riposte, a rider's reel). Nothing else creates a cue.
+- `ArrowLatch.Filter` (Core, step 111) may replace the live reading with the one noted at your wind-up. Until step 112 it compared the MASK only, so
+  a hold's top arrow becoming a perfect-strike top arrow mid-swing passed straight through - with colours that would have been a colour change in
+  the air. Now `live.Mask == Mask && live.Cue == Cue` is the only pass; a role change on the same side is held back like a turn (`heldNow`, counted
+  in step 111's "arrow changes held"). The flash is still never held (it is red either way).
+- The HUD (`OpeningArrowView.OnLayerFrame`) reads the post-latch reading, so the colour is decided from that cue: Core `ArrowColours.RoleOf`
+  (Finish -> `ArrowRole.PerfectStrike`, everything else -> `ArrowRole.Opening`). A hidden arrow keeps its last colour.
+
+### How it is drawn
+- The prefab `TraxOpeningArrow.xml` had `Brush.Color="#F01E1EFF"` literal on the 4 widgets; now `Brush.Color="@ArrowColor"` bound to
+  `OpeningArrowVM.ArrowColor` (a `TaleWorlds.Library.Color` - the step-6 binding rule: the type of `Brush.Color`). The smoke's prefab check
+  resolves `Brush.Color` like the game and passed (9 bindings). Vanilla binds `Brush.Color` the same way (Compass.xml) - 106c's note.
+- The view re-resolves the colour only when the role or the setting's text INSTANCE changes (`TextValues.Get` returns the same string for the same
+  index - a reference compare, no allocation per frame); `ArrowColours.TryParse` walks the characters (no allocation - Step112Tests pins it).
+
+### Settings (671, + 2, Advanced, the Impact group after `PerfectStrikeFlightSeconds`)
+- `OpeningArrowColor` F01E1E (the old literal red), `PerfectStrikeArrowColor` FFD700 (`PerfectStrikeMath.GoldHex` #FFD700FF - the gold line's
+  colour). `ParamType.Text` (step 84's text settings - stored as an index in `TextValues`); hex RRGGBB or RRGGBBAA. `TextValues.TryIndex` now accepts
+  '#' too (so "#FFD700" typed in MCM is kept; its rule text still reads "an item id" - harmless). Not a colour ("gold") = the setting's default
+  from defaults.json, one `[hud]` line. Live: the next frame. No config-format change.
+
+### Log
+- The first-time `[hud]` lines carry the role: "opening arrow: first HOLD-BLOCK opening ... - role: opening, colour F01E1E", "first FLASH ... - role:
+  opening, colour F01E1E", "first PERFECT STRIKE side ... - role: PERFECT STRIKE, colour FFD700"; the layer-up line names both; step 111's "first
+  ARROW HELD during your swing" names the roles ("top (opening) ... would have turned to top (PERFECT STRIKE)"); the [summary] "hud: opening
+  arrow" line adds "colour by role (step 112): ..., the colour changed N times".
+
+### Tests / not done
+- Step112Tests 5 tests, 12 cases (1721 green): the settings' place / defaults / page, the role -> colour (live, '#', a bad text -> default), the hex parse,
+  the latch holding a role change mid-swing, no allocation. Offline smoke all green (the prefab binding). No smoke step of its own - the role
+  choice is pure Core.
+- UNVERIFIED in game (PLAYTEST D87): that FFD700 multiplied onto the crosshair sprite reads gold (106c's caveat for the red too). Not deployed.

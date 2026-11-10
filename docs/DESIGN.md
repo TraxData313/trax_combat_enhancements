@@ -3960,6 +3960,14 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     guard; a running attempt cut when a forced guard begins. (e) THE ARROW NEVER TURNS IN YOUR SWING - from your wind-up to its contact / miss (at most
     `OpeningArrowSwingHoldMaxSeconds` 1.5) a different direction is held back; it may appear or go; the "Unbalanced" line waits too. (f) UNVERIFIED in
     game (PLAYTEST D86): the flight's 'can defend' off against a man whose stagger animation ended early.
+101. **The PERFECT STRIKE arrow is gold** (step 112; Toni 2026-11-10: "Make the PERFECT STRIKE [arrow] gold"; AI_NOTES "Step 112"). The arrow at
+    the crosshair has two ROLES and its colour follows the role: the OPENING - the side to hit while he holds an unbalanced block (step 107's hold) and
+    step 106's flash - stays red (`OpeningArrowColor` F01E1E); the PERFECT STRIKE side shown while he staggers (an opening's reel, a timed block's
+    riposte, a rider's reel) turns gold like the "PERFECT STRIKE x2.8" line (`PerfectStrikeArrowColor` FFD700). The role is the cue the HUD draws
+    AFTER step 111's latch (Core `ArrowColours.RoleOf`: `ArrowCue.Finish` = the perfect strike, a hold / a flash = the opening), and the latch now
+    also holds a role change on the same side while your swing is in the air, so the colour changes only with the role and never mid-swing. Hex
+    RRGGBB or RRGGBBAA, '#' optional; anything else = the default; the prefab's `Brush.Color` multiplies it onto vanilla's arrow sprite. (UNVERIFIED
+    in game - PLAYTEST D87: that the gold reads clearly gold on the sprite.)
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research
