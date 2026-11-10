@@ -3876,7 +3876,9 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     EVERY weapon (`PerfectStrikeDefensiveMin` / `Max`); the openings keep the weapon table. (g) SHIELDS (Toni: "almost impossible to hit the first
     time"): a shieldman's FIRST hold is short - 1.0 s with a small shield (engine `WeaponLength` ≤ 60 cm) to 0.5 s with a big one (≥ 130), a line
     between, x the same weapon factor; later links grow as the others. Off (`OpeningHoldsEnabled`) = decision 95 exactly; holds only while the
-    openings are live (95 (m)).
+    openings are live (95 (m)). (h) Step 107d (the review): the forced counter-swing's own wind-up is never rolled into a kick / bash / push by
+    step 81 (a kick's guard, written after it, would cancel it) - it is always a swing; it overrides the Athletics pause, the brace and an empty
+    swing stack like any forced input (open for Toni - AI_NOTES "107d - review").
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research

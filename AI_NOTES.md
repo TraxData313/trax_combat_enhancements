@@ -10811,3 +10811,58 @@ lapse); the first hold's 30 % (thrown at 0.29, not at 0.31); a SHIELDMAN (a kite
 keeps it down while the swing is in the air past the hold's end, the stagger, GUARD BROKEN; a small shield 1.0 s; his shield stopping a strike = a
 link); a back hit still reels; the exits (OpeningHoldsEnabled, the master switch, OpeningsEnabled cutting a counter-swing, a target switch, removed
 without an engine call, the mission end); the [summary] line. PLAYTEST D82. Next: 107d - an independent review.
+
+### 107d - review (2026-11-10)
+
+An independent review of 2d05103..0cbb4a4 (107a-107c: src, tests, smoke, defaults), the code read against Toni's design (section 1 above and
+the manager's 2026-11-10 notes), not the build notes. Step 107 is BUILT.
+
+**Fixed** (commit 2fb02db; Step107dTests 1, smoke part 4b):
+- **(medium) Step 81 turned most forced counter-swings into a kick (the builder's question 1).** The counter's READY is a real melee wind-up
+  (`ActionReadyMelee`), so step 13's phases queued it for step 81's roll (`NoteAiMeleeReady` -> `DecideAiMove`): within kick reach (1.6 m - a
+  duel's usual distance) a shieldman rolled kick 25 / bash 40 %, a man without a shield kick 35 / push 20 %, and the attempt's guard - written
+  AFTER the counter in `Filter` - cancelled the forced swing ("a guard raised in a ready = cancel"). Toni's design says he SWINGS. Now
+  `DecideAiMove` skips the man while he is the counter-swinger (`OpeningHoldStats.CounterKickRollsSkipped`, on the [summary] line).
+- **(low, diagnostics) "a winning swing blocked anyway" could never count in game (question 2's proof).** OnMeleeHit's contact runs BEFORE a
+  block's impact decision: `HoldContact` -> `HoldBlowResolved` closed the flight, then `HoldOnBlock` tested `_holdFlight` - always false. The
+  count (and a new Info line: shield lowered or not, 'can defend' on / off) now comes at the contact (`NoteWinBlocked`); the old place stays for
+  the direct path, once per swing either way. D82's number is now real.
+
+**Checked and found right** (no change):
+- The counter-swing (question 1): one attack - READY writes exactly one of his weapon's attack bits (his guard and his own attack out) 0.4 s,
+  RELEASE clears every attack and guard bit 0.5 s (no guard = no cancel), then his input is his own; nothing persists, so no stuck wind-up (a cut
+  ready ends in his own AI's release or a forced guard's cancel) and no spam (one roll per hold end). Order in `Filter`: after the pause's hold /
+  brace / 82's read guard / the forced guard, before a kick, 104b's reel lock last (riders only - he is on foot; the counter ends when he reels or
+  is down). The 1 s attack lock (`OpeningAttackLock`) touches Balance forces only - a Hold force or the counter never meets it.
+- The packed phase bits: `OpeningGuardFlag`'s only readers are `ApplyOpening` (only while `Opening`, which `SetCounter(on)` clears),
+  `CounterSwing` / `CounterReady` / `ApplyCounter` and `Clear` (zeroes both). The writers: `SetOpening(on)` overwrites (StartForce ends the
+  counter first), `SetOpening(off)` leaves a running counter alone, `SetCounter(off)` zeroes it - never called while a force is on the same man
+  (every path ends the counter before forcing). The bits sit above `DefendBlock` (the smoke checks it). Safe.
+- The shield lowered at the commit (question 2): not CLEARLY late, so not moved. The commit is read the first frame channel 1 shows the release;
+  a one-hander's release reaches contact ~0.15-0.3 s later, and 'can defend' goes off the same frame. Lowering at the wind-up would act on the
+  read 106f proved wrong 14 of 33 times - a free hit through a raised shield on a misread, against "the shield keeps its advantage". The fixed
+  WinBlocked count + the forced-guard line's lowered pose read-back answer it in D82.
+- The holds-on bypass of 106 (question 3): kept - quiet in shadow (`HoldsLive` needs `OpeningsLive`, the arrow too), the stunlock guard (an
+  entry hit on a man reeling / immune / staggered or felled by this hit opens nothing; a back hit goes to 106's chain with 106e's rule; a WIN
+  staggers whatever the immunity, like 106d's earned chain - a hold cannot start inside the immunity, so the cycle is >= reel + 2 s + a hold),
+  the direction from the hit's collision (`_hitSwing`), 106f's judgement at the release, the pose read-back and the CanDefend give-back (through
+  `StartForce` / `EndForce`). A shieldman's block entry ignores the immunity - the same "earned with a block" rule as 106e.
+- Every exit lets go (forced guard, lowered shield, 'can defend', the counter, the arrow): the hold's end (`HoldRanOut` ends the force before the
+  roll), the stagger, a back hit, a fresh hold (`StartForce` gives the flag back first), the immune / no-fresh-hold paths (`EndHoldForce`), a
+  target switch (a blow or a block on another man), his hit on you, the switches (master first, `OpeningsEnabled`, `OpeningHoldsEnabled`, the
+  impact system - `TickHolds` / `TickCounter` / `TickOpeningForce`), removed / dead (no engine call), mounted / taken over, the mission end
+  (`CloseHolds` before the summary), an error (`HoldFailed`). `OpeningHoldTakesDefend` switched off mid-swing still gives the flag back. The
+  arrow reads the hold's phase every frame, so it goes with the hold.
+- AI vs AI and riders: every entry needs YOU driving the attacker and both on foot (`OpeningShadowHit`'s gate, `HoldOnBlock`'s mounted check,
+  `BeginHold` / `StartForce` / `StartCounter` on foot + AI-driven). Steps 100-106: the defensive window x2-x3 for every weapon
+  (`WindowMultiplier(.., false)` at all three sites), the openings' table kept; a hold's stagger takes 106d's payoff (window, OPENING!, 105's
+  80 % on the next hit); a man reeling from your timed block opens no hold (immune). No allocation per tick (structs; strings on events only).
+- Minor, left: the K test tool holding a man whose hold runs out - his counter clears the tool's guard early (tool only, nothing sticks).
+
+**For Toni** (TASKS_TODO NOT DECIDED): (a) the forced counter-swing overrides HIS stamina - the Athletics pause, the brace and an empty swing
+stack (his attack bits are written after them): fine as "forced", or should a man too tired to swing skip it (counted)? (b) after a hold he cannot
+guard for ~0.9 s (ready + release) - that is the "you can counter him" window; keep, or let him keep his guard in the release (risks a cancelled
+swing)? (c) a shieldman's hold opened by his BLOCK inside his 2 s stagger immunity still ends in a stagger on a win (today yes - "earned", as 106e) - keep?
+
+**Only Toni's playtest can confirm** (D82): that a written attack bit makes the AI swing (released vs his swings), the guard shown for a whole hold,
+the shield down in time (the WinBlocked count / its lines).

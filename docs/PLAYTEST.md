@@ -2269,6 +2269,12 @@ rolled / thrown / released, SHIELDMEN holds and first-hold mean, shields lowered
 (`the balance guard with a weapon - shown at 0.2 s N ...`) tells whether his guard really showed. **Tell Claude:** do you SEE his guard hold for the
 whole arrow? Does he really swing when a hold ends (the counter-swing is new engine ground - if "released" counts but he never swings, say so)? Is
 the kite's 0.5 s too hard / the 1.2 s too easy? And is "a winning swing blocked anyway" near 0?
+**Step 107d additions:** within kick reach his counter-swing is always a SWING now (before the review the AI's kick / bash roll replaced most of
+them) - the [summary] counter clause "step 81's kick roll skipped for it N" should roughly match "released". "A winning swing blocked anyway" is
+now really counted (it could not move before), each with a line `openings (hold-block): your WINNING swing was stopped by X anyway (his shield
+was lowered / his shield / his weapon, 'can defend' off / on)` - several with "his shield was lowered" = the shield comes down too late: tell
+Claude. **Try 6:** against a shieldman, make him hold a few links, then step back and let his counter-swing come at you 3-4 times - is it a
+real swing (no kick or bash) that you can block?
 
 ---
 
