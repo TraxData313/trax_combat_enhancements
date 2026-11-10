@@ -2345,6 +2345,28 @@ tired only N` and `training field fresh start (step 110) ON: moments - your heal
 **Tell Claude:** did the trainer back off and stand, or drift back in (his own AI fighting the zero vector)? Did every bout start fresh? In a battle,
 the "tired only" looks and whether lines felt thinner.
 
+**D86. THE OPENING CHAIN MAKES SENSE (step 111, ~10 min - the training field's VETERAN trainer, shield and sword).**
+*What changed:* (1) no new "Unbalanced" hold while he staggers or just after (his shield block right after OPENING! is a plain block now); (2) a
+swing you START while he staggers keeps his guard down until it lands - the perfect strike can no longer be blocked because the stagger ran out
+while your overhead was in the air (Advanced, Impact: "Perfect strike: a swing begun in time keeps him open (s)" 0.8); (3) when YOU reel ("X
+ripostes - you reel") his hold ends and the arrow goes ("Openings: a hold ends when you reel", on); (4) a man under a hold never kicks or bashes; (5)
+the arrow never turns to another side while your swing is in the air ("Openings: the arrow keeps its side through your swing (s)" 1.5).
+**Try 1 - Toni's chain:** let his shield block your swing, win the hold (GUARD BROKEN -> OPENING!), then swing the arrow's side at once, even a slow
+overhead. It should land as a PERFECT STRIKE - never a shield block - and NO "Unbalanced" line may follow it.
+**Try 2 - right after the stagger:** strike again just after his stagger ends: he may block it (he is no longer staggered), but no "Unbalanced"
+appears until about 2 s later; then his next shield block opens one again.
+**Try 3 - get riposted:** swing late into his raised shield until "X ripostes - you reel": any arrow goes at once, no "Unbalanced" follows.
+**Try 4 - the arrow:** start a swing while the arrow shows: it must not turn while you swing (it may vanish).
+**Log:** `openings: first hold REFUSED at ... s (step 111) - Training Master: he is not recovered (inside the stagger immunity)`, YOU lines "...
+- NO hold on Training Master: he still reels / he is not recovered (1.6 s left) / you reel"; `perfect strike: first swing begun in a window ...`,
+"perfect strike: your swing at Training Master LANDED after his reel ended (the flight kept his guard down)"; `openings: first hold ENDED because
+YOU reel`; `first ARROW HELD during your swing`; `first kick / bash roll REFUSED for a held man`. The [summary] hold line's `STEP 111 - no hold
+(your hit / his block): he reels N / N, not recovered N / N, you reel N / N ...` and `ended by ... you reeled N`; the perfect-strike line's `STEP 111 -
+your swings begun in a window N (... outlasted his reel N): landed N, blocked / not on his body N ...; perfect strikes landed after his reel thanks to
+the flight N`.
+**Tell Claude:** did a swing begun in the stagger ever meet his shield ("blocked / not on his body" above 0)? Did any "Unbalanced" appear right after
+OPENING! or while you reeled? Can you tell the perfect-strike arrow (during his stagger) from a hold's arrow, or should they look different?
+
 ---
 
 ## E. Your Athletics bar, the orders-menu strip and the ALT markers (20 min)

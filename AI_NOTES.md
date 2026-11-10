@@ -11120,3 +11120,81 @@ smoke all passed), Modules\TraxCombatEnhancements.Dev; loadcheck LOADED `1.5.0+2
 **UNVERIFIED (PLAYTEST D85)**: the rookie trainer's keep in game (does his own AI, Defensiveness 4, stand under the zero vector?); the moments' order in a
 real bout; field battles with the wider keep - many men at 30-50 % backing off could thin a line's front; watch the summary's "tired only" looks and the
 rest's lines.
+
+## Step 111 — THE OPENING CHAIN MAKES SENSE (Toni's training field 2026-11-10, the VETERAN trainer with a shield; BUILT 2026-11-10)
+
+DESIGN decision 100. Toni's 10 screenshots at the start of the veteran bout and his question at the end: "is he off balance or is he kicking my butt?"
+
+### 1. The log, picture by picture (trax_combat.log, training_field_2 19:31:49-19:41:18, build 5bef3c1 - step 109; the veteran bout from 19:39:53)
+- **Pic 1** 19:39:53.359: the trainer TIMED a right-side shield block of your swing (score 0.50, riposte 67 % - not rolled) -> step 107's shield entry:
+  a hold, his shield in the high guard, 0.76 s (his shield 78 cm, your sword's speed 109 -> x0.87); VISIBLE 0.01 s later (a block shows his guard)
+  -> "Unbalanced UP (hit from below)", the arrow on your thrust.
+- **Pic 2** your right swing (53.997) and overhead (54.987) went INTO his held guard = LINK 1 (1.16 s) and LINK 2 (1.90 s + 0.32 bonus); your thrust
+  (56.006) WINS -> GUARD BROKEN (his shield lowered, 'can defend' off); it landed at 56.448 (11 damage) -> OPENING!, a 1.40 s reel (link 3), the
+  PERFECT STRIKE side = overhead (the arrow top, x3.60).
+- **Pic 3-4** your overhead on that arrow. At 57.846 - exactly the reel's asked end (56.448 + 1.40) - his SHIELD blocked it: "timed his right-side
+  block (0.54 s, late)" = his guard had been up since ~57.3 s, so the engine's stagger animation was over well before the asked 1.40 s. That block was
+  step 107's shield ENTRY again (107d (c): "a shieldman's block entry ignores the immunity") -> a new hold in the left guard, visible 0.01 s later,
+  'Unbalanced RIGHT (hit from the left)'. So the arrow turned from top to left at your blow's contact, with your swing still playing out.
+- **Pic 5** "no effect at all": his shield, not an immunity and not the winning-strike flight (that covers hold strikes only). The perfect-strike window
+  closes with his REEL + 0.15 s; nothing kept his guard down for a swing begun inside it, and nothing stops a man on foot raising his guard once the
+  engine's stagger animation ends (104b's reel lock is riders only).
+- **Pic 6-7** your left swing on the new arrow (58.619) WINS (GUARD BROKEN), lands at 58.925 (5 damage) -> OPENING!, a 0.80 s reel, the perfect-strike
+  side right (the arrow right). Pic 7's "the indicator went to the right at once" IS the perfect-strike arrow of that stagger (as designed: during
+  the stagger the arrow shows the finishing side) - not a new hold.
+- **Pic 8-9** your right swing on it arrived at 19:40:00.098 - ~0.22 s after the window (reel ~59.73 + 0.15): his shield block (timed 0.30 s, score
+  0.45) and HIS RIPOSTE 67 % -> "Training Master ripostes - you reel" (0.93 s). AND at the same block a new hold (shield entry again, inside his
+  stagger immunity, while you were starting to reel): high guard, visible 0.20 s later (00.299) -> 'Unbalanced UP (hit from below)'.
+- **Pic 10** NO bash and no kick was logged between 19:39:59 and 19:40:04 (the next "on you" event is 19:40:05.632, a landed blow). The "shield in
+  my face" is YOUR riposte reel (act_stagger_backward) against his shield raised in the new hold's high guard; the arrow (bottom, "down-facing-up")
+  is that new hold's opening. The hold and the arrow were NOT cleared - they had just started (and ran out at 01.062, no counter-swing). He was
+  neither off balance nor bashing: the system had opened a hold on a man who had just beaten you.
+
+### 2. The causes
+1. The SHIELD-BLOCK route (`HoldOnBlock`) never checked the stagger immunity, his reel or YOUR reel - only the hit route did (106e). Every "GUARD
+   BROKEN -> OPENING! -> Unbalanced ..." at once in his log (19:35:26, 19:35:33, 19:39:57, 19:40:00, 19:40:12, 19:40:15, 19:40:23, 19:40:42,
+   19:40:47) is his shield block right after a stagger.
+2. The perfect-strike window ends with the reel; a swing begun inside it was blocked when the reel (or the engine's shorter stagger animation) ran out.
+3. A riposte on YOU (his block's decision `d.Riposte`) ended nothing - the hold even began at that same block.
+4. The arrow turned at your blow's contact (the block opened the next hold while your swing was still playing out); the "Unbalanced" line likewise.
+5. Kicks: step 108 already left a queued kick unwritten while forced, but step 81 still ROLLED kicks / bashes at a held man's wind-up (only the
+   counter-swinger was skipped), and a kick attempt running when a force began kept its phases (written again once the force ended).
+
+### 3. What was built (commits 1a1dee7, 8e01c34)
+- **One hold gate** (Core `OpeningHoldMath.Refuse` / `HoldRefusal`; Module `HoldGate`, `AthleticsLogic.OpeningSense.cs`) for every route a hold
+  starts by - your hit, his shield block, a link: you reel or lie down (your `ImpactState`, or this block's riposte on you) when
+  `OpeningHoldEndsWhenYouReel`; he reels (his record, an opening's reel, an open perfect-strike window or its flight); he is inside the stagger
+  immunity (not recovered). The hit route kept its 106e check and gained the you-reel one. A refused block is still "taken" (106's off balance never
+  runs while holds are live). After the immunity, step 108's rule stands: his block shows his guard; your hit waits for the guard to show.
+- **A hold ends when you reel** (`HoldEnd.YouReel`, `TickHolds` -> `HoldEndsYouReel`): recovering, holding or after - the force let go, the arrow gone.
+- **The arrow never turns while your swing is in the air** (Core `ArrowLatch`): `OpeningWindUp` notes what the arrow shows; until your contact
+  (`OpeningContactSeen`) or miss (`OpeningMiss`), or `OpeningArrowSwingHoldMaxSeconds` 1.5, another direction is held back (the noted one stays);
+  the arrow may appear (none was shown) or go (its hold / window ended); the 106 flash is never held. The "Unbalanced" line waits likewise.
+- **The perfect strike's flight** (`PerfectStrikeFlightSeconds` 0.8; Core `PerfectStrikeMath.OpenFor` / `FlightEnd` / `Outlasted`,
+  `PerfectStrikeWindow.FlightUntil`): your wind-up while a window is open (on foot; both games - the opening's stagger and the timed block's riposte)
+  marks a flight to the window's end + 0.8 s; the window, the arrow and the damage's verdict use `OpenFor`; his guard goes DOWN at once through the
+  forced-guard record, new kind `OpeningForceKind.Strike` (every guard bit out, 'can defend' off; no pose read; its own switches - the master switch,
+  a perfect strike live in either game, the seconds), released at your contact / miss / the flight's end / the window closing / any switch. A landed
+  strike after the reel opens no hold (the immunity).
+- **No kick / bash under a hold**: `DecideAiMove` refuses step 81's roll for a man under a hold (recovering / holding) or any forced guard of ours
+  (`OpeningNoKick`); `StartForce` cuts his running kick / bash attempt (`CutAiKickFor`, `AiKickEnd.Interrupted`). Step 82's meet guard (his read of
+  YOUR kick) is a guard, not a kick - `Filter` already writes the forced guard after it, so it never shows under a hold; unchanged. A shieldman's bash
+  IS step 81's roll (and step 95's step-in rides it), so the refusal covers it.
+- **The log**: first-time lines "openings: first hold REFUSED ...", "first hold ENDED because YOU reel", "first ARROW HELD during your swing", "first
+  kick / bash roll REFUSED for a held man", "perfect strike: first swing begun in a window"; per-event YOU lines (refused holds with the reason and
+  the immunity left, you reel, a running kick cut, every flight's start and end - landed / stopped / missed / ran out, inside or after his reel); the
+  hold [summary] line's "STEP 111" clause (no hold by your hit / his block x he reels / not recovered / you reel; arrow changes held; words
+  deferred; kick rolls refused; kicks cut) and "ended by ... you reeled N"; the perfect-strike [summary] line's "STEP 111" clause (swings begun in a
+  window, outlasted his reel, landed / blocked / missed / ran out, perfect strikes landed after his reel).
+- Settings 669 (+3, Advanced, the Impact group after `OpeningLogInfoLines`): `OpeningHoldEndsWhenYouReel` on, `OpeningArrowSwingHoldMaxSeconds` 1.5,
+  `PerfectStrikeFlightSeconds` 0.8. No config-format change.
+- Tests: Step111Tests 6 (1709 green). Smoke "THE OPENING CHAIN MAKES SENSE (step 111)" (all green): Toni's chain replayed through the real logic.
+  The smoke's stand-in never shows a stagger, so the watch's "never appeared" path ends a reel with NO immunity; the smoke puts back the game's
+  measured end + 2 s (`EndReel`) - worth knowing for any later smoke that reads the immunity.
+
+### 4. Open / unproven
+- In game: that 'can defend' off at your wind-up keeps a man whose stagger animation ended early from raising his shield (the hold's GUARD BROKEN
+  used the same flag and landed 3 / 3 in this log). Watch the perfect-strike line's "outlasted his reel" vs "landed".
+- A slow swing begun right at the end of the window: the flight gives at most 0.8 s past the window - an overhead ~0.9 s from wind-up to contact.
+- Pic 7's confusion (the perfect-strike arrow read as a new hold): the two arrows look the same. Toni may want the finishing arrow told apart
+  (another colour / a pulse) - asked, not built.

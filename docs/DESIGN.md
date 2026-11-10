@@ -3946,6 +3946,18 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     gives every tracked fighter step 19's fresh start: the bar to his wound cap, the swing stack and the sprint full, pauses / step backs / braces
     ended. Public reads only, no Harmony. (c) UNVERIFIED in game (PLAYTEST D85): the trainer standing off under the zero vector; the wider keep in
     field battles.
+100. **The opening chain makes sense** (step 111; Toni's training field 2026-11-10, the veteran trainer with a shield - "is he off balance or is he
+    kicking my butt?"; AI_NOTES "Step 111"). (a) ONE HOLD GATE for every route a hold starts by (your hit, his shield block, a link): no hold while
+    he reels from our stagger (an opening, a riposte, a back hit, any `ImpactState` reel, an open perfect-strike window) or is inside the stagger
+    immunity after it (not recovered); after it step 97's rule - his guard visible - applies to every route (a block shows it). The stagger is the
+    PERFECT STRIKE window and its arrow shows only the finishing side. Replaces 96 (a)'s "a shieldman's block entry ignores the immunity" (107d (c)).
+    (b) THE PERFECT STRIKE'S FLIGHT - a swing of yours begun while a window is open keeps the window, its arrow and HIS GUARD DOWN (every guard bit
+    out, 'can defend' off) until it lands or misses, at most `PerfectStrikeFlightSeconds` 0.8 past the window; both games. (c) YOU REEL = HE IS NOT
+    OFF BALANCE - your reel or fall (his riposte, a kick, a hit) ends his hold chain (`HoldEnd.YouReel`, the arrow goes) and refuses a new one
+    (`OpeningHoldEndsWhenYouReel`). (d) NO KICK / BASH UNDER A HOLD - step 81's roll refused for a man under a hold (recovering / holding) or any forced
+    guard; a running attempt cut when a forced guard begins. (e) THE ARROW NEVER TURNS IN YOUR SWING - from your wind-up to its contact / miss (at most
+    `OpeningArrowSwingHoldMaxSeconds` 1.5) a different direction is held back; it may appear or go; the "Unbalanced" line waits too. (f) UNVERIFIED in
+    game (PLAYTEST D86): the flight's 'can defend' off against a man whose stagger animation ended early.
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research
