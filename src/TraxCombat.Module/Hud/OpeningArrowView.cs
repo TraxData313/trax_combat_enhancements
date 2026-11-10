@@ -24,7 +24,7 @@ namespace TraxCombat.Hud
         private int _lastMask;
         private int _flashes, _finishes;
         private double _flashSeconds, _finishSeconds;
-        private bool _firstFlashLogged, _firstFinishLogged;
+        private bool _firstFlashLogged, _firstFinishLogged, _firstHoldLogged;
 
         public OpeningArrowView()
             : base("opening arrow", Movie, SettingsSchema.OpeningArrowShow)
@@ -77,7 +77,17 @@ namespace TraxCombat.Hud
             var cue = r.Shows ? r.Cue : ArrowCue.None;
             if (cue != ArrowCue.None && (cue != _lastCue || r.Mask != _lastMask))
             {
-                if (cue == ArrowCue.Flash)
+                if (cue == ArrowCue.Hold) // step 107: the opening of a hold-block, steady for the hold
+                {
+                    _flashes++;
+                    if (!_firstHoldLogged)
+                    {
+                        _firstHoldLogged = true;
+                        TraxLog.Limited("hud", "opening arrow: first HOLD-BLOCK opening at " + S1(f.Now) + " s - " + OpeningArrowMath.ArrowsName(r.Mask)
+                            + " (the side he left open, steady while he holds his block)", "hud-arrow");
+                    }
+                }
+                else if (cue == ArrowCue.Flash)
                 {
                     _flashes++;
                     if (!_firstFlashLogged)
@@ -98,7 +108,7 @@ namespace TraxCombat.Hud
                     }
                 }
             }
-            if (cue == ArrowCue.Flash) _flashSeconds += f.Dt;
+            if (cue == ArrowCue.Flash || cue == ArrowCue.Hold) _flashSeconds += f.Dt; // step 107: a hold's opening counts with the flashes (the side to hit)
             else if (cue == ArrowCue.Finish) _finishSeconds += f.Dt;
             _lastCue = cue;
             _lastMask = cue != ArrowCue.None ? r.Mask : 0;

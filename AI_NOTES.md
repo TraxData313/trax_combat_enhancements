@@ -10772,3 +10772,31 @@ NoteWindUp → the bonus and the score, HoldOver, EndHold → After, LinkOpen, L
 `OpeningEntry.Hold` + `OpeningChain.HoldStagger` (the stats' entry arrays 4 → 5); `PerfectStrikeRules.DefensiveMin/Max` +
 `PerfectStrikeMath.WindowMultiplier` (the module's three call sites: the defensive / rider window x2-x3, an opening's by the weapon). 18 settings
 (648), Advanced / Impact after `OpeningGuardTestSeconds`. Step107Tests 16; the 100g smoke now expects x3 for a sword after a timed block.
+
+### 107b - built (2026-11-10)
+Module `AthleticsLogic.OpeningHolds.cs` (one hold record, one counter-swing record; no allocation per tick):
+- `HoldOnBlock` (from `OpeningShadowBlock` - also for a WRONG-side shield block, before step 106's early return) and `HoldOnHit` (from
+  `OpeningShadowHit`, before `OpeningChain.NoteLanded`; a winning hit sets `_openChain` reeling through `HoldStagger` and runs 106d's existing
+  Staggers case - the payoff, the window, OPENING!). Both return "taken" while the holds are live, so 106's off-balance chain / unguarded entry
+  never runs then; a hit from BEHIND and the finish on a reeling man stay 106's.
+- The force: 106b's record with a new kind `OpeningForceKind.Hold` (`StartForce` / `EndForce` - the pose read-back, the flag give-back and the
+  callback release come with it); NOT under `OpeningAttackLock`. Its end = the hold's end, or the in-flight end of a winning swing
+  (`OpeningHoldMaxSeconds` after it commits) - `HoldForceUntil`. `TickOpeningForce` has a backstop: a Hold force on a man no longer holding ends.
+- Your swing: `HoldWindUp` (from `OpeningWindUp`, before 106's early return): the speed share + the bonus once after a link; the swing judged at its
+  commit (106f's `OpeningCommitRead`, in `TickHolds` or at the wind-up) - a WIN takes 'can defend' (and lowers a shield - `StartForce(.., lower)`,
+  GUARD BROKEN); `HoldBlowResolved` (contact / miss) gives the flag back and raises a lowered shield again while the hold lasts.
+- The counter-swing: `AiInputState` keeps its phase in two HIGH bits of `OpeningGuardFlag` (0x80000000 ready / 0x40000000 release - above every
+  engine movement bit, the smoke checks it) and the attack bit in its low bits - one more field grew the per-man state by 8 bytes and broke step 75's
+  allocation budget (lazily created input states); `SetOpening` / `SetCounter` clear each other (never both), `StartForce` ends a counter-swing on its
+  man. `AiInputHook.ApplyCounter` in both branches of `Filter` (after the forced guard, before a kick, the reel lock last).
+- The arrow: `ArrowCue.Hold` (Core) - `ReadArrow` shows the hold's opening steady (after a 106 flash, before a finish window); the view logs the first
+  one and counts it with the flashes. `OpeningMeleeNow` includes a hold (the walk-about rule).
+- Exits: `TickHolds` (the switches: the master switch, `OpeningsEnabled`, `OpeningHoldsEnabled`, the impact system via `OpeningsLive`; removed - no
+  engine call; mounted / taken over), `HoldContact` (your blow on another man, his blow on you), the stagger / a back hit, `CloseHolds` from
+  `CloseOpenings` (the mission end), `HoldFailed` (an error - everything let go). The counter-swing also ends when he reels or is down.
+- The 106 smokes now run with `OpeningHoldsEnabled` off (step 106's path), the 100g smoke expects x3 (107a).
+
+**Unproven in game (D82 answers):** (1) that a written attack bit held 0.4 s then cleared makes the AI swing (step 16 only ever CLEARED his attack
+bits) - the [summary] "released" count says the logic ran, the eye / the timed-block lines say whether he swung; (2) that the forced guard is shown
+for a whole 1-2.5 s hold (106f's live pose read-back covers it); (3) that a shield lowered at your COMMIT (not at the wind-up as in 106b) is down in
+time for the blow - "a winning swing blocked anyway" counts it; (4) left / right guards (`OpeningSidesCrossed`) as before.

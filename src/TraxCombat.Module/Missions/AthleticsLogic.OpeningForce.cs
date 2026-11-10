@@ -253,6 +253,7 @@ namespace TraxCombat.Missions
                 return false;
             }
             if (_forceSt != null && !ReferenceEquals(_forceSt, st)) EndForce(OpeningForceEnd.ChainEnded, now, true);
+            if (ReferenceEquals(_counterSt, st)) EndCounter(st, now, true, true); // step 107: a forced guard never runs with his counter-swing
             if (_forceFlagOff && ReferenceEquals(_forceSt, st) && !(kind == OpeningForceKind.Test && _forceMode == OpeningTestMode.LoweredByFlag)) GiveFlagBack(st);
             EnsureInput(st);
             AiInputHook.SetOpening(st, true, OpeningForceMath.GuardFlag(guard), lower, now);
@@ -355,6 +356,7 @@ namespace TraxCombat.Missions
             if (_forceKind == OpeningForceKind.Balance && (!_openPending || _openJudged || _openTarget != st.AgentIndex || !_openChain.Active))
                 EndForce(_openChain.Phase == OpeningPhase.Reeling ? OpeningForceEnd.Reels : OpeningForceEnd.ChainEnded, now, true);
             else if (_forceKind == OpeningForceKind.Held && _openChain.Phase == OpeningPhase.Reeling) EndForce(OpeningForceEnd.Reels, now, true);
+            else if (_forceKind == OpeningForceKind.Hold && !_hold.Holding(st.AgentIndex)) EndForce(OpeningForceEnd.ChainEnded, now, true); // step 107: a backstop - the hold is over
         }
 
         private void ForceFailed(Exception e, double now)

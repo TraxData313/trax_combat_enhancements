@@ -18,6 +18,10 @@ namespace TraxCombat.Core
 
         /// <summary>The test tool (<c>OpeningGuardTest</c>): a chosen guard for <c>OpeningGuardTestSeconds</c>.</summary>
         Test,
+
+        /// <summary>Step 107: a HOLD-BLOCK opening - his guard held in G for the hold (lowered for your winning strike if he has a shield). Not under
+        /// <see cref="OpeningAttackLock"/>.</summary>
+        Hold,
     }
 
     /// <summary>Step 106b: how a forced guard ended (the summary counts them).</summary>

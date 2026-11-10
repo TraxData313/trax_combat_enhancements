@@ -136,6 +136,7 @@ namespace TraxCombat.Missions
             if (or.Enabled && !OpeningsLive(in or)) // step 106e
                 TraxLog.Info("impact", "openings: SHADOW this battle although OpeningsEnabled is on - the impact system cannot carry the stagger ("
                                        + ImpactRules.From(TraxSettings.Shared).ModeText() + "; it needs the riposte live and the hits decided): no forced guard, no flash, counted only");
+            TraxLog.Info("impact", "mission start: " + OpeningHoldRules.From(TraxSettings.Shared).Describe()); // step 107
             TraxLog.Info("impact", "mission start: " + OpeningRules.From(TraxSettings.Shared).Describe()
                                    + " - step 106d: with the live switch the off-balance man's guard is FORCED to the balance side and rolled at your follow-up's wind-up (a shield LOWERED from its 2nd block), your landed hit STAGGERS him (ReelCause.Opening) and opens the PERFECT STRIKE side for the reel; the [summary] \"openings\" lines (PLAYTEST D77 - D80)");
         }
@@ -174,6 +175,8 @@ namespace TraxCombat.Missions
         /// </summary>
         private void OpeningShadowBlock(TrackedAgent a, TrackedAgent v, in ImpactFacts f, in ImpactDecision d, double now)
         {
+            if (d.Event == ImpactEvent.WrongBlock && f.AttackerIsPlayer && !f.DefenderIsPlayer && YouDrive(a) && OpeningRules.From(TraxSettings.Shared).Runs
+                && HoldOnBlock(a, v, in f, in d, now)) return; // step 107: his raised shield stopped your strike during a hold - a link
             if (!ImpactMath.CanRiposte(d.Event))
             {
                 // step 106f: a held follow-up stopped by his shield on the WRONG side is blocked anyway too (the shield did not come down)
@@ -201,6 +204,7 @@ namespace TraxCombat.Missions
                     return;
                 }
                 if (f.DefenderIsPlayer) return;
+                if (HoldOnBlock(a, v, in f, in d, now)) return; // step 107: the hold-block openings take his blocks (106's off balance replaced)
                 string rolled = string.Empty;
                 bool shield = d.Event == ImpactEvent.RightBlock;
                 int guardAtContact = ReadGuard(v.Agent);
@@ -280,6 +284,7 @@ namespace TraxCombat.Missions
         /// </summary>
         internal void OpeningWindUp(TrackedAgent st, double now)
         {
+            HoldWindUp(st, now); // step 107: a wind-up during a hold (its own try)
             if (!_openPending && !_openChain.Active) return;
             try
             {
@@ -357,6 +362,7 @@ namespace TraxCombat.Missions
         /// (and with <c>OpeningMissKeepsChain</c> off the chain starts over).</summary>
         internal void OpeningMiss(double now)
         {
+            if (_holdFlight || _holdWound) HoldBlowResolved(now); // step 107: your swing in a hold met nothing
             if (!_openPending && !_openChain.Active) return;
             try
             {
@@ -384,8 +390,14 @@ namespace TraxCombat.Missions
         /// </summary>
         internal void OpeningContactSeen(Agent attacker, Agent victim, in AttackCollisionData cd)
         {
-            if (!_openPending && !_openChain.Active) return;
             if (cd.IsMissile || cd.IsHorseCharge || cd.IsAlternativeAttack || attacker == null || victim == null) return;
+            if (_hold.Active || _holdFlight) // step 107: the hold's blow resolved, a target switch, his blow on you
+            {
+                var ha = Get(attacker);
+                var hv = Get(victim);
+                if (ha != null && hv != null) HoldContact(ha, hv, !cd.AttackBlockedWithShield && cd.CollisionResult == CombatCollisionResult.StrikeAgent, SpikeNow);
+            }
+            if (!_openPending && !_openChain.Active) return;
             try
             {
                 var r = OpeningRules.From(TraxSettings.Shared);
@@ -489,7 +501,18 @@ namespace TraxCombat.Missions
                 // step 106e: reeling / stagger-immune BEFORE this hit (the decision already wrote his record - a stagger it rolled means he was not:
                 // the impact model refuses a stagger inside the immunity)
                 bool immune = OpeningMath.ImmuneBeforeHit(v.Impact.StaggerImmune(now), d.Stagger.Happens);
-                var hit = _openChain.NoteLanded(v.AgentIndex, now, in r, behind, OpeningMath.IsGuard(guard), swing, mask, score, out var reset, immune);
+                OpeningHit hit;
+                var reset = OpeningReset.None;
+                if (HoldOnHit(a, v, in d, now, swing, behind, immune, mask, out bool holdStagger)) // step 107: the hold-block openings (own try)
+                {
+                    if (!holdStagger)
+                    {
+                        LastOpeningHit = OpeningHit.Nothing;
+                        return;
+                    }
+                    hit = OpeningHit.Staggers;
+                }
+                else hit = _openChain.NoteLanded(v.AgentIndex, now, in r, behind, OpeningMath.IsGuard(guard), swing, mask, score, out reset, immune);
                 LastOpeningHit = hit;
                 _open.NoteReset(reset);
                 bool modStagger = d.Stagger.Happens || d.Knockdown.Happens;
@@ -590,6 +613,7 @@ namespace TraxCombat.Missions
         {
             TickOpeningPayoff(now); // step 106d: the notices; the chain's reel follows his record's
             if (_openPending && _openWound && !_openJudged && OpeningRules.From(TraxSettings.Shared).Runs) TickFollowUpCommit(now); // step 106f: judged at the release
+            TickHolds(now); // step 107: the hold-block openings and the counter-swing (their own try)
             TickOpeningForce(now); // step 106b: the forced guard and the test tool (whatever the chain)
             if (!_openPending && !_openChain.Active) return;
             var r = OpeningRules.From(TraxSettings.Shared);
@@ -618,6 +642,7 @@ namespace TraxCombat.Missions
         {
             CloseOpening(now);
             _openChain.Reset();
+            CloseHolds(now); // step 107: every hold and counter-swing let go
             CloseOpeningForce(now); // step 106b: every force let go, the CanDefend flag given back
         }
 
@@ -627,6 +652,7 @@ namespace TraxCombat.Missions
             CloseOpenings(SpikeNow);
             TraxLog.Info("summary", _open.SummaryLine(OpeningRules.From(TraxSettings.Shared)));
             WriteOpeningForceSummary(); // step 106b
+            WriteOpeningHoldSummary(); // step 107
         }
 
         private void OpeningLine(string text)

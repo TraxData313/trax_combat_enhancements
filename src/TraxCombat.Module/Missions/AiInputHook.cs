@@ -151,8 +151,20 @@ namespace TraxCombat.Missions
         public uint OpeningGuardFlag;
         public long OpeningFrames, OpeningAttacksOut, OpeningGuardsWritten, OpeningGuardsCleared, OpeningLoweredFrames;
 
+        /// <summary>Step 107: THE FORCED COUNTER-SWING after a hold ran out - READY (his attack and guard bits replaced by the attack bit kept in
+        /// <see cref="OpeningGuardFlag"/>) then RELEASE (every attack and guard bit out); after the forced guard's slot, before a kick, the reel's lock
+        /// still last (Core <see cref="OpeningHoldMath.CounterFrame"/>). Set by the logic's tick. Its phase lives in two high bits of
+        /// <see cref="OpeningGuardFlag"/> (<see cref="CounterReadyBit"/> / <see cref="CounterReleaseBit"/> - above every engine movement bit): the per-man
+        /// state does not grow (step 75's cost check counts every byte of it), and the forced guard and the counter-swing never run together (the logic
+        /// ends one before the other; <see cref="AiInputHook.SetOpening"/> / <see cref="AiInputHook.SetCounter"/> clear each other).</summary>
+        public const uint CounterReadyBit = 0x80000000u, CounterReleaseBit = 0x40000000u, CounterBits = CounterReadyBit | CounterReleaseBit;
+
+        public bool CounterSwing => (OpeningGuardFlag & CounterBits) != 0;
+
+        public bool CounterReady => (OpeningGuardFlag & CounterReadyBit) != 0;
+
         /// <summary>Any wish at all - a man is held while ANY of them wants him held (one ending never lifts another).</summary>
-        public bool Active => HoldAttacks || StepHoldAttacks || Backpedal || BraceHoldAttacks || Regroup || WallPull || Flock || Block || SpearWield || Press || Rhythm || KickPhase != AiKickPhase.None || MeetGuard || Reel || Opening;
+        public bool Active => HoldAttacks || StepHoldAttacks || Backpedal || BraceHoldAttacks || Regroup || WallPull || Flock || Block || SpearWield || Press || Rhythm || KickPhase != AiKickPhase.None || MeetGuard || Reel || Opening || CounterSwing;
 
         /// <summary>Since when the state has been active (mission time), for the calls-per-second figure.</summary>
         public double ActiveSince = -1;
@@ -255,7 +267,7 @@ namespace TraxCombat.Missions
                     uint ev = (uint)eventFlag;
                     if (AiInputHook.ApplySpearWield(s, ref ev)) eventFlag = (Agent.EventControlFlag)ev;
                 }
-                if (!settings.AthleticsEnabled && !(s.Regroup && settings.CourageEnabled) && !(s.WallPull && settings.ShieldWallHoldsSlots) && !(s.Flock && settings.FearFlockEnabled) && !(s.Block && AiInputHook.BlockOn(settings)) && !(s.Press && AiInputHook.PressOn(settings)) && !s.Opening) return; // step 106b: the forced guard works without Athletics (the test tool); steps 49 / 63 / 67 / 74 / 77: courage, the wall, the flock, the block and the press work without Athletics
+                if (!settings.AthleticsEnabled && !(s.Regroup && settings.CourageEnabled) && !(s.WallPull && settings.ShieldWallHoldsSlots) && !(s.Flock && settings.FearFlockEnabled) && !(s.Block && AiInputHook.BlockOn(settings)) && !(s.Press && AiInputHook.PressOn(settings)) && !s.Opening && !s.CounterSwing) return; // step 107: the counter-swing too; step 106b: the forced guard works without Athletics (the test tool); steps 49 / 63 / 67 / 74 / 77: courage, the wall, the flock, the block and the press work without Athletics
                 if (Agent.IsMainAgent || !Agent.IsAIControlled)
                 {
                     s.NotAi++; // the player's agent, or a soldier the player took over (RTS Camera): never touched
@@ -271,6 +283,11 @@ namespace TraxCombat.Missions
                     if (s.Opening) // step 106b: the forced guard (only his attack / guard bits change)
                     {
                         only = AiInputHook.ApplyOpening(s, only);
+                        movementFlag = (Agent.MovementControlFlag)only;
+                    }
+                    if (s.CounterSwing) // step 107: the forced counter-swing (only his attack / guard bits change)
+                    {
+                        only = AiInputHook.ApplyCounter(s, only);
                         movementFlag = (Agent.MovementControlFlag)only;
                     }
                     if (wrote)
@@ -297,6 +314,7 @@ namespace TraxCombat.Missions
                     s.MeetFrames++;
                 }
                 if (s.Opening) flags = AiInputHook.ApplyOpening(s, flags); // step 106b: the openings' forced guard - after the read guard, before a kick
+                if (s.CounterSwing) flags = AiInputHook.ApplyCounter(s, flags); // step 107: the forced counter-swing - over the pause's attack hold and the forced guard
                 if (s.KickPhase != AiKickPhase.None && settings.AiKicksEnabled) // step 65: the kick / bash written LAST (after a held man's kick-out)
                 {
                     uint ev = (uint)eventFlag;
@@ -755,7 +773,7 @@ namespace TraxCombat.Missions
             bool was = s.Active;
             s.Opening = on;
             s.OpeningLower = on && lower;
-            s.OpeningGuardFlag = on ? guardFlag : 0u;
+            if (on || !s.CounterSwing) s.OpeningGuardFlag = on ? guardFlag : 0u; // step 107: a forced guard ends a counter-swing; its end leaves one alone
             Account(s, was, now);
         }
 
@@ -769,6 +787,22 @@ namespace TraxCombat.Missions
             if ((edit & InputEdit.GuardCleared) != 0) s.OpeningGuardsCleared++;
             if (s.OpeningLower) s.OpeningLoweredFrames++;
             return f;
+        }
+
+        /// <summary>Step 107: the forced counter-swing on (<paramref name="ready"/>: hold <paramref name="attackFlag"/>; else the release) or off.</summary>
+        internal static void SetCounter(TrackedAgent st, bool on, uint attackFlag, bool ready, double now)
+        {
+            var s = st.Input ??= new AiInputState();
+            bool was = s.Active;
+            if (on) s.Opening = s.OpeningLower = false; // never both
+            s.OpeningGuardFlag = on ? (attackFlag & AiInputMath.AttackMask) | (ready ? AiInputState.CounterReadyBit : AiInputState.CounterReleaseBit) : 0u;
+            Account(s, was, now);
+        }
+
+        /// <summary>Step 107: one frame of the forced counter-swing (managed - the smoke drives it): Core <see cref="OpeningHoldMath.CounterFrame"/>.</summary>
+        internal static uint ApplyCounter(AiInputState s, uint flags)
+        {
+            return OpeningHoldMath.CounterFrame(flags, s.OpeningGuardFlag & AiInputMath.AttackMask, s.CounterReady, out _);
         }
 
         internal static void SetKick(TrackedAgent st, AiKickPhase phase, AiKickKind kind, double now)

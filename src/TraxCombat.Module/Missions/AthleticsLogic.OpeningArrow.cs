@@ -41,7 +41,7 @@ namespace TraxCombat.Missions
         internal static bool OpeningMeleeNow(double now)
         {
             var logic = _current;
-            return logic != null && (logic._openPending || logic._openChain.Active || (!double.IsNaN(logic._arrowFlashPeak) && !OpeningArrowMath.FlashOver(now, logic._arrowFlashPeak)) || logic._strikeBook.Count > 0);
+            return logic != null && (logic._openPending || logic._openChain.Active || logic._hold.Active || (!double.IsNaN(logic._arrowFlashPeak) && !OpeningArrowMath.FlashOver(now, logic._arrowFlashPeak)) || logic._strikeBook.Count > 0);
         }
 
         /// <summary>The red arrow this frame for the HUD (main thread). False = nothing to show (or no logic running).</summary>
@@ -75,6 +75,14 @@ namespace TraxCombat.Missions
                     }
                 }
                 if (!OpeningArrowMath.ShowsFinish(in r)) return false;
+                int hold = HoldArrowMask(); // step 107: the opening of a hold, steady while he holds
+                if (hold != 0 && OpeningsLive(in r))
+                {
+                    a.Cue = ArrowCue.Hold;
+                    a.Mask = hold;
+                    a.Alpha = 1f;
+                    return true;
+                }
                 int mask = FinishMaskNow(player, now, in r);
                 if (mask == 0) return false;
                 a.Cue = ArrowCue.Finish;

@@ -38,6 +38,7 @@ namespace TraxCombat.Tools
                 foreach (var p in SettingsSchema.All.Where(p => p.Key.StartsWith("Opening", StringComparison.Ordinal) || p.Key.StartsWith("TimedBlock", StringComparison.Ordinal)
                                                              || p.Key.StartsWith("PerfectStrike", StringComparison.Ordinal) || p.Key.StartsWith("ReelingHit", StringComparison.Ordinal)))
                     S.Set(p, p.Default, SettingSources.File);
+                S.Set(SettingsSchema.OpeningHoldsEnabled, false, SettingSources.File); // step 107: step 106's path (the hold-block openings off)
                 S.Set(SettingsSchema.TimedBlockSlowMo, false, SettingSources.File);
                 S.Set(SettingsSchema.ImpactMeetRulesEnabled, false, SettingSources.File);
                 Check(SettingsSchema.OpeningArrowShow.Default == 1 && SettingsSchema.OpeningsEnabled.Default == 1, "the embedded arrow defaults are not ON / openings ON (step 106d)");

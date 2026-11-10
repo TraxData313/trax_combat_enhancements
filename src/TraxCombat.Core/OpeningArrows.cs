@@ -12,6 +12,9 @@ namespace TraxCombat.Core
 
         /// <summary>THE PERFECT STRIKE SIDE - a man you can finish reels: the side(s) to finish him from, steady for the whole reel.</summary>
         Finish,
+
+        /// <summary>Step 107: THE OPENING OF A HOLD - he holds a forced block: the side it leaves open, steady for the whole hold.</summary>
+        Hold,
     }
 
     /// <summary>Step 106c: one frame of the red arrow - the sides lit (attack bits, <see cref="OpeningMath.Bit"/>) and how strongly. A struct: no
