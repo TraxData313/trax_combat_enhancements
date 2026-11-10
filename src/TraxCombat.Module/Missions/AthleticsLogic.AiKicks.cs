@@ -176,6 +176,11 @@ namespace TraxCombat.Missions
         internal void DecideAiMove(TrackedAgent st, double now, in AiKickRules r, in AthleticsRules ar)
         {
             if (st.Removed || st.AiKickPhase != AiKickPhase.None) return;
+            if (ReferenceEquals(st, _counterSt))
+            {
+                _openHoldStats.CounterKickRollsSkipped++; // step 107d: his wind-up IS the forced counter-swing - a kick / bash / push here would cancel it
+                return;
+            }
             var body = AiKickBody;
             if (IsPlayer(st) || !body.IsActive(st) || !body.IsAiControlled(st)) return;
             _aiKickStats.Looks++;

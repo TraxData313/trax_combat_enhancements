@@ -120,7 +120,7 @@ namespace TraxCombat.Missions
                 if (_hold.LinkOpen(v.AgentIndex, now))
                 {
                     bool after = _hold.Phase == HoldPhase.After;
-                    if (_holdFlight && _holdCls == HoldSwing.Wins) _openHoldStats.WinBlocked++;
+                    NoteWinBlocked(v); // the smoke's direct block (in game OnMeleeHit's contact counted it first and closed the flight)
                     ClearFlight();
                     EndCounter(v, now, true, false);
                     double len = _hold.Link(now, in hr);
@@ -387,6 +387,7 @@ namespace TraxCombat.Missions
                     return;
                 }
                 if (!IsPlayer(a) || !YouDrive(a)) return;
+                if (!landed) NoteWinBlocked(v); // step 107d: OnMeleeHit's contact comes BEFORE the block's impact decision - count it before the flight closes
                 HoldBlowResolved(now);
                 if (_hold.Active && v.AgentIndex != _hold.Target) EndHoldChain(HoldEnd.TargetSwitch, now, true);
             }
@@ -394,6 +395,15 @@ namespace TraxCombat.Missions
             {
                 HoldFailed(e, now);
             }
+        }
+
+        /// <summary>Step 107d: a swing judged WINNING at its commit was stopped by him anyway (his parry / his shield - lowered too late?): counted once, a line.</summary>
+        private void NoteWinBlocked(TrackedAgent v)
+        {
+            if (!_holdFlight || _holdCls != HoldSwing.Wins || !_hold.Active || v.AgentIndex != _hold.Target) return;
+            _openHoldStats.WinBlocked++;
+            OpeningLine("openings (hold-block): your WINNING swing was stopped by " + Name(v) + " anyway (" + (_holdShield ? (_forceLower ? "his shield was lowered" : "his shield") : "his weapon")
+                        + ", 'can defend' " + (_forceFlagOff ? "off" : "on") + ") - a link");
         }
 
         // ------------------------------------------------------------------ the tick

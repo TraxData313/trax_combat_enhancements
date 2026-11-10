@@ -258,6 +258,28 @@ namespace TraxCombat.Tools
                 LogHas("counter-swing chance 30%: no counter-swing");
                 Tick(2.5);
 
+                // ---- 4b (step 107d). A WINNING swing he parries anyway is COUNTED (OnMeleeHit's contact comes before the block's decision - it closed
+                //      the flight first, so the count never moved); his counter-swing's wind-up is never rolled into a kick / bash by step 81
+                var w1 = Man();
+                Lands(you, w1, OpeningMath.AttackRight); // high guard: the opening is your thrust
+                Tick(0.2);
+                WindUp(you, OpeningMath.AttackDown);
+                Check(logic.LastHoldSwing == HoldSwing.Wins && body.NoDefend.Contains(w1.AgentIndex), "107d: the thrust into the opening was not judged winning");
+                Tick(0.2);
+                int wbBefore = hs.WinBlocked;
+                Parried(you, w1, OpeningMath.AttackDown);
+                Check(hs.WinBlocked == wbBefore + 1 && logic.OpeningHold.Links == 1 && !body.NoDefend.Contains(w1.AgentIndex),
+                    "107d: a winning swing parried anyway was not counted once (a link, his flag back): " + hs.WinBlocked + " " + logic.OpeningHold.Links);
+                LogHas("your WINNING swing was stopped by ");
+                for (int n = 0; n < 400 && logic.OpeningHold.Phase == HoldPhase.Holding; n++) Tick();
+                Check(ReferenceEquals(logic.OpeningCounterSwinger, w1) && logic.OpeningCounterReady, "107d: no counter-swing after the lengthened hold");
+                long kickLooks = logic.AiKickStats.Looks;
+                logic.DecideAiMove(w1, Now(), AiKickRules.From(S), in ar);
+                Check(hs.CounterKickRollsSkipped == 1 && logic.AiKickStats.Looks == kickLooks && w1.AiKickPhase == AiKickPhase.None,
+                    "107d: step 81 rolled a kick on the counter-swing's own wind-up");
+                Tick(3);
+                Tick(2.5);
+
                 // ---- 5. A SHIELDMAN: his shield block opens a SHORT hold (a kite 130 cm: 0.5 s); your winning strike LOWERS his shield, he staggers
                 var sh = Man(130);
                 ShieldRight(you, sh, OpeningMath.AttackRight);

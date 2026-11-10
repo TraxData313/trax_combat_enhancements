@@ -469,6 +469,9 @@ namespace TraxCombat.Core
         /// <summary>Counter-swings: rolled after the first hold / a lengthened one, thrown after each, played (ready → release), cut short, refused (not his to drive).</summary>
         public int CounterRolledFirst, CounterRolledLater, CounterThrownFirst, CounterThrownLater, CounterReleased, CounterCut, CounterRefused;
 
+        /// <summary>Step 107d: step 81's kick / bash / push roll at the counter-swing's own wind-up SKIPPED (a kick there would cancel the forced swing).</summary>
+        public int CounterKickRollsSkipped;
+
         /// <summary>Entries refused: he was reeling / stagger-immune; an unshielded man's parry with no hold on him (no entry - 106's replaced).</summary>
         public int Immune, BlocksNoHold;
 
@@ -547,7 +550,8 @@ namespace TraxCombat.Core
             t.Append(" ('can defend' taken for a winning swing ").Append(FlagsOff.ToString(c)).Append(", a winning swing blocked anyway ").Append(WinBlocked.ToString(c)).Append(')');
             t.Append("; COUNTER-SWINGS after the first hold rolled ").Append(CounterRolledFirst.ToString(c)).Append(" / thrown ").Append(CounterThrownFirst.ToString(c))
              .Append(", after a lengthened hold rolled ").Append(CounterRolledLater.ToString(c)).Append(" / thrown ").Append(CounterThrownLater.ToString(c))
-             .Append(" (released ").Append(CounterReleased.ToString(c)).Append(", cut short ").Append(CounterCut.ToString(c)).Append(", refused ").Append(CounterRefused.ToString(c)).Append(')');
+             .Append(" (released ").Append(CounterReleased.ToString(c)).Append(", cut short ").Append(CounterCut.ToString(c)).Append(", refused ").Append(CounterRefused.ToString(c))
+             .Append(", step 81's kick roll skipped for it ").Append(CounterKickRollsSkipped.ToString(c)).Append(')');
             t.Append("; the arrow on the opening shown for ").Append(ArrowShown.ToString(c)).Append(" holds (the poses: the forced-guard line's 'the balance guard with a weapon')");
             t.Append("; no hold: reeling / stagger-immune ").Append(Immune.ToString(c)).Append(", his parries with no hold on him (step 106's off balance replaced) ")
              .Append(BlocksNoHold.ToString(c));
