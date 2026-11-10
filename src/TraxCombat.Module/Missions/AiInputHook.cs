@@ -315,7 +315,7 @@ namespace TraxCombat.Missions
                 }
                 if (s.Opening) flags = AiInputHook.ApplyOpening(s, flags); // step 106b: the openings' forced guard - after the read guard, before a kick
                 if (s.CounterSwing) flags = AiInputHook.ApplyCounter(s, flags); // step 107: the forced counter-swing - over the pause's attack hold and the forced guard
-                if (s.KickPhase != AiKickPhase.None && settings.AiKicksEnabled) // step 65: the kick / bash written LAST (after a held man's kick-out)
+                if (s.KickPhase != AiKickPhase.None && settings.AiKicksEnabled && !s.Opening) // step 65: the kick / bash written LAST (after a held man's kick-out); step 108: never over a forced guard - his attacks are held off from the hit (a kick queued before it plays out unwritten)
                 {
                     uint ev = (uint)eventFlag;
                     if (AiInputHook.ApplyKick(s, ref ev, ref flags, ref vx, ref vy)) moved = true;

@@ -46,6 +46,9 @@ namespace TraxCombat.Tools
             public OpeningPose Pose(TrackedAgent st) =>
                 Poses.TryGetValue(st.AgentIndex, out var p) ? p : new OpeningPose { Action = "act_idle", Direction = -1, Stage = -1, Read = true };
 
+            public bool GuardShown(TrackedAgent st, int guard) => // step 108: the recovery's cheap read
+                Poses.TryGetValue(st.AgentIndex, out var p) && OpeningForceMath.PoseMatches(guard, false, p.Direction, p.Defending);
+
             public bool CanDefend(TrackedAgent st) => !NoDefend.Contains(st.AgentIndex);
 
             public void SetCanDefend(TrackedAgent st, bool on)

@@ -40,9 +40,6 @@ namespace TraxCombat.Missions
         private int _heldDir = OpeningMath.Unknown, _heldGuard = OpeningMath.Unknown;
         private bool _heldLowered;
 
-        /// <summary>Step 106f: live read-back / blocked-anyway lines at Info per mission (then verbose).</summary>
-        internal const int OpeningPoseLines = 20;
-
         internal IOpeningBody OpeningBody { get; set; } = OpeningBodyDefault.Current;
 
         internal OpeningForceStats OpeningForceStats => _force;
@@ -189,12 +186,14 @@ namespace TraxCombat.Missions
             return why;
         }
 
+        /// <summary>Step 106f's live read-back / blocked-anyway lines: at Info up to <c>OpeningLogInfoLines</c> a battle (step 108 - was 20), then verbose.</summary>
         private static void ForceInfoLine(ref int budget, string text)
         {
-            if (budget < OpeningPoseLines)
+            int max = Math.Max(0, TraxSettings.Shared.OpeningLogInfoLines);
+            if (budget < max)
             {
                 budget++;
-                TraxLog.Info("impact", text + (budget == OpeningPoseLines ? " (the last such line at Info this battle - the rest verbose)" : string.Empty));
+                TraxLog.Info("impact", text + (budget == max ? " (the last such line at Info this battle - OpeningLogInfoLines; the rest verbose)" : string.Empty));
             }
             else if (TraxLog.VerboseWants("openings")) TraxLog.Verbose("impact", text, "openings");
         }
@@ -356,7 +355,7 @@ namespace TraxCombat.Missions
             if (_forceKind == OpeningForceKind.Balance && (!_openPending || _openJudged || _openTarget != st.AgentIndex || !_openChain.Active))
                 EndForce(_openChain.Phase == OpeningPhase.Reeling ? OpeningForceEnd.Reels : OpeningForceEnd.ChainEnded, now, true);
             else if (_forceKind == OpeningForceKind.Held && _openChain.Phase == OpeningPhase.Reeling) EndForce(OpeningForceEnd.Reels, now, true);
-            else if (_forceKind == OpeningForceKind.Hold && !_hold.Holding(st.AgentIndex)) EndForce(OpeningForceEnd.ChainEnded, now, true); // step 107: a backstop - the hold is over
+            else if (_forceKind == OpeningForceKind.Hold && !_hold.Forced(st.AgentIndex)) EndForce(OpeningForceEnd.ChainEnded, now, true); // step 107: a backstop - the hold is over (step 108: recovering counts as held)
         }
 
         private void ForceFailed(Exception e, double now)

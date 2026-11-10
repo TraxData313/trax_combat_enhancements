@@ -3001,10 +3001,28 @@
   // (true or false)
   "OpeningHoldsEnabled": true,
 
-  // How long he holds his block after your first hit lands, with a weapon of average speed
-  // (95). Slower weapons get longer, faster ones shorter (the two factors below).
+  // His first hold (a man without a shield) is your swing's time plus a reading margin (below),
+  // with a weapon of average speed (95) - slower weapons get longer, faster ones shorter (the
+  // two factors below). It counts from the moment his guard is visibly up, not from your hit.
   // (range 0.3 to 3.0)
-  "OpeningHoldFirstSeconds": 1.2,
+  "OpeningHoldSwingSeconds": 1.0,
+
+  // The time added to your swing for reading his guard, at skill 0 in the weapon you hold
+  // (one-handed, two-handed or polearm - the timed block's skill); a straight line to the value
+  // at skill 200.
+  // (range 0.0 to 1.0)
+  "OpeningHoldReadMarginAtSkill0": 0.15,
+
+  // ... at skill 200 and above: a skilled fighter reads a guard better and is given a little
+  // more time to do it.
+  // (range 0.0 to 1.0)
+  "OpeningHoldReadMarginAtSkill200": 0.3,
+
+  // After your hit he cannot attack and is pushed into his guard; the hold (and the red arrow)
+  // start only when his guard is visibly up - or after this long, if it never shows. 0 = the
+  // hold starts at your hit (the older way).
+  // (range 0.0 to 3.0)
+  "OpeningHoldRecoveryCapSeconds": 1.0,
 
   // The first hold is multiplied by this / your weapon's speed (its swing speed, the thrust
   // speed for a thrust-only weapon): a slower weapon gets a longer hold.
@@ -3081,6 +3099,24 @@
   // ... and at perfect timing.
   // (range 1.0 to 5.0)
   "PerfectStrikeDefensiveMax": 3.0,
+
+  // On: while he holds his unbalanced block the red arrow at your crosshair shows the side to
+  // hit (from the moment his guard is up). Off: read his block alone - the arrow still shows
+  // the perfect-strike side while he reels.
+  // (true or false)
+  "OpeningHoldArrowShow": true,
+
+  // On: when his unbalanced block is up, a line names it as you see it and the strike that wins
+  // - for example 'Unbalanced DOWN (hit from top down)', or 'Unbalanced - guard HIGH, hit any
+  // other side' for an axe or a mace.
+  // (true or false)
+  "OpeningHoldMessage": true,
+
+  // How many of the openings' own lines (your holds, links, his guard showing, counter-swings,
+  // his pose read back) are written to the log in one battle before the rest go to the verbose
+  // log only. They are only for your own fights.
+  // (range 0 to 100000)
+  "OpeningLogInfoLines": 5000,
 
   // How much an outmatched man suffers: every doubling of the mismatch beyond the even band
   // adds this to the pressure on him (0.25: an enemy four times stronger counts as much as

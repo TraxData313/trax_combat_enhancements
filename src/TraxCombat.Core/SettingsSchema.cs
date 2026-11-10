@@ -2252,9 +2252,22 @@ namespace TraxCombat.Core
             "Openings: hold-block openings (no shield)",
             "On: your hit that lands in front makes him hold a block in a random direction for a moment, the red arrow showing the opening (a man with a shield also when his shield blocks you - his first hold is short, shorter the bigger the shield). A sword must strike exactly that side, an axe, mace or spear any side but his guard - he staggers (his shield comes down) and the perfect strike opens. Strike into his guard and he blocks it - he holds longer. When the hold ends he may counter-swing. Off: the older openings (his block of your attack puts him off balance). Needs 'Openings' on.");
 
-        public static readonly ParamDef OpeningHoldFirstSeconds = Float("OpeningHoldFirstSeconds", 0.3, 3, ImpactGroup,
-            "Openings: first hold (s)",
-            "How long he holds his block after your first hit lands, with a weapon of average speed (95). Slower weapons get longer, faster ones shorter (the two factors below).");
+        // Step 108 (Toni's training-field playtest 2026-11-10: "read the BLOCK, not the arrow"): the first hold = your swing + a reading margin, from his VISIBLE guard.
+        public static readonly ParamDef OpeningHoldSwingSeconds = Float("OpeningHoldSwingSeconds", 0.3, 3, ImpactGroup,
+            "Openings: first hold - your swing time (s)",
+            "His first hold (a man without a shield) is your swing's time plus a reading margin (below), with a weapon of average speed (95) - slower weapons get longer, faster ones shorter (the two factors below). It counts from the moment his guard is visibly up, not from your hit.");
+
+        public static readonly ParamDef OpeningHoldReadMarginAtSkill0 = Float("OpeningHoldReadMarginAtSkill0", 0, 1, ImpactGroup,
+            "Openings: first hold - reading margin at skill 0 (s)",
+            "The time added to your swing for reading his guard, at skill 0 in the weapon you hold (one-handed, two-handed or polearm - the timed block's skill); a straight line to the value at skill 200.");
+
+        public static readonly ParamDef OpeningHoldReadMarginAtSkill200 = Float("OpeningHoldReadMarginAtSkill200", 0, 1, ImpactGroup,
+            "Openings: first hold - reading margin at skill 200 (s)",
+            "... at skill 200 and above: a skilled fighter reads a guard better and is given a little more time to do it.");
+
+        public static readonly ParamDef OpeningHoldRecoveryCapSeconds = Float("OpeningHoldRecoveryCapSeconds", 0, 3, ImpactGroup,
+            "Openings: longest wait for his guard to show (s)",
+            "After your hit he cannot attack and is pushed into his guard; the hold (and the red arrow) start only when his guard is visibly up - or after this long, if it never shows. 0 = the hold starts at your hit (the older way).");
 
         public static readonly ParamDef OpeningHoldSpeedReference = Int("OpeningHoldSpeedReference", 50, 150, ImpactGroup,
             "Openings: hold - weapon speed reference",
@@ -2320,6 +2333,19 @@ namespace TraxCombat.Core
         public static readonly ParamDef PerfectStrikeDefensiveMax = Float("PerfectStrikeDefensiveMax", 1, 5, ImpactGroup,
             "Perfect strike after your timed block: x highest",
             "... and at perfect timing.");
+
+        // Step 108: the hold's arrow and its words, each with a switch; the openings' log lines per battle.
+        public static readonly ParamDef OpeningHoldArrowShow = Bool("OpeningHoldArrowShow", ImpactGroup,
+            "Openings: red arrow on a hold",
+            "On: while he holds his unbalanced block the red arrow at your crosshair shows the side to hit (from the moment his guard is up). Off: read his block alone - the arrow still shows the perfect-strike side while he reels.");
+
+        public static readonly ParamDef OpeningHoldMessage = Bool("OpeningHoldMessage", ImpactGroup,
+            "Openings: 'Unbalanced ...' on screen",
+            "On: when his unbalanced block is up, a line names it as you see it and the strike that wins - for example 'Unbalanced DOWN (hit from top down)', or 'Unbalanced - guard HIGH, hit any other side' for an axe or a mace.");
+
+        public static readonly ParamDef OpeningLogInfoLines = Int("OpeningLogInfoLines", 0, 100000, ImpactGroup,
+            "Openings: log lines per battle",
+            "How many of the openings' own lines (your holds, links, his guard showing, counter-swings, his pose read back) are written to the log in one battle before the rest go to the verbose log only. They are only for your own fights.");
 
         public static readonly ParamDef ImpactMismatchWeight = Float("ImpactMismatchWeight", 0, 2, ImpactGroup,
             "Mismatch weight (pressure per doubling)",
@@ -3046,9 +3072,10 @@ namespace TraxCombat.Core
             OpeningReelBaseSeconds, OpeningReelPerChainSeconds, OpeningReelMaxSeconds, OpeningShieldMinChain, OpeningBackHitStaggers, OpeningUnguardedHitOpens,
             OpeningAiVsAi, PerfectStrikeFourWayMin, PerfectStrikeFourWayMax, PerfectStrikeThreeWayMin, PerfectStrikeThreeWayMax,
             PerfectStrikeTwoWayMin, PerfectStrikeTwoWayMax, PerfectStrikeWeaponFinishes, OpeningGuardTest, OpeningGuardTestKey, OpeningGuardTestSeconds,
-            OpeningHoldsEnabled, OpeningHoldFirstSeconds, OpeningHoldSpeedReference, OpeningHoldSpeedFactorMin, OpeningHoldSpeedFactorMax,
+            OpeningHoldsEnabled, OpeningHoldSwingSeconds, OpeningHoldReadMarginAtSkill0, OpeningHoldReadMarginAtSkill200, OpeningHoldRecoveryCapSeconds, OpeningHoldSpeedReference, OpeningHoldSpeedFactorMin, OpeningHoldSpeedFactorMax,
             OpeningHoldPerLinkSeconds, OpeningHoldChainBonusSeconds, OpeningHoldChainBonusFullSeconds, OpeningHoldChainBonusZeroSeconds, OpeningHoldCapSeconds,
             OpeningHoldShieldSmallSeconds, OpeningHoldShieldBigSeconds, OpeningHoldShieldSmallLength, OpeningHoldShieldBigLength, OpeningCounterSwingFirstPercent, OpeningCounterSwingLaterPercent, PerfectStrikeDefensiveMin, PerfectStrikeDefensiveMax,
+            OpeningHoldArrowShow, OpeningHoldMessage, OpeningLogInfoLines,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
             ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,

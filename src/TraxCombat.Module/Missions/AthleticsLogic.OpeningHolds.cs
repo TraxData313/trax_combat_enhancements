@@ -27,6 +27,15 @@ namespace TraxCombat.Missions
         private double _holdFlightUntil;
         private int _holdDir = OpeningMath.Unknown;
 
+        // step 108: your weapon's mask at the hold's start (the "Unbalanced" words), the line queued for the tick, a counter-swing thrown after the hold
+        private int _holdMask = OpeningMath.AllAttacks;
+        private string? _holdText;
+        private bool _holdCounterThrown;
+        private double _holdEndedAt;
+
+        /// <summary>The feed colour of the "Unbalanced ..." line (#RRGGBBAA - the red arrow's red).</summary>
+        internal const string UnbalancedHex = "#F01E1EFF";
+
         // the forced counter-swing (one man at a time)
         private TrackedAgent? _counterSt;
         private bool _counterReady;
@@ -51,6 +60,36 @@ namespace TraxCombat.Missions
 
         /// <summary>His shield's length (the engine's <c>WeaponLength</c>, cm; NaN = no shield in hand). The smoke's stand-in.</summary>
         internal Func<Agent, double> OpeningShieldLengthRead { get; set; } = GameShieldLength;
+
+        /// <summary>Step 108: YOUR skill in the weapon you hold (One / Two Handed / Polearm, One Handed for a shield alone - the timed block's lookup,
+        /// <see cref="GameImpactInputs.GuardSkillOf"/>); NaN = unread. The smoke's stand-in.</summary>
+        internal Func<Agent, double> OpeningSkillRead { get; set; } = GameWeaponSkill;
+
+        private static double GameWeaponSkill(Agent a) => GameImpactInputs.Skill(a, GameImpactInputs.GuardSkillOf(a.WieldedWeapon.CurrentUsageItem?.RelevantSkill));
+
+        private double ReadSkill(Agent a)
+        {
+            try
+            {
+                return OpeningSkillRead(a);
+            }
+            catch (Exception)
+            {
+                return double.NaN;
+            }
+        }
+
+        private bool SafeGuardShown(TrackedAgent v, int guard)
+        {
+            try
+            {
+                return OpeningBody.GuardShown(v, guard);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
 
         private static double GameWeaponSpeed(Agent a)
         {
@@ -123,7 +162,14 @@ namespace TraxCombat.Missions
                     NoteWinBlocked(v); // the smoke's direct block (in game OnMeleeHit's contact counted it first and closed the flight)
                     ClearFlight();
                     EndCounter(v, now, true, false);
+                    bool wasRecovering = _hold.Phase == HoldPhase.Recovering;
                     double len = _hold.Link(now, in hr);
+                    _holdCounterThrown = false;
+                    if (wasRecovering) // step 108: his block shows his guard - the recovery is over, the link's clock from his block
+                    {
+                        _openHoldStats.NoteRecovery(now - _hold.HitAt, false);
+                        QueueHoldShown(in hr);
+                    }
                     _openHoldStats.Links++;
                     if (after) _openHoldStats.LinksAfter++;
                     _openHoldStats.NoteLength(len);
@@ -223,12 +269,15 @@ namespace TraxCombat.Missions
             if (!OpeningMath.IsGuard(guard)) return;
             double speed = ReadSpeed(you.Agent);
             double shieldLength = shield ? ReadShieldLength(v.Agent) : double.NaN;
-            double len = shield ? OpeningHoldMath.ShieldFirstHold(in hr, shieldLength, speed) : OpeningHoldMath.FirstHold(in hr, speed);
+            double skill = shield ? double.NaN : ReadSkill(you.Agent);
+            double len = shield ? OpeningHoldMath.ShieldFirstHold(in hr, shieldLength, speed) : OpeningHoldMath.FirstHold(in hr, speed, skill);
             if (_hold.Active && _hold.Target != v.AgentIndex) EndHoldChain(HoldEnd.TargetSwitch, now, true);
             if (_openChain.Active && !(_openChain.Phase == OpeningPhase.Reeling && _openChain.Target == v.AgentIndex)) EndChain(OpeningReset.TargetSwitch);
             EndCounter(v, now, true, false);
             ClearFlight();
-            _hold.Begin(v.AgentIndex, guard, hr.SidesCrossed, now, len);
+            _hold.Begin(v.AgentIndex, guard, hr.SidesCrossed, now, len, hr.RecoveryCap); // step 108: RECOVERING until his guard shows
+            _holdMask = mask;
+            _holdCounterThrown = false;
             _holdShield = shield;
             _holdWound = _holdJudged = false;
             _holdCls = HoldSwing.Unknown;
@@ -242,17 +291,22 @@ namespace TraxCombat.Missions
                 _openHoldStats.ShieldFirstSum += len;
                 if (byBlock) _openHoldStats.ShieldHoldsByBlock++;
             }
-            if (OpeningRules.From(TraxSettings.Shared).ArrowShow) _openHoldStats.ArrowShown++;
             StartHoldForce(v, now, false);
+            bool recovering = _hold.Phase == HoldPhase.Recovering;
+            if (recovering) _openHoldStats.Recoveries++;
+            else QueueHoldShown(in hr); // the recovery cap 0: step 107 - the clock, the arrow and the words from the hit
             if (!_holdFirstLine)
             {
                 _holdFirstLine = true;
                 TraxLog.Info("impact", "openings: first HOLD-BLOCK at " + Sec(now) + " s - " + Name(v) + " - " + hr.Describe());
             }
             OpeningLine("openings (hold-block): " + why + " -> " + Name(v) + " HOLDS his " + (shield ? "shield" : "guard") + " in the " + OpeningMath.GuardName(guard) + " for "
-                        + F2(len) + " s (your weapon's speed " + (double.IsNaN(speed) ? "?" : speed.ToString("0", CultureInfo.InvariantCulture)) + " -> x"
+                        + F2(len) + " s" + (recovering ? " FROM THE MOMENT IT SHOWS (his attacks held off and the guard pushed until then, at most " + F2(hr.RecoveryCap) + " s)" : " from now")
+                        + " (" + (shield ? string.Empty : "your swing " + F2(hr.SwingSeconds) + " + reading margin " + F2(OpeningHoldMath.ReadMargin(in hr, skill)) + " at your skill "
+                        + (double.IsNaN(skill) ? "?" : skill.ToString("0", CultureInfo.InvariantCulture)) + "; ")
+                        + "your weapon's speed " + (double.IsNaN(speed) ? "?" : speed.ToString("0", CultureInfo.InvariantCulture)) + " -> x"
                         + F2(OpeningHoldMath.SpeedFactor(in hr, speed)) + (shield ? ", his shield " + (double.IsNaN(shieldLength) ? "?" : shieldLength.ToString("0", CultureInfo.InvariantCulture)) + " cm" : string.Empty)
-                        + "); the red arrow on your " + OpeningMath.AttackName(_hold.Opening) + " - "
+                        + "); the red arrow on your " + OpeningMath.AttackName(_hold.Opening) + (recovering ? " once his guard shows" : string.Empty) + " - "
                         + (OpeningHoldMath.ExactSide(mask) ? "your sword must strike exactly there" : "any side but his guard wins (" + OpeningMath.MaskName(OpeningHoldMath.WinMask(guard, mask, hr.SidesCrossed)) + ")"));
         }
 
@@ -276,6 +330,7 @@ namespace TraxCombat.Missions
         private void EndHoldChain(HoldEnd why, double now, bool releaseForce)
         {
             if (!_hold.Active) return;
+            if (_hold.Phase == HoldPhase.Recovering) _openHoldStats.RecoveryCut++; // step 108: ended before his guard showed
             _openHoldStats.NoteEnd(why);
             var t = GetByIndex(_hold.Target);
             _hold.Reset();
@@ -296,7 +351,15 @@ namespace TraxCombat.Missions
         /// <summary>From <see cref="OpeningWindUp"/>: your melee wind-up while he holds - the timing share, the chain-speed bonus (the first wind-up after a link).</summary>
         private void HoldWindUp(TrackedAgent you, double now)
         {
-            if (!_hold.Active || _hold.Phase != HoldPhase.Holding || !YouDrive(you)) return;
+            if (!_hold.Active || !YouDrive(you)) return;
+            if (_hold.Phase == HoldPhase.Recovering)
+            {
+                // step 108: a swing started before his guard shows is judged at its commit once the hold runs (no timing share - it was early)
+                _holdWound = true;
+                _holdJudged = false;
+                return;
+            }
+            if (_hold.Phase != HoldPhase.Holding) return;
             try
             {
                 if (!HoldsLive(out var hr)) return;
@@ -383,7 +446,11 @@ namespace TraxCombat.Missions
             {
                 if (IsPlayer(v) && YouDrive(v))
                 {
-                    if (landed && _hold.Active && a.AgentIndex == _hold.Target) EndHoldChain(HoldEnd.HeHitYou, now, true);
+                    if (landed && _hold.Active && a.AgentIndex == _hold.Target)
+                    {
+                        NoteHitYou(a, now); // step 108: in which phase, by what (the next playtest's proof of pic 2)
+                        EndHoldChain(HoldEnd.HeHitYou, now, true);
+                    }
                     return;
                 }
                 if (!IsPlayer(a) || !YouDrive(a)) return;
@@ -395,6 +462,39 @@ namespace TraxCombat.Missions
             {
                 HoldFailed(e, now);
             }
+        }
+
+        /// <summary>Step 108: his blow landed on you during the chain - counted by phase (recovering / holding / after his forced counter-swing / after
+        /// the hold on his own) with a line: what was forcing him, so the next playtest names what released his attack.</summary>
+        private void NoteHitYou(TrackedAgent a, double now)
+        {
+            string phase;
+            switch (_hold.Phase)
+            {
+                case HoldPhase.Recovering:
+                    _openHoldStats.HitYouRecovering++;
+                    phase = "while he RECOVERED from your hit (" + F2(now - _hold.HitAt) + " s after it, his guard not shown yet)";
+                    break;
+                case HoldPhase.Holding:
+                    _openHoldStats.HitYouHolding++;
+                    phase = "while he HELD his forced guard (" + F2(now - _hold.Start) + " s into a " + F2(_hold.Length) + " s hold)";
+                    break;
+                default:
+                    if (_holdCounterThrown)
+                    {
+                        _openHoldStats.HitYouAfterCounter++;
+                        phase = "after his hold ran out - his FORCED counter-swing";
+                    }
+                    else
+                    {
+                        _openHoldStats.HitYouAfterOwn++;
+                        phase = "after his hold ran out - his OWN attack (no counter-swing thrown; " + F2(now - _holdEndedAt) + " s after the hold)";
+                    }
+                    break;
+            }
+            bool forced = _forceKind == OpeningForceKind.Hold && ReferenceEquals(_forceSt, a);
+            OpeningLine("openings (hold-block): " + Name(a) + "'s blow LANDED on you " + phase + "; the forced guard " + (forced ? "ON" : "off")
+                        + (ReferenceEquals(_counterSt, a) ? ", his counter-swing " + (_counterReady ? "READY" : "RELEASED") : string.Empty) + " - the chain ends");
         }
 
         /// <summary>Step 107d: a swing judged WINNING at its commit was stopped by him anyway (his parry / his shield - lowered too late?): counted once, a line.</summary>
@@ -413,6 +513,7 @@ namespace TraxCombat.Missions
         private void TickHolds(double now)
         {
             TickCounter(now);
+            ShowHoldText(now);
             if (!_hold.Active) return;
             try
             {
@@ -426,6 +527,12 @@ namespace TraxCombat.Missions
                 if (!live || !OpeningBody.OnFoot(v) || !OpeningBody.AiDriven(v))
                 {
                     EndHoldChain(HoldEnd.Off, now, true);
+                    return;
+                }
+                if (_hold.Phase == HoldPhase.Recovering) // step 108: his guard pushed until it SHOWS - then the hold's clock, the arrow, the words
+                {
+                    bool visible = SafeGuardShown(v, _hold.Guard);
+                    if (OpeningHoldMath.RecoveryOver(in hr, _hold.HitAt, now, visible)) HoldGuardShown(v, now, !visible, in hr);
                     return;
                 }
                 if (_hold.Phase == HoldPhase.After)
@@ -455,6 +562,49 @@ namespace TraxCombat.Missions
             }
         }
 
+        /// <summary>Step 108: his guard SHOWS (or the recovery cap ran out - <paramref name="capped"/>): the hold's clock starts now; the arrow and the
+        /// "Unbalanced" line from here.</summary>
+        private void HoldGuardShown(TrackedAgent v, double now, bool capped, in OpeningHoldRules hr)
+        {
+            _hold.GuardShown(now, capped);
+            _openHoldStats.NoteRecovery(_hold.RecoverySeconds, capped);
+            if (_forceKind == OpeningForceKind.Hold && ReferenceEquals(_forceSt, v)) _forceUntil = HoldForceUntil();
+            QueueHoldShown(in hr);
+            OpeningLine("openings (hold-block): " + Name(v) + "'s " + (_holdShield ? "shield" : "guard") + " in the " + OpeningMath.GuardName(_hold.Guard)
+                        + (capped ? " NOT seen within " + F2(hr.RecoveryCap) + " s of your hit (the recovery cap) - the hold's clock starts anyway: "
+                                  : " is VISIBLE " + F2(_hold.RecoverySeconds) + " s after your hit - the hold's clock starts: ")
+                        + F2(_hold.Length) + " s; " + (_holdText != null ? "'" + _holdText + "'" : "no words (OpeningHoldMessage off)") + ", the red arrow on your "
+                        + OpeningMath.AttackName(_hold.Opening) + (HoldArrowOn() ? string.Empty : " OFF (OpeningHoldArrowShow)"));
+        }
+
+        /// <summary>Step 108: the hold has started (his guard visible): the arrow counted, the "Unbalanced" line queued for the tick.</summary>
+        private void QueueHoldShown(in OpeningHoldRules hr)
+        {
+            if (HoldArrowOn()) _openHoldStats.ArrowShown++;
+            else _openHoldStats.ArrowOff++;
+            _holdText = hr.Message ? OpeningHoldMath.UnbalancedText(_hold.Guard, _holdMask, hr.SidesCrossed) : null;
+        }
+
+        private static bool HoldArrowOn() => TraxSettings.Shared.OpeningHoldArrowShow && OpeningRules.From(TraxSettings.Shared).ArrowShow;
+
+        /// <summary>Step 108: the queued "Unbalanced ..." line in the feed (from the tick, never a callback), while the hold lasts.</summary>
+        private void ShowHoldText(double now)
+        {
+            var text = _holdText;
+            if (text == null) return;
+            _holdText = null;
+            if (!_hold.Active || !TraxSettings.Shared.OpeningHoldMessage) return;
+            try
+            {
+                MessageSink.Show(text, UnbalancedHex);
+                _openHoldStats.MessagesShown++;
+            }
+            catch (Exception e)
+            {
+                HoldFailed(e, now);
+            }
+        }
+
         /// <summary>The hold ran out without a stagger: the AFTER phase (a block of yours is still a link), the force let go, the counter-swing rolled.</summary>
         private void HoldRanOut(TrackedAgent v, double now, in OpeningHoldRules hr)
         {
@@ -466,6 +616,8 @@ namespace TraxCombat.Missions
             double chance = OpeningHoldMath.CounterChance(in hr, links);
             double die = OpeningDice.NextDouble();
             bool thrown = OpeningHoldMath.CounterThrown(die, chance);
+            _holdCounterThrown = thrown;
+            _holdEndedAt = now;
             if (links > 0)
             {
                 _openHoldStats.CounterRolledLater++;
@@ -557,7 +709,7 @@ namespace TraxCombat.Missions
 
         /// <summary>The hold's opening for the red arrow (attack bits), 0 = none.</summary>
         private int HoldArrowMask() =>
-            _hold.Phase == HoldPhase.Holding && OpeningMath.IsAttack(_hold.Opening) ? OpeningMath.Bit(_hold.Opening) : 0;
+            _hold.Phase == HoldPhase.Holding && OpeningMath.IsAttack(_hold.Opening) && TraxSettings.Shared.OpeningHoldArrowShow ? OpeningMath.Bit(_hold.Opening) : 0; // step 108: never while recovering; its switch
 
         /// <summary>The mission's end (before the summary) / an error: every hold, force, flag and counter-swing let go.</summary>
         private void CloseHolds(double now)

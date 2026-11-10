@@ -711,7 +711,13 @@ namespace TraxCombat.Core
         public string OpeningGuardTestKey => KeyNames.Name(Get(SettingsSchema.OpeningGuardTestKey)); // step 106b
         public float OpeningGuardTestSeconds => GetFloat(SettingsSchema.OpeningGuardTestSeconds); // step 106b
         public bool OpeningHoldsEnabled => GetBool(SettingsSchema.OpeningHoldsEnabled); // step 107
-        public float OpeningHoldFirstSeconds => GetFloat(SettingsSchema.OpeningHoldFirstSeconds); // step 107
+        public float OpeningHoldSwingSeconds => GetFloat(SettingsSchema.OpeningHoldSwingSeconds); // step 108
+        public float OpeningHoldReadMarginAtSkill0 => GetFloat(SettingsSchema.OpeningHoldReadMarginAtSkill0); // step 108
+        public float OpeningHoldReadMarginAtSkill200 => GetFloat(SettingsSchema.OpeningHoldReadMarginAtSkill200); // step 108
+        public float OpeningHoldRecoveryCapSeconds => GetFloat(SettingsSchema.OpeningHoldRecoveryCapSeconds); // step 108
+        public bool OpeningHoldArrowShow => GetBool(SettingsSchema.OpeningHoldArrowShow); // step 108
+        public bool OpeningHoldMessage => GetBool(SettingsSchema.OpeningHoldMessage); // step 108
+        public int OpeningLogInfoLines => GetInt(SettingsSchema.OpeningLogInfoLines); // step 108
         public int OpeningHoldSpeedReference => GetInt(SettingsSchema.OpeningHoldSpeedReference); // step 107
         public float OpeningHoldSpeedFactorMin => GetFloat(SettingsSchema.OpeningHoldSpeedFactorMin); // step 107
         public float OpeningHoldSpeedFactorMax => GetFloat(SettingsSchema.OpeningHoldSpeedFactorMax); // step 107

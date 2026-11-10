@@ -23,12 +23,11 @@ namespace TraxCombat.Missions
     ///   - the chain's resets (the reel over, the gap, his hit on you, another target, a miss by the setting).
     /// Also counted: your attack's direction × his guard read at contact - the engine's SIDE PAIRING (<c>OpeningSidesCrossed</c>), and AI vs AI
     /// correct blocks on foot. Master switch first (through <see cref="OpeningRules.ShadowOn"/>): off = the chain dropped at the next tick. Main
-    /// thread; one record, no allocation per tick (lines only for your fights, the first <see cref="OpeningFullLines"/> at Info).
+    /// thread; one record, no allocation per tick (lines only for your fights, the first <c>OpeningLogInfoLines</c> at Info - step 108).
     /// </summary>
     public sealed partial class AthleticsLogic
     {
         /// <summary>Your openings logged at Info per mission; the rest verbose.</summary>
-        internal const int OpeningFullLines = 40;
 
         private readonly OpeningStats _open = new OpeningStats();
         private OpeningChain _openChain = OpeningChain.None;
@@ -657,10 +656,11 @@ namespace TraxCombat.Missions
 
         private void OpeningLine(string text)
         {
-            if (_openLines < OpeningFullLines)
+            int budget = Math.Max(0, TraxSettings.Shared.OpeningLogInfoLines); // step 108: a setting (was 40 - Toni's training-field log stopped after ~1 min)
+            if (_openLines < budget)
             {
                 _openLines++;
-                TraxLog.Info("impact", "YOU: " + text + (_openLines == OpeningFullLines ? " (the last at Info this battle - the rest verbose)" : string.Empty));
+                TraxLog.Info("impact", "YOU: " + text + (_openLines == budget ? " (the last at Info this battle - OpeningLogInfoLines; the rest verbose)" : string.Empty));
             }
             else if (TraxLog.VerboseWants("openings")) TraxLog.Verbose("impact", "YOU: " + text, "openings");
         }

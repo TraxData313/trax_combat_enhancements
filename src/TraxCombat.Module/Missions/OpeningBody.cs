@@ -50,6 +50,10 @@ namespace TraxCombat.Missions
         /// <summary>His upper body now.</summary>
         OpeningPose Pose(TrackedAgent st);
 
+        /// <summary>Step 108: channel 1 shows <paramref name="guard"/> in a defend stage now - the cheap read (no action name, no allocation) the hold's
+        /// recovery polls every tick.</summary>
+        bool GuardShown(TrackedAgent st, int guard);
+
         /// <summary>The agent's <c>AgentFlag.CanDefend</c> is on.</summary>
         bool CanDefend(TrackedAgent st);
 
@@ -116,6 +120,15 @@ namespace TraxCombat.Missions
             p.DefendFlag = (uint)a.GetDefendMovementFlag();
             p.Read = true;
             return p;
+        }
+
+        public bool GuardShown(TrackedAgent st, int guard)
+        {
+            var a = st.Agent;
+            if (!a.IsActive()) return false;
+            var stage = a.GetCurrentActionStage(1);
+            bool defending = stage == Agent.ActionStage.Defend || stage == Agent.ActionStage.DefendParry;
+            return TraxCombat.Core.OpeningForceMath.PoseMatches(guard, false, (int)a.GetCurrentActionDirection(1), defending);
         }
 
         public bool CanDefend(TrackedAgent st) => (st.Agent.GetAgentFlags() & AgentFlag.CanDefend) != 0;

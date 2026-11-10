@@ -504,6 +504,9 @@ namespace TraxCombat.Tools
                 }
                 for (int k = 0; k < 60; k++) logic.TickSpears(t0 + k / 60.0); // every loadout read once, every man started
                 const int ticks = 600;
+                // step 108: the smoke's own log may cross LogMaxMegabytes on a spear line inside the measurement - its trim (the whole file read and
+                // rewritten) is the log's cost, not the looks': no trim while measuring
+                TraxSettings.Shared.Set(SettingsSchema.LogMaxMegabytes, 100, SettingSources.File);
                 AppDomain.MonitoringIsEnabled = true;
                 long bytes = AppDomain.CurrentDomain.MonitoringTotalAllocatedMemorySize;
                 var sw = new Stopwatch();
@@ -514,6 +517,7 @@ namespace TraxCombat.Tools
                     sw.Stop();
                 }
                 long allocated = AppDomain.CurrentDomain.MonitoringTotalAllocatedMemorySize - bytes;
+                TraxSettings.Shared.Set(SettingsSchema.LogMaxMegabytes, SettingsSchema.LogMaxMegabytes.Default, SettingSources.File);
                 double msPerTick = sw.Elapsed.TotalMilliseconds / ticks;
                 var ss = logic.SpearStats;
                 Console.WriteLine("        step 76 cost: " + men + " men (" + ss.MenBoth + " with a spear and a sidearm) - " + msPerTick.ToString("0.000", CultureInfo.InvariantCulture)

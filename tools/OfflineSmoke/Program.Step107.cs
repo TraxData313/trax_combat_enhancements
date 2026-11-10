@@ -38,6 +38,12 @@ namespace TraxCombat.Tools
                     S.Set(p, p.Default, SettingSources.File);
                 S.Set(SettingsSchema.TimedBlockSlowMo, false, SettingSources.File);
                 S.Set(SettingsSchema.ImpactMeetRulesEnabled, false, SettingSources.File);
+                // step 108: step 107's clock from the hit (the recovery cap 0) and its 1.2 s first hold (your swing 1.2, no reading margin) - the step-108
+                // smoke checks the recovery, the margin and the words
+                S.Set(SettingsSchema.OpeningHoldRecoveryCapSeconds, 0, SettingSources.File);
+                S.Set(SettingsSchema.OpeningHoldSwingSeconds, 1.2, SettingSources.File);
+                S.Set(SettingsSchema.OpeningHoldReadMarginAtSkill0, 0, SettingSources.File);
+                S.Set(SettingsSchema.OpeningHoldReadMarginAtSkill200, 0, SettingSources.File);
                 Check(SettingsSchema.OpeningHoldsEnabled.Default == 1 && OpeningHoldRules.From(S).On, "the hold-block openings are not ON by default");
                 Check((uint)Agent.MovementControlFlag.AttackLeft == OpeningHoldMath.AttackLeft && (uint)Agent.MovementControlFlag.AttackRight == OpeningHoldMath.AttackRight
                       && (uint)Agent.MovementControlFlag.AttackUp == OpeningHoldMath.AttackUp && (uint)Agent.MovementControlFlag.AttackDown == OpeningHoldMath.AttackDown,

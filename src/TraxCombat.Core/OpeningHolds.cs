@@ -63,6 +63,10 @@ namespace TraxCombat.Core
 
         /// <summary>The hold ran out; a block of yours within <c>OpeningChainResetSeconds</c> is still a link.</summary>
         After,
+
+        /// <summary>Step 108: from the hit until his guard is VISIBLE (or the recovery cap): his attacks held off, the guard pushed, no arrow, the
+        /// hold's clock not started.</summary>
+        Recovering,
     }
 
     /// <summary>
@@ -76,7 +80,13 @@ namespace TraxCombat.Core
             ModEnabled = s.ModEnabled;
             OpeningsSwitch = s.OpeningsEnabled;
             Switch = s.OpeningHoldsEnabled;
-            FirstSeconds = Pos(s.OpeningHoldFirstSeconds);
+            SwingSeconds = Pos(s.OpeningHoldSwingSeconds);
+            MarginAt0 = Pos(s.OpeningHoldReadMarginAtSkill0);
+            MarginAt200 = Pos(s.OpeningHoldReadMarginAtSkill200);
+            RecoveryCap = Pos(s.OpeningHoldRecoveryCapSeconds);
+            ArrowShow = s.OpeningHoldArrowShow;
+            Message = s.OpeningHoldMessage;
+            InfoLines = Math.Max(0, s.OpeningLogInfoLines);
             SpeedReference = Math.Max(1, s.OpeningHoldSpeedReference);
             FactorMin = Pos(s.OpeningHoldSpeedFactorMin);
             FactorMax = Math.Max(FactorMin, Pos(s.OpeningHoldSpeedFactorMax));
@@ -107,8 +117,24 @@ namespace TraxCombat.Core
 
         public string? OffBecause => !ModEnabled ? "ModEnabled" : !OpeningsSwitch ? "OpeningsEnabled" : !Switch ? "OpeningHoldsEnabled" : null;
 
-        /// <summary>The first hold at the reference weapon speed (s).</summary>
-        public double FirstSeconds { get; }
+        /// <summary>Step 108: YOUR swing's time at the reference weapon speed (s) - the first hold of a man without a shield is this + the reading
+        /// margin, x the weapon-speed factor.</summary>
+        public double SwingSeconds { get; }
+
+        /// <summary>Step 108: the reading margin (s) at your weapon skill 0 and 200 (a straight line, clamped above 200).</summary>
+        public double MarginAt0 { get; }
+        public double MarginAt200 { get; }
+
+        /// <summary>Step 108: the longest wait from the hit for his guard to show before the hold's clock starts anyway (s; 0 = the clock from the hit,
+        /// step 107).</summary>
+        public double RecoveryCap { get; }
+
+        /// <summary>Step 108: the red arrow on a hold's opening (<c>OpeningHoldArrowShow</c>) / the "Unbalanced ..." line (<c>OpeningHoldMessage</c>).</summary>
+        public bool ArrowShow { get; }
+        public bool Message { get; }
+
+        /// <summary>Step 108: the openings' per-event log lines at Info per battle (then verbose) - <c>OpeningLogInfoLines</c>.</summary>
+        public int InfoLines { get; }
 
         public int SpeedReference { get; }
         public double FactorMin { get; }
@@ -149,9 +175,12 @@ namespace TraxCombat.Core
         {
             var c = CultureInfo.InvariantCulture;
             if (!On) return "hold-block openings OFF (" + OffBecause + ") - unshielded men follow step 106 (off balance after his block)";
-            return "hold-block openings ON (step 107): your landed front hit on a man WITHOUT a shield -> he HOLDS a block in a random direction for "
-                   + FirstSeconds.ToString("0.0#", c) + " s x clamp(" + SpeedReference.ToString(c) + " / your weapon's speed, " + FactorMin.ToString("0.0#", c) + "-"
-                   + FactorMax.ToString("0.0#", c) + "), the red arrow on the opening; a sword must strike exactly the opening, any other weapon any side but his guard"
+            return "hold-block openings ON (steps 107-108): your landed front hit on a man WITHOUT a shield -> his attacks held off and his guard (a random "
+                   + "direction) pushed until it SHOWS (at most " + RecoveryCap.ToString("0.0#", c) + " s), then he HOLDS that block for (your swing "
+                   + SwingSeconds.ToString("0.0#", c) + " s + a reading margin " + MarginAt0.ToString("0.0#", c) + "-" + MarginAt200.ToString("0.0#", c)
+                   + " s by your weapon skill 0-200) x clamp(" + SpeedReference.ToString(c) + " / your weapon's speed, " + FactorMin.ToString("0.0#", c) + "-"
+                   + FactorMax.ToString("0.0#", c) + "), the red arrow on the opening " + (ArrowShow ? "from that moment" : "OFF (OpeningHoldArrowShow)")
+                   + (Message ? ", 'Unbalanced ...' on screen" : string.Empty) + "; a sword must strike exactly the opening, any other weapon any side but his guard"
                    + " -> he staggers; into his guard = a block = a link: re-held for + " + PerLink.ToString("0.0#", c) + " s (+ up to " + BonusMax.ToString("0.0#", c)
                    + " s for your next wind-up within " + BonusFull.ToString("0.0#", c) + "-" + BonusZero.ToString("0.0#", c) + " s), at most " + Cap.ToString("0.0#", c)
                    + " s; a hold over without a stagger -> his counter-swing " + (100 * CounterFirst).ToString("0", c) + "% (first hold) / "
@@ -188,8 +217,65 @@ namespace TraxCombat.Core
             return Math.Max(r.FactorMin, Math.Min(r.FactorMax, r.SpeedReference / weaponSpeed));
         }
 
-        /// <summary>THE FIRST HOLD (s): <c>OpeningHoldFirstSeconds</c> x the weapon-speed factor, at most the cap.</summary>
-        public static double FirstHold(in OpeningHoldRules r, double weaponSpeed) => Math.Min(r.Cap, r.FirstSeconds * SpeedFactor(in r, weaponSpeed));
+        /// <summary>Step 108: the skill the reading margin reaches its top at (and is clamped above).</summary>
+        public const double MarginTopSkill = 200;
+
+        /// <summary>Step 108: THE READING MARGIN (s) by YOUR skill in the weapon you hold (the timed block's skill): <c>...AtSkill0</c> at 0, a straight
+        /// line to <c>...AtSkill200</c> at 200, clamped outside; an unknown skill = the skill-0 margin.</summary>
+        public static double ReadMargin(in OpeningHoldRules r, double skill)
+        {
+            double k = double.IsNaN(skill) || double.IsInfinity(skill) ? 0 : Math.Max(0, Math.Min(1, skill / MarginTopSkill));
+            return r.MarginAt0 + (r.MarginAt200 - r.MarginAt0) * k;
+        }
+
+        /// <summary>THE FIRST HOLD of a man without a shield (s; step 108): (your swing time + the reading margin by your skill) x the weapon-speed
+        /// factor, at most the cap. It counts from his VISIBLE guard.</summary>
+        public static double FirstHold(in OpeningHoldRules r, double weaponSpeed, double skill) =>
+            Math.Min(r.Cap, (r.SwingSeconds + ReadMargin(in r, skill)) * SpeedFactor(in r, weaponSpeed));
+
+        /// <summary>Step 108: the recovery is over - his guard is visible, or the cap has run out since the hit.</summary>
+        public static bool RecoveryOver(in OpeningHoldRules r, double since, double now, bool visible) => visible || now >= since + r.RecoveryCap - 1e-9;
+
+        /// <summary>
+        /// Step 108 - THE ON-SCREEN LINE when a hold starts, in the PLAYER's view (constant strings, no allocation). The word after "Unbalanced" is
+        /// where his guard went as you see it - the side opposite the opening - and the brackets name the strike that wins, from the side the red
+        /// arrow shows (the arrow is attacker-relative: top = your overhead "from top down", bottom = your thrust "from below", left / right = your
+        /// swing from that side). This holds whatever <c>OpeningSidesCrossed</c> says: that setting only maps the engine's guard names onto the
+        /// attacks they block. A weapon that wins on more than one side (an axe, a mace: any side but his guard) gets "Unbalanced - guard X, hit any
+        /// other side", X the side his guard covers as you see it. Null = no guard / no opening.
+        /// </summary>
+        public static string? UnbalancedText(int guard, int weaponMask, bool sidesCrossed)
+        {
+            if (!OpeningMath.IsGuard(guard)) return null;
+            int win = WinMask(guard, weaponMask, sidesCrossed);
+            if (OpeningMath.DirectionCount(win) > 1)
+            {
+                return OpeningMath.AttackBlockedBy(guard, sidesCrossed) switch
+                {
+                    OpeningMath.AttackUp => "Unbalanced - guard HIGH, hit any other side",
+                    OpeningMath.AttackDown => "Unbalanced - guard LOW, hit any other side",
+                    OpeningMath.AttackLeft => "Unbalanced - guard LEFT, hit any other side",
+                    OpeningMath.AttackRight => "Unbalanced - guard RIGHT, hit any other side",
+                    _ => null,
+                };
+            }
+            int o = OpeningMath.DirectionCount(win) == 1 ? FirstOf(win) : OpeningMath.OpeningFor(guard, sidesCrossed);
+            return o switch
+            {
+                OpeningMath.AttackUp => "Unbalanced DOWN (hit from top down)",
+                OpeningMath.AttackDown => "Unbalanced UP (hit from below)",
+                OpeningMath.AttackLeft => "Unbalanced RIGHT (hit from the left)",
+                OpeningMath.AttackRight => "Unbalanced LEFT (hit from the right)",
+                _ => null,
+            };
+        }
+
+        private static int FirstOf(int mask)
+        {
+            for (int d = OpeningMath.AttackUp; d <= OpeningMath.AttackRight; d++)
+                if ((mask & OpeningMath.Bit(d)) != 0) return d;
+            return OpeningMath.Unknown;
+        }
 
         /// <summary>The shield's place between small (0) and big (1) by its length (cm; the engine's <c>WeaponLength</c>); unknown = 0.5.</summary>
         public static double ShieldSizeShare(in OpeningHoldRules r, double shieldLength)
@@ -367,25 +453,66 @@ namespace TraxCombat.Core
 
         public bool Holding(int target) => Phase == HoldPhase.Holding && Target >= 0 && Target == target;
 
-        /// <summary>A block by <paramref name="target"/> now is a LINK: he holds now, or the hold ran out within the link window.</summary>
-        public bool LinkOpen(int target, double now) =>
-            Target >= 0 && Target == target && (Phase == HoldPhase.Holding || (Phase == HoldPhase.After && now <= AfterUntil + 1e-9));
+        /// <summary>Step 108: he is still RECOVERING from the hit (his guard not shown yet).</summary>
+        public bool Recovering(int target) => Phase == HoldPhase.Recovering && Target >= 0 && Target == target;
 
-        /// <summary>A FRESH hold on <paramref name="target"/> (link 0) in <paramref name="guard"/> for <paramref name="length"/> s.</summary>
-        public void Begin(int target, int guard, bool sidesCrossed, double now, double length)
+        /// <summary>Step 108: his guard is forced now - recovering or holding.</summary>
+        public bool Forced(int target) => (Phase == HoldPhase.Holding || Phase == HoldPhase.Recovering) && Target >= 0 && Target == target;
+
+        /// <summary>A block by <paramref name="target"/> now is a LINK: he holds now (or is recovering - his block shows the guard), or the hold ran
+        /// out within the link window.</summary>
+        public bool LinkOpen(int target, double now) =>
+            Target >= 0 && Target == target && (Phase == HoldPhase.Holding || Phase == HoldPhase.Recovering || (Phase == HoldPhase.After && now <= AfterUntil + 1e-9));
+
+        /// <summary>Step 108: the hit (or his shield block) that began this chain - the recovery's start.</summary>
+        public double HitAt;
+
+        /// <summary>Step 108: how long his guard took to show (s; NaN while recovering), and whether the cap started the clock instead.</summary>
+        public double RecoverySeconds;
+        public bool RecoveryCapped;
+
+        /// <summary>
+        /// A FRESH hold on <paramref name="target"/> (link 0) in <paramref name="guard"/>, <paramref name="length"/> s long. Step 108: it begins
+        /// RECOVERING (the clock not started) unless <paramref name="recoveryCap"/> is 0 (step 107 - the clock from the hit). While recovering
+        /// <see cref="Until"/> is the latest the hold can end (the cap + the length) - the force's bound.
+        /// </summary>
+        public void Begin(int target, int guard, bool sidesCrossed, double now, double length, double recoveryCap = 0)
         {
             Target = target;
-            Phase = HoldPhase.Holding;
             Guard = guard;
             Opening = OpeningMath.OpeningFor(guard, sidesCrossed);
             Links = 0;
+            HitAt = now;
             Start = now;
             Length = Math.Max(0, length);
-            Until = now + Length;
             Bonus = 0;
             WindUpSeen = false;
             Score = 0;
             AfterUntil = 0;
+            RecoveryCapped = false;
+            if (recoveryCap > 0)
+            {
+                Phase = HoldPhase.Recovering;
+                Until = now + recoveryCap + Length;
+                RecoverySeconds = double.NaN;
+            }
+            else
+            {
+                Phase = HoldPhase.Holding;
+                Until = now + Length;
+                RecoverySeconds = 0;
+            }
+        }
+
+        /// <summary>Step 108: his guard SHOWS (or the cap ran out - <paramref name="capped"/>): the hold's clock starts now.</summary>
+        public void GuardShown(double now, bool capped)
+        {
+            if (Phase != HoldPhase.Recovering) return;
+            Phase = HoldPhase.Holding;
+            RecoverySeconds = Math.Max(0, now - HitAt);
+            RecoveryCapped = capped;
+            Start = now;
+            Until = now + Length;
         }
 
         /// <summary>A LINK at <paramref name="now"/> (his block): re-held from now for the last length + per link (capped); the same guard. Returns the new length.</summary>
@@ -439,7 +566,7 @@ namespace TraxCombat.Core
 
         public void Reset() => this = None;
 
-        public static OpeningHold None => new OpeningHold { Target = -1, Guard = OpeningMath.Unknown, Opening = OpeningMath.Unknown };
+        public static OpeningHold None => new OpeningHold { Target = -1, Guard = OpeningMath.Unknown, Opening = OpeningMath.Unknown, RecoverySeconds = double.NaN };
     }
 
     /// <summary>Step 107: the hold-block openings over one battle - the [summary] "openings - hold-block" line. Main thread; no allocation per note.</summary>
@@ -483,6 +610,27 @@ namespace TraxCombat.Core
         public int ArrowShown;
 
         public int Errors;
+
+        /// <summary>Step 108: THE RECOVERY (hit -> guard visible): holds that waited for it, guards seen (their seconds: sum / max), started by the cap,
+        /// cut before the guard showed (a hit / block / end); the recovery's frames whose guard read was unread.</summary>
+        public int Recoveries, RecoveredSeen, RecoveryCapped, RecoveryCut;
+        public double RecoverySum, RecoveryMax;
+
+        /// <summary>Step 108: his blow landed on you during the chain - while recovering, while holding (forced), in the AFTER phase after a thrown
+        /// counter-swing, in the AFTER phase on his own (no counter-swing); a pending kick held off by a forced guard.</summary>
+        public int HitYouRecovering, HitYouHolding, HitYouAfterCounter, HitYouAfterOwn;
+
+        /// <summary>Step 108: the "Unbalanced ..." line shown; holds whose arrow was off by its switch.</summary>
+        public int MessagesShown, ArrowOff;
+
+        public void NoteRecovery(double seconds, bool capped)
+        {
+            if (capped) RecoveryCapped++;
+            else RecoveredSeen++;
+            if (double.IsNaN(seconds)) return;
+            RecoverySum += seconds;
+            if (seconds > RecoveryMax) RecoveryMax = seconds;
+        }
 
         public void NoteLength(double length)
         {
@@ -552,7 +700,16 @@ namespace TraxCombat.Core
              .Append(", after a lengthened hold rolled ").Append(CounterRolledLater.ToString(c)).Append(" / thrown ").Append(CounterThrownLater.ToString(c))
              .Append(" (released ").Append(CounterReleased.ToString(c)).Append(", cut short ").Append(CounterCut.ToString(c)).Append(", refused ").Append(CounterRefused.ToString(c))
              .Append(", step 81's kick roll skipped for it ").Append(CounterKickRollsSkipped.ToString(c)).Append(')');
-            t.Append("; the arrow on the opening shown for ").Append(ArrowShown.ToString(c)).Append(" holds (the poses: the forced-guard line's 'the balance guard with a weapon')");
+            t.Append("; the arrow on the opening shown for ").Append(ArrowShown.ToString(c)).Append(" holds (off by its switch ").Append(ArrowOff.ToString(c))
+             .Append("; the poses: the forced-guard line's 'the balance guard with a weapon')");
+            t.Append("; STEP 108 - THE RECOVERY (hit -> his guard visible, the hold's clock from then): waited ").Append(Recoveries.ToString(c)).Append(", guard SEEN ")
+             .Append(RecoveredSeen.ToString(c));
+            int rn = RecoveredSeen + RecoveryCapped;
+            if (rn > 0) t.Append(" (mean ").Append((RecoverySum / rn).ToString("0.00", c)).Append(" s, longest ").Append(RecoveryMax.ToString("0.00", c)).Append(" s)");
+            t.Append(", started by the cap ").Append(RecoveryCapped.ToString(c)).Append(" (").Append(r.RecoveryCap.ToString("0.0#", c)).Append(" s), cut before it showed ")
+             .Append(RecoveryCut.ToString(c)).Append("; 'Unbalanced ...' shown ").Append(MessagesShown.ToString(c));
+            t.Append("; HIS BLOWS ON YOU in a chain: while recovering ").Append(HitYouRecovering.ToString(c)).Append(", while holding ").Append(HitYouHolding.ToString(c))
+             .Append(", after the hold - his forced counter-swing ").Append(HitYouAfterCounter.ToString(c)).Append(", his own attack ").Append(HitYouAfterOwn.ToString(c));
             t.Append("; no hold: reeling / stagger-immune ").Append(Immune.ToString(c)).Append(", his parries with no hold on him (step 106's off balance replaced) ")
              .Append(BlocksNoHold.ToString(c));
             t.Append("; ended by");

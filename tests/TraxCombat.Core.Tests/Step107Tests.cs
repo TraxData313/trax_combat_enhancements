@@ -29,7 +29,7 @@ public class Step107Tests
     {
         var r = Rules();
         Assert.True(r.On);
-        Assert.Equal(1.2, r.FirstSeconds, 6);
+        Assert.Equal(1.0, r.SwingSeconds, 6); // step 108 (step 107: OpeningHoldFirstSeconds 1.2, retired)
         Assert.Equal(95, r.SpeedReference);
         Assert.Equal(0.8, r.FactorMin, 6);
         Assert.Equal(1.5, r.FactorMax, 6);
@@ -67,13 +67,13 @@ public class Step107Tests
     [Fact]
     public void The_first_hold_follows_your_weapons_speed_clamped()
     {
-        var r = Rules();
-        Assert.Equal(1.2, OpeningHoldMath.FirstHold(in r, 95), 6);          // the reference
-        Assert.Equal(1.2 * 95 / 80.0, OpeningHoldMath.FirstHold(in r, 80), 6); // a slow axe: longer
-        Assert.Equal(1.2 * 1.5, OpeningHoldMath.FirstHold(in r, 40), 6);    // very slow: the ceiling x1.5
-        Assert.Equal(1.2 * 0.8, OpeningHoldMath.FirstHold(in r, 130), 6);   // very fast: the floor x0.8
-        Assert.Equal(1.2, OpeningHoldMath.FirstHold(in r, double.NaN), 6);  // unknown: x1
-        Assert.Equal(1.2, OpeningHoldMath.FirstHold(in r, 0), 6);
+        var r = Rules(); // step 108: the base = your swing 1.0 + the reading margin at skill 0 (0.15)
+        Assert.Equal(1.15, OpeningHoldMath.FirstHold(in r, 95, 0), 6);          // the reference
+        Assert.Equal(1.15 * 95 / 80.0, OpeningHoldMath.FirstHold(in r, 80, 0), 6); // a slow axe: longer
+        Assert.Equal(1.15 * 1.5, OpeningHoldMath.FirstHold(in r, 40, 0), 6);    // very slow: the ceiling x1.5
+        Assert.Equal(1.15 * 0.8, OpeningHoldMath.FirstHold(in r, 130, 0), 6);   // very fast: the floor x0.8
+        Assert.Equal(1.15, OpeningHoldMath.FirstHold(in r, double.NaN, 0), 6);  // unknown: x1
+        Assert.Equal(1.15, OpeningHoldMath.FirstHold(in r, 0, 0), 6);
     }
 
     [Fact]
@@ -288,8 +288,8 @@ public class Step107Tests
         var all = SettingsSchema.All.ToList();
         int at = all.IndexOf(SettingsSchema.OpeningGuardTestSeconds);
         Assert.Equal(at + 1, all.IndexOf(SettingsSchema.OpeningHoldsEnabled));
-        Assert.Equal(at + 18, all.IndexOf(SettingsSchema.PerfectStrikeDefensiveMax));
-        foreach (var p in all.Skip(at + 1).Take(18))
+        Assert.Equal(at + 21, all.IndexOf(SettingsSchema.PerfectStrikeDefensiveMax)); // step 108: the first hold's 1 key became 4
+        foreach (var p in all.Skip(at + 1).Take(21))
         {
             Assert.Same(SettingsSchema.ImpactGroup, p.Group);
             Assert.Equal(SettingsPage.Advanced, p.Group.Page);
@@ -307,7 +307,7 @@ public class Step107Tests
         {
             for (int i = 0; i < 100; i++)
             {
-                h.Begin(1, GLeft, true, i, OpeningHoldMath.FirstHold(in r, 90));
+                h.Begin(1, GLeft, true, i, OpeningHoldMath.FirstHold(in r, 90, 50));
                 sink += h.NoteWindUp(i + 0.2, in r) + h.Link(i + 0.5, in r) + OpeningHoldMath.ShieldFirstHold(in r, 100, 90);
                 stats.NoteSwing(OpeningHoldMath.Classify(GLeft, i & 3, Sword, true), Sword);
                 stats.NoteLength(h.Length);

@@ -674,6 +674,8 @@ namespace TraxCombat.Core
             DropRetiredOpeningKeys(read, from);
             // step 106d: step 100g's flat perfect-strike multipliers - in ANY format
             DropRetiredPerfectStrikeKeys(read, from);
+            // step 108: step 107's first hold from the hit - in ANY format
+            DropRetiredHoldKeys(read, from);
             return read.Migrated;
         }
 
@@ -712,6 +714,24 @@ namespace TraxCombat.Core
                 read.Unknown.RemoveAt(i);
                 read.Migrated.Add(pair.Key + " " + pair.Value + " dropped (format " + from + " → " + FormatVersion
                                   + "; step 106d: the perfect strike's multiplier now follows your weapon - see PerfectStrikeFourWayMin / Max, ThreeWay, TwoWay)");
+            }
+        }
+
+        /// <summary>Step 107's first hold (1.2 s from your hit), retired by step 108 for your swing + a reading margin from his VISIBLE guard.</summary>
+        public static readonly string[] RetiredHoldKeys = { "OpeningHoldFirstSeconds" };
+
+        /// <summary>Step 108: the retired hold key leaves <see cref="ConfigReadResult.Unknown"/> - one note (78c's pattern; no format change - no
+        /// existing default moved). Idempotent.</summary>
+        private static void DropRetiredHoldKeys(ConfigReadResult read, int from)
+        {
+            for (int i = read.Unknown.Count - 1; i >= 0; i--)
+            {
+                var pair = read.Unknown[i];
+                if (Array.FindIndex(RetiredHoldKeys, k => string.Equals(k, pair.Key, StringComparison.OrdinalIgnoreCase)) < 0) continue;
+                read.Unknown.RemoveAt(i);
+                read.Migrated.Add(pair.Key + " " + pair.Value + " dropped (format " + from + " → " + FormatVersion
+                                  + "; step 108: his first hold is now your swing + a reading margin, counted from his VISIBLE guard - see OpeningHoldSwingSeconds, "
+                                  + "OpeningHoldReadMarginAtSkill0 / 200, OpeningHoldRecoveryCapSeconds)");
             }
         }
 
