@@ -2302,6 +2302,29 @@ while recovering N, while holding N, after the hold - his forced counter-swing N
 ~0.3-0.5 s, as the step-107 pose reads suggested?), how many were started by the cap, and the "HIS BLOWS ON YOU" split - "while recovering" and
 "while holding" should be 0; anything there means something still releases his attack under the forced guard.
 
+**D84. KEEP YOUR DISTANCE (step 109, ~15 min - best in the TRAINING CAMP or a TOURNAMENT: one opponent, no formation; then one field battle).**
+*What changed:* a man who cannot swing yet (catching his breath between attacks, or only defending) no longer walks up and stares at you from
+very close. After his own quiet 2-3 s - no swing, kick, bash, block or hit between you - he walks back about two lengths of HIS weapon (a sword
+~1.9 m, a spear more, at most 4 m), facing you, guard up, and keeps that gap until he can attack again; then he comes in. The player page's new
+switch "Keep your distance while catching breath" (How the AI fights), the numbers on the Advanced page (Courage and cohesion).
+**Try 1 - stand still:** spar a swordsman until he is tired (his attacks slow down), then stop and just stand. After 2-3 s he should walk back
+~2 m, facing you, and stand there; when his pause ends he comes in and swings. Then a SPEARMAN: he should stand farther off.
+**Try 2 - step in, no swing:** while he stands off, walk up to him. He must NOT back away at once - he stands and defends. Stand still with him:
+after another 2-3 s he backs off again.
+**Try 3 - step in and swing:** he defends as usual (released at once); he backs off again only after a fresh quiet 2-3 s.
+**Try 4 - switch it off mid-fight:** he stays close again (the game's own).
+**Try 5 - a field battle:** a shield wall never steps out of its slots for this; men in a line who are not in a wall step back a little, never
+more than 4 m behind their own front; tired men who REST (step 78c) walk back by the rest's rule, not twice.
+**Log:** `[keep] first man KEEPS HIS DISTANCE at ... s: X (his pause, not a spear 0.95 m) 1.05 m from his enemy after a quiet 2.6 s - he walks back
+1.90 m facing him, to 2.95 m`, `first keeping man HOLDS his gap`, `first enemy STEPPED IN on a keeping man`, `first keeping man BACKED OFF AGAIN`,
+`first keep ENDED ... - ready / action / ...`, `first keeping man READY again`. The [summary] `keep distance (step 109) ON: backed off N (spear N, again
+after the enemy stepped in ... N; keeps N), the goal mean x m; walked mean x m, p90 x m, max x m (cap 4.0 m); held mean x s, max x s; ends: ready N,
+action N, switch N, target N, timeout N, rest took over N, quiet spells broken by action N, the enemy stepped in while he held N, would have
+backed off with it OFF N; the distance to his enemy while waiting (his pause or an empty stack): ON spear x m (N looks), other x m; OFF spear ...,
+other ...`. **Tell Claude:** did he walk back FACING you (never turned his back)? Did he stand still at the gap or drift back in? The summary's
+walked mean / p90, the ends (mostly "ready" is the hope; many "timeout" = braced men), and the waiting distance ON vs OFF if you play one fight
+with the switch off.
+
 ---
 
 ## E. Your Athletics bar, the orders-menu strip and the ALT markers (20 min)

@@ -3911,6 +3911,22 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     the arrow ran from the hit while his guard showed only 0.2-0.5 s later (106f's read-back: 14 of 30 weapon guards needed more than 0.2 s), so a
     1.05 s first hold left ~0.5-0.8 s of visible guard; your swing queued on the arrow came after the hold ran out, when he counter-swung (30 % /
     100 %) or attacked on his own in the link window - the summary's "ended by he hit you 6" against 11 counter-swings released. (a) is the fix.
+98. **Keep your distance** (step 109; Toni 2026-11-10: "when they are tired, they come as close to the enemy as they can ... let him stay far";
+    AI_NOTES "Step 109"): (a) WHO - an AI man on foot (never the player, never a rider, not routing, no ranged weapon in hand), not held by step 41
+    (wall, square, circle), not resting / swapping (step 78c / 78), who CANNOT ATTACK now (step 13's pause, an empty step-32 stack, a step-23 brace)
+    and whose enemy (his AI's target, else its immediate enemy, on foot) stands within `KeepDistanceReachMetres` 3. (b) WHEN - his own quiet wait
+    (`KeepDistanceQuiet*Seconds` 2-3 s, rolled each spell) with no action between them: a melee collision he gave or took, his or his enemy's
+    release or kick / bash, either in an attack now; any action restarts it. (c) HOW FAR - straight back from that enemy, facing him, a walk (0.6
+    of the stick), `KeepDistanceWeaponLengths` 2 x his weapon's length (`KeepDistanceFallbackLengthMetres` 1 when unknown), at most
+    `KeepDistanceMaxBackMetres` 4 from his gap at the start; with a front of his own never more than `RestMaxBackMetres` behind it (the rest's limit).
+    (d) HOLDING - he stands at the gap (a zero vector + his walk toward the enemy clamped); the enemy stepping in 0.75 m+ only restarts his wait (he
+    stands and defends), and when it passes he backs off again from where he stands - two quiet men end up a swing apart. (e) RELEASE - to his own
+    AI on READY (he can attack), an ACTION, a new TARGET, `KeepDistanceMaxHoldSeconds` 10, the gates, the switches (`KeepDistanceEnabled` on the
+    PLAYER page, the master switch first, Athletics). (f) THE REST WINS - the rest and the swap end a keep before their own wish goes on ("rest took
+    over"), a keep never starts on a resting man, and the keep is the SOFTEST input wish (after every other walk, its clamp last) - one walk, never
+    two. (g) ITS OWN LOOK every 0.25 s (tournaments and duels too - courage stands down there), ON and OFF (the OFF looks count would-back-offs and
+    the waiting distance). (h) UNVERIFIED in game (PLAYTEST D84): the native AI standing and facing under the zero vector; how often a real pause
+    lasts the wait; a line man's slot pull against the walk.
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research

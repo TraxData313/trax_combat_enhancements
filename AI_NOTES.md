@@ -10944,3 +10944,111 @@ x2-4.) The DEFENSIVE game's perfect strike (after your timed block) is x2-3 for 
   hold staggering inside the immunity).
 - A stray empty folder `C:\ASUSRO~1` was created by a mistyped scratch path during this step (its one file removed; the folder removal was
   refused by the safety check) - Toni can delete it.
+
+## Step 109 — KEEP YOUR DISTANCE (Toni 2026-11-10; built 2026-11-10)
+
+**Toni (2026-11-10)**: "when they are tired, they come as close to the enemy as they can. Instead, if they are not in a shield wall, while they
+wait to gather Athletics, let him stay far. If they have a spear, I think they normally keep a swing distance bigger than a sword's length. So can
+you make them walk back, say about 2 weapon lengths from where they are now, and come close when they are ready to attack? ... But time it, so
+they aren't continuously backing up if I come close. Say after 2-3 seconds of no action, let the fighters back off. If I come while he is
+gathering Athletics, he shouldn't just start backing up again; he stands there and defends like normal. But if we both start standing, both
+fighters should naturally start keeping a distance bigger than the swing."
+
+**Why they came close**: step 13's pause / step 32's empty stack / step 23's brace only take the ATTACK bits out of the AI's input (step 16) - the
+AI's own movement is untouched, and the native melee AI walks a man at its target until it is in its strike range whether or not it may swing. So a
+man who cannot attack stands at sword's reach and stares. Step 78c's rest only walks men back below their TIRED MARK (20-45 %) and only where
+courage looks (battles - never a tournament or a duel), so the many short waits above that mark were left as they were.
+
+**Built (Core `KeepDistance.cs`, Module `AthleticsLogic.KeepDistance.cs` + `KeepBody.cs`, the hook's new wish in `AiInputHook.cs`)**
+- WHO: an AI man on foot (not the player, not a man the player took over, not a rider, not routing, no bow / crossbow / throwing weapon in hand),
+  NOT held by step 41 (`WallState.Held` - a shield wall, a square, a circle), NOT resting or in a swap (step 78c / 78 - `Rhythm.Resting` /
+  `InSwap`), who CANNOT ATTACK now: `Pace.Active` (step 13's pause, by input or NoAttack), an empty stack (`Swings.Count(cap) == 0` with step 32 on),
+  or `Brace.Active` (step 23); and whose ENEMY - his AI's target (`GetTargetAgent`, else `ImmediateEnemy`, an active enemy on foot - the step-65
+  read) - stands within `KeepDistanceReachMetres` 3.
+- ITS OWN LOOK: `TickKeep` after `TickCourage`, every AI man about every 0.25 s, staggered (the brace's carry / cursor), ON and OFF (the OFF looks
+  measure). The cheap gates first (the pause / stack / brace are managed fields): a man who can attack and keeps nothing costs three reads. It does
+  NOT ride courage's look because courage stands down in tournaments, arenas and duels (`MissionAllows`) - exactly where Toni sees it.
+- WHEN - THE QUIET WAIT: each man rolls his own `KeepDistanceQuiet*Seconds` 2-3 s (afresh each spell, `KeepDice`). The clock runs from the later of
+  his last ACTION and his last keep's end (`KeepMind.QuietFrom`). An action = a melee collision he gave or took (OnMeleeHit stamps
+  `TrackedAgent.KeepActionAt` on both men - a hit, a block, a parry, a kick or bash that touched), his or his enemy's release (`LastReleaseTime`),
+  kick / bash (`KickBash.DecidedAt`), and NOW while either is in a ready / release or his AI kick runs. CHOICE: his enemy's swings count even if
+  aimed at a neighbour (the swing's victim is not known before contact; in a duel - Toni's case - it is exact; in a press an enemy swinging beside
+  him keeps him in, which reads right). The enemy's collisions with OTHER men do not count.
+- HOW FAR: `KeepDistanceWeaponLengths` 2 x his wielded weapon's length (`WeaponComponentData.WeaponLength` cm / 100; under 0.1 m or none =
+  `KeepDistanceFallbackLengthMetres` 1.0), at most `KeepDistanceMaxBackMetres` 4 (a sword 0.95 → 1.9 m, a 1.8 m spear 3.6, a 2.5 m pike 4.0). The
+  GOAL = his gap at the start + that. He walks STRAIGHT BACK FROM THAT ENEMY (not the unit axis - Toni asked "from where they are now"; one enemy, so
+  no mesh sideways problem as in 78c), in his own frame (`CourageBody.ToLocal`), at most 0.6 of the stick (the rest's walk - never a run), the edge
+  check every 0.25 s; his AI keeps looking at its target - a backpedal facing him.
+- THE LINE LIMIT: when his rhythm look is fresh (2 s) and his unit has a published front (`RhythmUnits.BehindFront`), he never walks past
+  `RestMaxBackMetres` behind it (the rest's own limit) - a line man who is not wall-held backs off within the same bound as a resting man. No front
+  (a duel, a tournament, no formation) = only the goal and the cap.
+- HOLDING: at the goal (within 0.15 m) or the limit or no ground behind, he STANDS - the keep's zero vector over the game's movement (78c's stand)
+  + the keep's own clamp (his walk toward the enemy taken out, whoever wrote it: the block, the flock). He is not held when the enemy walked off past
+  the goal + 1 m (his AI may close to the gap again) or his line moved on more than the limit + 0.5 m (he keeps up with it).
+- THE ENEMY STEPS IN (Toni: "he shouldn't just start backing up again"): holding, the gap closing 0.75 m+ from the gap he held → he keeps STANDING
+  (defends as usual - his guard is never touched), his quiet wait restarts (a fresh roll); when it passes with no action, he backs off again from
+  where he stands (`ReBacks`). So "if we both start standing, both fighters naturally keep a distance bigger than the swing".
+- COMING BACK: he is released to his own AI (which closes in and swings) on READY (the pause over / a swing back in the stack / the brace over),
+  on any ACTION (the clock then restarts - he backs off again only after a fresh quiet spell), a new TARGET (or none), `KeepDistanceMaxHoldSeconds`
+  10 (TIMEOUT), excluded (the wall took him, a horse, a rout, the player took him), left the field, the mission's end, and the switches.
+- THE INPUT WISH (`AiInputState.Keep / KeepMove / KeepClamp`, `AiInputHook.SetKeep / ApplyKeepMove / ApplyKeepClamp / KeepOn`): the SOFTEST
+  movement wish - after the step-in (last in the chain), so the backpedal, the wall's pull, the rest's walk, the press's walk, a swap, courage's walk
+  back, the flock and the block hold all win while they run (the line-block hold is respected by order); its clamp LAST, after the press's and the
+  rhythm's. In `Active` (the hook stays on while it runs), in `Clear`; `Filter`'s "moved". The hook / release through courage's body (as the rest).
+
+**How it shares with the rest (step 78c) - DECIDED: the rest wins, and they never both walk.** The rest is the stronger state (tired below his
+mark, minutes long, its own marks and contagion, a wall man rests in his slot); the keep is a short wait between attacks. So: (1) `BeginRest` and
+`StartSwap` call `KeepYieldToRest` first - a keep running when the rest (or a swap) takes him ends as "rest took over" before the rest's wish goes
+on; (2) the look never starts a keep for a resting / swapping man and ends one it finds (Verdict: the switch, then the REST, then the gates, an
+action, the target, ready, the time); (3) in the input chain the rest's walk is ahead of the keep's anyway (belt and braces). After the rest ends
+(his ready mark) he can usually attack - the keep only comes back after a pause and a fresh quiet wait. The two never stack: one walk, one stand.
+
+**Logging**: `[keep]` mission start (the rules' sentence), settings changed, first KEEPS HIS DISTANCE (why - pause / empty stack / bracing - his
+weapon, the gap, the quiet it waited, how far to), first HOLDS his gap, first enemy STEPPED IN, first BACKED OFF AGAIN, first keep ENDED (the
+reason), first READY again, first would-back-off with it OFF, switched OFF (n ended at once). The [summary] `keep distance (step 109)` line: backed
+off (spear, again after a step-in; keeps), the goal mean, walked mean / p90 / max (a 0.25 m histogram), held mean / max, ends by reason (ready /
+action / switch / target / timeout / rest took over + any other), quiet spells broken by action, step-ins while holding, would-back-offs OFF, THE
+DISTANCE TO HIS ENEMY WHILE WAITING (his pause or an empty stack, eligible men, an enemy within 10 m): ON / OFF x spear / other - the mean and the
+looks; the input frames (walked, clamped); the cost; errors.
+
+**Settings (8; 654 → 662)**: PLAYER page "How the AI fights" after `WarCriesEnabled`: `KeepDistanceEnabled` (on) - the page 40 → 41 (the cap in
+SettingsPagesTests and the smoke's MCM check raised to 41 on purpose - Toni asked for it). Advanced "Courage and cohesion (AI)" after
+`WarCryBattlePerSecond` (beside the rest's numbers it shares a limit with): `KeepDistanceQuietMinSeconds` 2 / `...MaxSeconds` 3 (0-10),
+`KeepDistanceWeaponLengths` 2 (0-5), `KeepDistanceFallbackLengthMetres` 1 (0.3-3), `KeepDistanceMaxBackMetres` 4 (0-10),
+`KeepDistanceMaxHoldSeconds` 10 (1-60), `KeepDistanceReachMetres` 3 (1-8). Plumbing (`KeepDistanceMath`): PollSeconds 0.25, SteerSeconds 0.1,
+WalkStick 0.6, ArriveMetres 0.15, StepInMetres 0.75, HoldSlackMetres 1, FollowSlackMetres 0.5, FrontFreshSeconds 2, MeasureMaxMetres 10, the walk
+histogram 0.25 m x 48. No config-format change (a missing key takes its default). The older smoke steps pin `KeepDistanceEnabled` off
+(`AthleticsDefaults`).
+
+**Measured offline**: tests 1681 → 1692 (Step109Tests 11). Smoke + 2 steps (Program.Step109.cs) through the real logic and the REAL input frames
+in a stand-in field where each man's own "AI" walks him in to 1 m: the SWORDSMAN backs off after 2.5 s (the roll 0.5), walking (stick <= 0.6),
+straight back, holds 2.81 m (1.0 + 1.9, minus the arrive margin) against his own AI's walk in for 3 s, released 0.25 s after his pause ends (ready)
+and back at 1 m; the SPEAR holds 4.91 m (the cap); YOU STEP IN 1.5 m: he stands, backs off again after another 2.5 s; your swing releases him
+(action), his next back-off after a fresh wait; swings every 1.5 s - no back-off, the quiet spells broken counted; a melee collision holds the
+wait; the rest takes over; never a wall man, a rider, a routing man, a bowman, you, a man who can attack, an enemy at 3.5 m; a man 3 m behind his
+front walks 0.91 m (the rest's 4 m limit); the time limit at 10 s; a new target; KeepDistanceEnabled and the master switch end it at once (his input
+given back), OFF he stays at 1 m (would-back-offs counted); the waiting distance ON 1.98 m vs OFF 1.04 m (a sword); the input frame (the rest's walk
+and the backpedal beat the keep's; its clamp takes a walk in out; never with its switch off). THE COST: 1000 men, 600 in their pause, 600 keeping -
+0.009 ms a tick, 0 bytes over 300 ticks.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D84)**
+1. That the native AI really stops walking in while our vector stands him (78c's stand, step 16's backpedal say yes) and keeps FACING his target
+   while it walks him backwards.
+2. The waits in real fights: how often a duel opponent's pause lasts the 2-3 s quiet + the walk (a fresh man's pause is short - the keep shows for
+   tired men, as asked); the summary's "held mean" and the ends (mostly READY is the hope; many TIMEOUTs = a brace).
+3. The player's own swings into the air: they count (his release), so a swinging player keeps a man in, as asked.
+4. In a line: the keep's walk vs the formation's slot pull - the native formation AI may drag him back to his slot (then "walked" stays small and
+   he holds where the slot is; harmless, but less distance than in a duel).
+5. `WeaponLength` for every weapon class (it is the item's length in cm in 1.4.8's WeaponComponentData - the spear numbers assume it).
+
+**Gotchas**
+- The keep needs its own look: courage's (which the rest rides) stands down in tournaments / arenas / duels (`ICourageBody.MissionAllows`).
+- Step 75's smoke cost check measured each man's FIRST `AiInputState` (made by the wall's walk-back inside the window): the state grew by the keep's
+  fields and 428 first hooks crossed its 256 KB line (270336 bytes, deterministic). It now makes each man's state before measuring, as steps 65 / 82
+  do (8192 bytes after). Not a per-tick cost.
+- The older smoke steps run with `KeepDistanceEnabled` off (`AthleticsDefaults`), and the smoke's default keep body knows nobody (a native read on a
+  fake agent would crash the process).
+
+**DEPLOY**: `tools\deploy.ps1` ran normally (the game was not running): the build, the AssemblyGuard (OK), the offline smoke (all passed, 242 steps),
+installed as Modules\TraxCombatEnhancements.Dev "Trax Combat Enhancements (dev)". `tools\SmartAppControl\loadcheck.ps1`: both DLLs LOADED
+(`1.5.0+5bef3c1194a9a65979deebf920a5d40d3c44a577`). Not uploaded.
