@@ -647,6 +647,17 @@ namespace TraxCombat.Missions
                 Failed("courage.tick", e);
             }
 
+            // Step 109: keep your distance - every AI man looked at about every 0.25 s (staggered; ON and OFF - the OFF looks measure), the keepers steered
+            // (after courage: the rest's look has run, so a man the rest took is never walked twice).
+            try
+            {
+                TickKeep(now);
+            }
+            catch (Exception e)
+            {
+                Failed("keep.tick", e);
+            }
+
             // Step 55: cavalry flocking - a census of every AI rider every 0.5 s (ON and OFF - the OFF census measures): free / flocking / the flip.
             try
             {
@@ -1523,6 +1534,14 @@ namespace TraxCombat.Missions
             catch (Exception e)
             {
                 Failed("impact.model", e);
+            }
+            try
+            {
+                KeepHit(attacker, victim, Mission.CurrentTime); // step 109: an action between them - both men's quiet clocks restart
+            }
+            catch (Exception e)
+            {
+                Failed("keep.hit", e);
             }
             try
             {

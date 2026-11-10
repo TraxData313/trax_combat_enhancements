@@ -140,6 +140,7 @@ namespace TraxCombat.Missions
 
         private void BeginRest(TrackedAgent st, RhythmMind m, double now, double px, double py, bool held, double ready, double capped, double bar, BraceOrder g)
         {
+            KeepYieldToRest(st, now); // step 109: the rest wins - his keep-distance ends first (never a double walk)
             m.Resting = true;
             m.RestWall = held;
             m.RestSince = now;

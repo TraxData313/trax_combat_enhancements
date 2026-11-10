@@ -335,6 +335,11 @@ namespace TraxCombat.Missions
         /// <summary>Step 78: his rhythm - his last look (unit, time), his swap, his rest, his lull wish (Core <see cref="RhythmMind"/>).</summary>
         public readonly RhythmMind Rhythm = new RhythmMind();
 
+        /// <summary>Step 109: his keep-your-distance state (Core <see cref="KeepMind"/>) and when he last had an action - a melee hit or block he gave or
+        /// took (OnMeleeHit stamps both men; NegativeInfinity = never) - his quiet clock reads it.</summary>
+        public readonly KeepMind Keep = new KeepMind();
+        public double KeepActionAt = double.NegativeInfinity;
+
         /// <summary>Step 79: he may shout again from this time on (his own war-cry limit), when he last shouted, and a cry of his waits in the queue.</summary>
         public double WarCryNext = double.NegativeInfinity, WarCryLast = double.NaN;
         public bool WarCryQueued;

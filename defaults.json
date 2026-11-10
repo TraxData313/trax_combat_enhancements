@@ -201,6 +201,18 @@
   // (true or false)
   "WarCriesEnabled": true,
 
+  // An AI soldier on foot who cannot swing yet (catching his breath between attacks, or only
+  // defending) no longer walks up and stares at his enemy from very close: after a few quiet
+  // seconds - no swing, kick, bash, block or hit between the two of them - he walks back about
+  // two lengths of his own weapon, facing the enemy, guard up, and keeps that gap until he is
+  // ready to attack again, then comes in. Any action between them restarts his wait, so if you
+  // step in and swing he stands and defends as usual. Never a man in a shield wall, never you,
+  // never riders; a man resting from tiredness ("Tired men step back and rest") does that
+  // instead. Needs the Athletics system. Off: the game's own - the log still measures the
+  // distance. The numbers: Advanced page, Courage and cohesion (AI).
+  // (true or false)
+  "KeepDistanceEnabled": true,
+
   // Every AI soldier on foot in a formation weighs his mates against the enemies near him - by
   // how tough each one is (armour, level, wounds). Short of courage he is TIMID: far from his
   // mates he walks back to a bigger group of his side, facing the enemy (sprinting when it is
@@ -1840,6 +1852,40 @@
   // flood the sound.
   // (range 1 to 60)
   "WarCryBattlePerSecond": 16,
+
+  // With "Keep your distance while catching breath" on (player page): each man rolls his own
+  // wait between this and the next setting - he backs off only after that long with no swing,
+  // kick, bash, block or hit between him and his enemy. Any of them restarts it.
+  // (range 0.0 to 10.0)
+  "KeepDistanceQuietMinSeconds": 2.0,
+
+  // The other end of each man's wait - a range, so men never back off together.
+  // (range 0.0 to 10.0)
+  "KeepDistanceQuietMaxSeconds": 3.0,
+
+  // How far he walks back from where he stood, in lengths of the weapon in his hand - a
+  // spearman backs off farther than a swordsman.
+  // (range 0.0 to 5.0)
+  "KeepDistanceWeaponLengths": 2.0,
+
+  // The length used when his weapon's own cannot be read (fists, an odd item).
+  // (range 0.3 to 3.0)
+  "KeepDistanceFallbackLengthMetres": 1.0,
+
+  // The farthest one back-off takes him, whatever his weapon. A man in a line never ends
+  // farther behind his own front than "Rest: backs at most" allows.
+  // (range 0.0 to 10.0)
+  "KeepDistanceMaxBackMetres": 4.0,
+
+  // After this long his own AI has him again even if he still cannot swing (he may back off
+  // again after another quiet wait).
+  // (range 1.0 to 60.0)
+  "KeepDistanceMaxHoldSeconds": 10.0,
+
+  // He backs off only from the enemy he fights while that enemy stands within this - farther
+  // off there is nothing to keep away from.
+  // (range 1.0 to 8.0)
+  "KeepDistanceReachMetres": 3.0,
 
   // ==================== Cavalry flocking (AI) ====================
   // A rider's EAGERNESS is his Athletics bar (halved when he is alone among enemies, below). At

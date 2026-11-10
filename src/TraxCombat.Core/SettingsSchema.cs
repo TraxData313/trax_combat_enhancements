@@ -178,6 +178,12 @@ namespace TraxCombat.Core
             "War cries",
             "Soldiers shout in battle: a man who has caught his breath and goes back into the fight may give a war cry, and the mates who go in with him may answer; when a unit gets a charge order - yours or the enemy general's - part of it roars, staggered, never all together. Limited per man, per unit and for the whole battle, so a big battle never becomes a choir. Sound only: it changes nothing about how anyone fights. Never you, the fleeing or the dead. The numbers: Advanced page, Courage and cohesion (AI).");
 
+        // Step 109 (Toni 2026-11-10: "when they are tired, they come as close to the enemy as they can ... let him stay far"): KeepDistanceMath,
+        // AI_NOTES "Step 109", DESIGN decision 98.
+        public static readonly ParamDef KeepDistanceEnabled = Bool("KeepDistanceEnabled", PlayerAiGroup,
+            "Keep your distance while catching breath",
+            "An AI soldier on foot who cannot swing yet (catching his breath between attacks, or only defending) no longer walks up and stares at his enemy from very close: after a few quiet seconds - no swing, kick, bash, block or hit between the two of them - he walks back about two lengths of his own weapon, facing the enemy, guard up, and keeps that gap until he is ready to attack again, then comes in. Any action between them restarts his wait, so if you step in and swing he stands and defends as usual. Never a man in a shield wall, never you, never riders; a man resting from tiredness (\"Tired men step back and rest\") does that instead. Needs the Athletics system. Off: the game's own - the log still measures the distance. The numbers: Advanced page, Courage and cohesion (AI).");
+
         public static readonly ParamDef CourageEnabled = Bool("CourageEnabled", PlayerAiGroup,
             "Courage and cohesion",
             "Every AI soldier on foot in a formation weighs his mates against the enemies near him - by how tough each one is (armour, level, wounds). Short of courage he is TIMID: far from his mates he walks back to a bigger group of his side, facing the enemy (sprinting when it is far); among them he holds and strikes only what comes within reach - no lone man circling your shield wall, no exhausted man standing among four enemies. A big enough crowd stays brave and wraps around a line as a mass. Never you, never riders, never men held in a shield wall. Works without the Athletics system (then tiredness does not count). Off: the game's own bravery - the log still measures, so flipping it mid-battle compares the two.");
@@ -1373,6 +1379,35 @@ namespace TraxCombat.Core
         public static readonly ParamDef WarCryBattlePerSecond = Int("WarCryBattlePerSecond", 1, 60, CourageGroup,
             "War cries: the battle's cries a second at most",
             "The whole battle's cries in any one second at most - a thousand men never make a choir or flood the sound.");
+
+        // Step 109: keep your distance (KeepDistanceMath).
+        public static readonly ParamDef KeepDistanceQuietMinSeconds = Float("KeepDistanceQuietMinSeconds", 0, 10, CourageGroup,
+            "Keep distance: quiet for at least (s)",
+            "With \"Keep your distance while catching breath\" on (player page): each man rolls his own wait between this and the next setting - he backs off only after that long with no swing, kick, bash, block or hit between him and his enemy. Any of them restarts it.");
+
+        public static readonly ParamDef KeepDistanceQuietMaxSeconds = Float("KeepDistanceQuietMaxSeconds", 0, 10, CourageGroup,
+            "Keep distance: quiet for up to (s)",
+            "The other end of each man's wait - a range, so men never back off together.");
+
+        public static readonly ParamDef KeepDistanceWeaponLengths = Float("KeepDistanceWeaponLengths", 0, 5, CourageGroup,
+            "Keep distance: backs off (weapon lengths)",
+            "How far he walks back from where he stood, in lengths of the weapon in his hand - a spearman backs off farther than a swordsman.");
+
+        public static readonly ParamDef KeepDistanceFallbackLengthMetres = Float("KeepDistanceFallbackLengthMetres", 0.3, 3, CourageGroup,
+            "Keep distance: a weapon length when unknown (m)",
+            "The length used when his weapon's own cannot be read (fists, an odd item).");
+
+        public static readonly ParamDef KeepDistanceMaxBackMetres = Float("KeepDistanceMaxBackMetres", 0, 10, CourageGroup,
+            "Keep distance: backs off at most (m)",
+            "The farthest one back-off takes him, whatever his weapon. A man in a line never ends farther behind his own front than \"Rest: backs at most\" allows.");
+
+        public static readonly ParamDef KeepDistanceMaxHoldSeconds = Float("KeepDistanceMaxHoldSeconds", 1, 60, CourageGroup,
+            "Keep distance: keeps the gap at most (s)",
+            "After this long his own AI has him again even if he still cannot swing (he may back off again after another quiet wait).");
+
+        public static readonly ParamDef KeepDistanceReachMetres = Float("KeepDistanceReachMetres", 1, 8, CourageGroup,
+            "Keep distance: his enemy within (m)",
+            "He backs off only from the enemy he fights while that enemy stands within this - farther off there is nothing to keep away from.");
 
         // ------------------------------------------------------------------ cavalry flocking (step 55)
         // Anton, 2026-10-18: fresh, eager riders dance as in vanilla; the more tired a rider, the bigger the group of his own kind he wants
@@ -2973,7 +3008,7 @@ namespace TraxCombat.Core
             // the player page's six groups (step 59)
             DamageRandomPercent, DamageReductionPercent, TiredDamageAtEmptyPercent,
             AthleticsEnabled, CostPerBlow, HeroCostMultiplier, CrouchRefillForPlayer,
-            AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, ShieldWallHoldsSlots, ShieldWallStepOutMetres, ShieldWallStandFirm, ShieldWallFlanksFaceOut, SpearPreferenceEnabled, PressDontPass, RotationEnabled, RestEnabled, WarCriesEnabled, CourageEnabled, CavalryFlockEnabled, LineDisciplineForPlayer,
+            AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, ShieldWallHoldsSlots, ShieldWallStepOutMetres, ShieldWallStandFirm, ShieldWallFlanksFaceOut, SpearPreferenceEnabled, PressDontPass, RotationEnabled, RestEnabled, WarCriesEnabled, KeepDistanceEnabled, CourageEnabled, CavalryFlockEnabled, LineDisciplineForPlayer,
             ImpactEnabled, ImpactOnPlayerPercent, ImpactMeetRulesEnabled, TimedBlocksEnabled, TimedBlockSlowMo, PerfectStrikeEnabled, ReelingHitKnockdownEnabled, TimedBlocksOnHorseback, OpeningsEnabled, OpeningArrowShow,
             SprintEnabled, SprintKey, SprintControllerKey,
             ShowPlayerBar, AltMarksEveryone, ImpactShowMessages,
@@ -3028,6 +3063,8 @@ namespace TraxCombat.Core
             RestContagionFloorPoints, RestGapDiagnosticMetres,
             WarCryBackInPercent, WarCryAnswerPercent, WarCryAnswerDelaySeconds, WarCryChargeSharePercent, WarCryChargeMaxMen, WarCryChargeStaggerSeconds,
             WarCryChargeUnitCooldownSeconds, WarCryManCooldownSeconds, WarCryUnitPerSecond, WarCryBattlePerSecond,
+            KeepDistanceQuietMinSeconds, KeepDistanceQuietMaxSeconds, KeepDistanceWeaponLengths, KeepDistanceFallbackLengthMetres, KeepDistanceMaxBackMetres,
+            KeepDistanceMaxHoldSeconds, KeepDistanceReachMetres,
             CavalryFlockFreeEagerPercent, CavalryFlockHysteresisPercent, CavalryFlockMidEagerPercent, CavalryFlockMidGroupSize,
             CavalryFlockExhaustedSharePercent, CavalryFlockTimid, CavalryFlockTimidRadiusMetres, CavalryFlockGatherRadiusMetres, CavalryFlockSeparationMetres,
             CavalryFlockLeadSeconds, CavalryFlockTightenWeights, CavalryFlockWaveSeconds, CavalryFlockMaxSeconds,

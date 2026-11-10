@@ -100,6 +100,16 @@ namespace TraxCombat.Missions
         public float RestX, RestY;
         public long RestMoveFrames, RestHeldFrames;
 
+        /// <summary>Step 109: KEEP YOUR DISTANCE - a man who cannot attack yet walks back from his enemy (<see cref="KeepMove"/>: <see cref="KeepX"/>,
+        /// <see cref="KeepY"/> replace the AI's movement - his own frame, a walk; 0, 0 = he stands at his gap) and holds the gap (<see cref="KeepClamp"/>: the
+        /// part of his final movement along <see cref="KeepNX"/>, <see cref="KeepNY"/> - toward that enemy - taken out, after the press's and the rhythm's
+        /// clamps). The SOFTEST movement wish: every other one (the backpedal, the wall's pull, the rest, the press, a swap, courage, the flock, the block,
+        /// the step-in) wins while it runs. Needs the Athletics system.</summary>
+        public bool Keep;
+        public bool KeepMove, KeepClamp;
+        public float KeepX, KeepY, KeepNX, KeepNY;
+        public long KeepMoveFrames, KeepClampFrames;
+
         /// <summary>Step 65: an AI kick / bash attempt's phase (Core <see cref="AiKickPhase"/> - None = none) and kind: the hook writes the kick
         /// key / the guard / the commit (Core <see cref="AiKickMath.Frame"/>) - only with Athletics on (the logic ends attempts otherwise).</summary>
         public AiKickPhase KickPhase;
@@ -164,7 +174,7 @@ namespace TraxCombat.Missions
         public bool CounterReady => (OpeningGuardFlag & CounterReadyBit) != 0;
 
         /// <summary>Any wish at all - a man is held while ANY of them wants him held (one ending never lifts another).</summary>
-        public bool Active => HoldAttacks || StepHoldAttacks || Backpedal || BraceHoldAttacks || Regroup || WallPull || Flock || Block || SpearWield || Press || Rhythm || KickPhase != AiKickPhase.None || MeetGuard || Reel || Opening || CounterSwing;
+        public bool Active => HoldAttacks || StepHoldAttacks || Backpedal || BraceHoldAttacks || Regroup || WallPull || Flock || Block || SpearWield || Press || Rhythm || Keep || KickPhase != AiKickPhase.None || MeetGuard || Reel || Opening || CounterSwing;
 
         /// <summary>Since when the state has been active (mission time), for the calls-per-second figure.</summary>
         public double ActiveSince = -1;
@@ -307,7 +317,8 @@ namespace TraxCombat.Missions
                 AiInputHook.Apply(_st, s, settings.AiHoldRaiseGuard, ref flags, ref vx, ref vy, settings.BraceRaiseShield);
                 bool moved = s.Backpedal || s.StepIn || (s.Regroup && settings.CourageEnabled) || (s.WallPull && settings.ShieldWallHoldsSlots) || (s.Flock && settings.FearFlockEnabled) || (s.Block && AiInputHook.BlockOn(settings))
                              || (s.Press && AiInputHook.PressOn(settings)) // step 77: the press's walk or clamp
-                             || (s.Rhythm && AiInputHook.RhythmOn(settings)); // step 78: a swap's walk or clamp, step 78c: a rest's walk or clamp
+                             || (s.Rhythm && AiInputHook.RhythmOn(settings)) // step 78: a swap's walk or clamp, step 78c: a rest's walk or clamp
+                             || (s.Keep && AiInputHook.KeepOn(settings)); // step 109: keep your distance's walk or clamp
                 if (s.MeetGuard && settings.ImpactMeetRulesEnabled && s.KickPhase == AiKickPhase.None) // step 82: the read guard over every other wish's guard
                 {
                     flags = ImpactMeetMath.GuardFrame(flags, s.MeetGuardFlag);
@@ -694,6 +705,49 @@ namespace TraxCombat.Missions
             return true;
         }
 
+        /// <summary>Step 109: keep your distance's switches - the master switch FIRST, the Athletics system, its own.</summary>
+        internal static bool KeepOn(TraxSettings settings) => settings.ModEnabled && settings.AthleticsEnabled && settings.KeepDistanceEnabled;
+
+        /// <summary>Step 109: turns keep your distance's wish on or off (the other wishes are left as they are); off clears its walk and clamp.</summary>
+        internal static void SetKeep(TrackedAgent st, bool on, double now)
+        {
+            var s = st.Input ??= new AiInputState();
+            bool was = s.Active;
+            s.Keep = on;
+            if (!on)
+            {
+                s.KeepMove = s.KeepClamp = false;
+                s.KeepX = s.KeepY = s.KeepNX = s.KeepNY = 0f;
+            }
+            Account(s, was, now);
+        }
+
+        /// <summary>Step 109: a keeping man's walk back (or his stand) - his own move bits out, the vector in; the softest wish (called last in the order, so
+        /// every other walk wins), never while a step back's backpedal or the wall's pull runs, never with its switches off. True when it wrote. Managed -
+        /// the smoke drives it.</summary>
+        internal static bool ApplyKeepMove(AiInputState s, ref uint flags, ref float vx, ref float vy)
+        {
+            if (!s.Keep || !s.KeepMove || s.Backpedal || s.WallPull) return false;
+            if (!KeepOn(TraxSettings.Shared)) return false;
+            flags = AiInputMath.Backpedal(flags);
+            vx = s.KeepX;
+            vy = s.KeepY;
+            s.KeepMoveFrames++;
+            return true;
+        }
+
+        /// <summary>Step 109: the keep's clamp - the part of his final movement toward his enemy taken out (after the press's and the rhythm's clamps), his move
+        /// bits out when it bit. True when it bit. Managed - the smoke drives it.</summary>
+        internal static bool ApplyKeepClamp(AiInputState s, ref uint flags, ref float vx, ref float vy)
+        {
+            if (!s.Keep || !s.KeepClamp) return false;
+            if (!KeepOn(TraxSettings.Shared)) return false;
+            if (!PressMath.ClampVector(ref vx, ref vy, s.KeepNX, s.KeepNY)) return false;
+            s.KeepClampFrames++;
+            flags = AiInputMath.Backpedal(flags);
+            return true;
+        }
+
         /// <summary>Step 76: turns the wield fallback's wish on (with his polearm's slot and his sidearms) or off.</summary>
         internal static void SetSpearWield(TrackedAgent st, bool on, int polearmSlot, int sidearmMask, double now)
         {
@@ -920,6 +974,7 @@ namespace TraxCombat.Missions
             s.Press = s.PressFront = s.PressSide = s.PressMove = false; // step 77
             s.Rhythm = s.RhythmMove = s.RhythmClamp = s.RhythmHoldAttacks = false; // step 78
             s.RestMove = s.RestHoldAttacks = false; // step 78c
+            s.Keep = s.KeepMove = s.KeepClamp = false; // step 109
             s.KickPhase = AiKickPhase.None; // step 65
             s.KickKind = AiKickKind.None;
             s.StepIn = false; // step 95
@@ -1007,12 +1062,13 @@ namespace TraxCombat.Missions
             else if (ApplyRegroup(s, ref flags, ref vx, ref vy)) won = StepInHold.Regroup; // step 49: the walk back (a step back's backpedal wins while it runs)
             else if (ApplyFlock(s, ref flags, ref vx, ref vy)) won = StepInHold.Flock; // step 67: the fear flock - courage's walk back goes first
             else if (ApplyBlock(s, ref flags, ref vx, ref vy)) won = StepInHold.Block; // step 74: the block hold
-            else stepWrote = ApplyStepIn(s, ref flags, ref vx, ref vy); // step 95: the step-in bash's walk - the last movement wish
+            else if (!(stepWrote = ApplyStepIn(s, ref flags, ref vx, ref vy))) ApplyKeepMove(s, ref flags, ref vx, ref vy); // step 95: the step-in bash's walk; step 109: keep your distance's walk / stand - the softest, the last
             bool stepLive = s.StepIn && s.KickPhase == AiKickPhase.Guard && StepInOn(TraxSettings.Shared);
             // step 77: the clamp LAST - never past an enemy line's front, whoever moves him; step 97: a step-in with room toward HIS enemy is let through
             bool pressBit = ApplyPressClamp(s, ref flags, ref vx, ref vy, stepWrote && StepInPassesPress(s), out bool letThrough);
             double fwdPress = stepLive ? AiStepInHoldMath.Forward(vx, vy, s.StepInX, s.StepInY) : 0;
             bool restBit = ApplyRhythmClamp(s, ref flags, ref vx, ref vy); // step 78: a rested man's place / step 78c: a resting man held back - after the press's clamp
+            ApplyKeepClamp(s, ref flags, ref vx, ref vy); // step 109: a keeping man never closes the gap by his own walking - last
             if (stepLive && (stepWrote || won != StepInHold.None) && s.StepRec != null)
             {
                 // step 97: what reduced this step-in frame's forward input, and the forward stick that leaves the filter

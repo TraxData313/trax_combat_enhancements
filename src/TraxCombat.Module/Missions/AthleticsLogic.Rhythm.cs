@@ -380,6 +380,8 @@ namespace TraxCombat.Missions
             CourageBody.Position(f, out double fx, out double fy);
             RhythmMath.AlongAcross(tx, ty, ux, uy, fx, fy, out _, out double across);
             int side = RhythmMath.SideOf(across);
+            KeepYieldToRest(t, now); // step 109: a swap wins over keeping one's distance
+            KeepYieldToRest(f, now);
             if (mt.Resting) EndRest(t, RestIn.Rotated, now, native: false); // a fresher man takes his place - no rest needed
             if (mf.Resting) EndRest(f, RestIn.Rotated, now, native: false);
             Begin(mt, RotationPhase.Hold, f, true, now, ux, uy, side, tx, ty, fx, fy);

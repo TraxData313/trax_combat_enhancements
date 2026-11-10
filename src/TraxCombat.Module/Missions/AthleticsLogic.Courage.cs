@@ -61,6 +61,7 @@ namespace TraxCombat.Missions
             StartBlock(); // step 74
             StartPress(); // step 77
             StartRhythm(); // step 78
+            StartKeep(); // step 109
         }
 
         /// <summary>A courage setting changed (from ApplySettingsChange): one line; applied at every man's next look.</summary>
@@ -71,6 +72,7 @@ namespace TraxCombat.Missions
             NoteBlockSettings(s); // step 74
             NotePressSettings(s); // step 77
             NoteRhythmSettings(s); // step 78
+            NoteKeepSettings(s); // step 109
             string now = CourageText(s);
             if (now == _seenCourageText) return;
             _seenCourageText = now;
@@ -788,6 +790,7 @@ namespace TraxCombat.Missions
             BlockLeftField(st); // step 74
             PressLeftField(st); // step 77
             RhythmLeftField(st); // step 78
+            KeepLeftField(st); // step 109
         }
 
         /// <summary>A landed hit on him (OnAgentHit): his shock window.</summary>
@@ -808,6 +811,7 @@ namespace TraxCombat.Missions
             CloseBlock(agentsAlive); // step 74
             ClosePress(agentsAlive); // step 77
             CloseRhythm(agentsAlive); // step 78
+            CloseKeep(agentsAlive); // step 109
         }
 
         internal void WriteCourageSummary()
@@ -820,6 +824,7 @@ namespace TraxCombat.Missions
             WritePressSummary(); // step 77
             WriteRhythmSummary(); // step 78
             WriteWarCrySummary(); // step 79
+            WriteKeepSummary(); // step 109
         }
     }
 }

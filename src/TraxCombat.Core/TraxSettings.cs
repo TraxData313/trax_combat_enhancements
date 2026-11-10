@@ -508,6 +508,15 @@ namespace TraxCombat.Core
         public float WarCryManCooldownSeconds => GetFloat(SettingsSchema.WarCryManCooldownSeconds);
         public int WarCryUnitPerSecond => GetInt(SettingsSchema.WarCryUnitPerSecond);
         public int WarCryBattlePerSecond => GetInt(SettingsSchema.WarCryBattlePerSecond);
+        // step 109: keep your distance
+        public bool KeepDistanceEnabled => GetBool(SettingsSchema.KeepDistanceEnabled);
+        public float KeepDistanceQuietMinSeconds => GetFloat(SettingsSchema.KeepDistanceQuietMinSeconds);
+        public float KeepDistanceQuietMaxSeconds => GetFloat(SettingsSchema.KeepDistanceQuietMaxSeconds);
+        public float KeepDistanceWeaponLengths => GetFloat(SettingsSchema.KeepDistanceWeaponLengths);
+        public float KeepDistanceFallbackLengthMetres => GetFloat(SettingsSchema.KeepDistanceFallbackLengthMetres);
+        public float KeepDistanceMaxBackMetres => GetFloat(SettingsSchema.KeepDistanceMaxBackMetres);
+        public float KeepDistanceMaxHoldSeconds => GetFloat(SettingsSchema.KeepDistanceMaxHoldSeconds);
+        public float KeepDistanceReachMetres => GetFloat(SettingsSchema.KeepDistanceReachMetres);
         // step 55: cavalry flocking
         public bool CavalryFlockEnabled => GetBool(SettingsSchema.CavalryFlockEnabled);
         public int CavalryFlockFreeEagerPercent => GetInt(SettingsSchema.CavalryFlockFreeEagerPercent);
