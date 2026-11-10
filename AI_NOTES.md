@@ -10866,3 +10866,81 @@ swing)? (c) a shieldman's hold opened by his BLOCK inside his 2 s stagger immuni
 
 **Only Toni's playtest can confirm** (D82): that a written attack bit makes the AI swing (released vs his swings), the guard shown for a whole hold,
 the shield down in time (the WinBlocked count / its lines).
+
+## Step 108 — READ THE BLOCK, NOT THE ARROW (Toni's training-field playtest 2026-11-10, build after 107d; BUILT 2026-11-10)
+
+DESIGN decision 97. Toni's screenshots: (1) his hit - the red arrow AT ONCE while the man was still in his hit flinch, no guard visible; (2) the
+man did not block, he went straight into an attack while Toni swung on the arrow; (3) that blow landed - a new opening, the arrow at once again;
+(4) the arrow was gone when the man finally raised a high guard; (5) Toni's thrust (the right side) came late = a normal blocked hit. Toni:
+"READ THE BLOCK, not just the arrow"; "If there is still a problem with the logging in the training camp, fix it".
+
+### C. What the log says (trax_combat.log, 2026-11-10 17:21-17:46, training_field_2 - the only mission that day; mode StartUp)
+- The holds RAN and the guard WAS forced: [summary] "openings - hold-block (step 107; ON): holds started 51 ... LINKS 22 ... STAGGERS 24 / 0 / 0
+  ... COUNTER-SWINGS after the first hold rolled 26 / thrown 5, after a lengthened hold rolled 6 / thrown 6 (released 11 ...) ... ended by staggered
+  24, the hold ran out 32, a fresh hold 10, he hit you 6, another target 0, ..., no link after the hold 11". The forced-guard line: frames 10242
+  (his attack bits taken out 1507 times), the weapon guard's pose read back "shown at 0.2 s 16, shown by 0.5 s 14, NOT shown 0".
+- So the forced guard held (no frame of a forced man kept an attack bit), but it SHOWED late: 14 of 30 unshielded holds needed 0.2-0.5 s; the hit
+  flinch plays first. The hold's clock and the arrow started AT THE HIT (`BeginHold`), and Toni's first hold was 1.05 s (1.2 x 95/109, his
+  sword speed 109): ~0.5-0.8 s of visible guard. Toni read the arrow, queued a swing - by the time it came the hold had run out, and in the 2 s
+  link window either the forced counter-swing (30 % first hold, 100 % after a link; 11 released) or his own AI's attack (step 54's punish raises
+  it) hit Toni: "he hit you 6". With no stagger, Toni's queued blow then landed as a normal hit = a FRESH hold with the arrow at once (pic 3) on
+  a man coming out of his own swing and a new flinch - the guard came after the 1.05 s had run (pic 4), Toni's thrust met a normal block (pic 5).
+- The per-event lines could not show WHICH phase each "he hit you" was in: `OpeningLine` wrote only the first 40 at Info (the rest verbose, off) -
+  the YOU lines stop at 17:22:43, one minute into a 12-minute session; the pose read-back lines at 20. That is the "logging in the training camp"
+  problem. The training field's mode (StartUp, "other mission") gates nothing else: the [summary] was written in full (behaviour removed at the
+  end), and the arrow already shows there by 106f's walk-about rule (`FightsInWalkMode` - while a hold / chain is on you, + 2 s; built on demand,
+  "layer created ... was hidden: not a fight (mission mode)" is that rule working). TrainingBattlesMod's drills are ordinary battle missions
+  (`CampaignMission.OpenBattleMission` / siege / naval - mode Battle): no gate there.
+- A second hole found while reading the input filter: a kick / bash queued by step 81 BEFORE the hit kept writing its phases AFTER the forced
+  guard in `AiInputComponent.Filter` (the kick is written last) - an attack under a forced guard. Now skipped while `s.Opening` (not counted:
+  one more field on `AiInputState` breaks step 75's allocation budget).
+
+### What was built (commit e348118)
+- Core `OpeningHolds.cs`: `HoldPhase.Recovering`; `OpeningHold.Begin(.., recoveryCap)` enters it (`HitAt`, `Until` = the bound hit + cap +
+  length for the force), `GuardShown(now, capped)` starts the clock (`RecoverySeconds`, `RecoveryCapped`), `Recovering(t)`, `Forced(t)`;
+  `LinkOpen` includes Recovering. `OpeningHoldMath.ReadMargin`, `FirstHold(r, speed, skill)`, `RecoveryOver`, `UnbalancedText` (8 constant
+  strings). `OpeningHoldRules`: SwingSeconds, MarginAt0 / 200, RecoveryCap, ArrowShow, Message, InfoLines. Stats: Recoveries / RecoveredSeen /
+  RecoveryCapped / RecoveryCut / sum / max, HitYouRecovering / Holding / AfterCounter / AfterOwn, MessagesShown, ArrowOff + the summary part.
+- Module `AthleticsLogic.OpeningHolds.cs`: `BeginHold` reads your skill (`OpeningSkillRead` = `GameImpactInputs.Skill(GuardSkillOf(..))` - the
+  timed block's lookup) and begins recovering; `TickHolds` polls `IOpeningBody.GuardShown` (new - channel 1's direction + defend stage, no action
+  name, no allocation) every tick for the one man, then `HoldGuardShown` (the clock, the force's end re-timed, the line, `QueueHoldShown` - the
+  arrow counted, the words queued) → `ShowHoldText` from the tick (the feed, #F01E1EFF, the arrow's red). `HoldWindUp` in the recovery marks
+  your swing to be judged at its commit once the hold runs. `NoteHitYou` (from `HoldContact`) counts his blow on you by phase with a line;
+  `_holdCounterThrown` / `_holdEndedAt` tell the AFTER cases apart. `HoldArrowMask` needs Holding + `OpeningHoldArrowShow`. The force's backstop
+  in `TickOpeningForce` uses `Forced` (else it would end the force during the recovery). `OpeningLine` / `ForceInfoLine` budgets =
+  `OpeningLogInfoLines`.
+- The words, checked against the code (Step108Tests): the arrow is attacker-relative (top = your overhead, bottom = your thrust, left / right =
+  your swing from that side - the prefab's own comment); `OpeningFor(G)` is the arrow; the guard as the player sees it is opposite the opening.
+  With `OpeningSidesCrossed` on (Toni's), the engine's DefendLeft blocks your RIGHT swing and opens your LEFT: "Unbalanced RIGHT (hit from the
+  left)" - his guard sits on YOUR right. Same-named sides map DefendLeft to the other opening, the words still follow the arrow. Axe / mace
+  (3 directions, win mask > 1 side): "Unbalanced - guard X, hit any other side", X = the side of the attack his guard blocks. A spear's win mask
+  is always ONE stab, so it gets the exact form.
+- Settings (Advanced, Impact; 654, no config-format change - no default moved; `OpeningHoldFirstSeconds` dropped from a config with a note,
+  `ConfigFile.RetiredHoldKeys`): `OpeningHoldSwingSeconds` 1.0, `OpeningHoldReadMarginAtSkill0` 0.15, `OpeningHoldReadMarginAtSkill200` 0.30,
+  `OpeningHoldRecoveryCapSeconds` 1.0 (in the old key's place), `OpeningHoldArrowShow` on, `OpeningHoldMessage` on, `OpeningLogInfoLines` 5000
+  (after `PerfectStrikeDefensiveMax`).
+- Tests: Step108Tests 11 (Step107Tests' first-hold numbers moved to the new formula); 1681 green. Smoke "OPENINGS, READ THE BLOCK (step 108)"
+  (the recovery - no arrow, his attack out and a held attack cancelled by the guard; the guard shows 0.4 s later - the clock, the arrow to the
+  hold's end, the words; the cap; a hit / a block while recovering; the switches; his blows on you by phase; the master switch); the step-107
+  smoke runs with the recovery cap 0 and a 1.2 s swing, no margin (its old numbers). The step-76 cost check now lifts `LogMaxMegabytes` while it
+  measures: the extra openings lines moved the smoke's own 8 MB log trim INTO that measurement (54 MB "allocated" - the trim's file rewrite).
+
+### F. Spears in the hold game (answer only - nothing changed)
+A spear is a THRUST-ONLY weapon: `OpeningMath.WeaponMask(false, true)` = the overhead stab + the thrust (2 directions). His random guard is drawn
+only among guards whose opening a spear can make - the HIGH guard (opening: your thrust) or the LOW guard (opening: your overhead stab); the win
+rule is "any side his guard does not block" (`ExactSide` false), which for 2 directions is exactly one stab - the arrow's. So the spear's hold game
+is a two-way read with no "third side" to get wrong: the easiest. The first hold uses the spear's THRUST speed for the weapon factor. After a
+winning stab he reels (the step-106 reel, 0.8 s + 0.3 a link); the PERFECT STRIKE window's multiplier is the opening table by the striker's
+weapon's direction count (`PerfectStrikeMath.WindowMultiplier(.., opening: true)` → `Multiplier(score, r, mask)` → the 2-direction range):
+`PerfectStrikeTwoWayMin` 1.5 → `PerfectStrikeTwoWayMax` 2.0 by the timing (your winning wind-up's speed share) - the smallest of the three (sword
+2-4, axe / mace 2-3), as Toni expects. The finishing side for a spear: the strict opposite stab, or by `PerfectStrikeWeaponFinishes` "a side
+answered by either stab". (A swing-and-thrust polearm - a glaive, a long axe with a thrust - has 4 directions and plays as a sword: exact side,
+x2-4.) The DEFENSIVE game's perfect strike (after your timed block) is x2-3 for every weapon, spears too (step 107).
+
+### Open / unproven
+- In game: that the cheap read sees the guard as 106f's read-back did (the recovery's mean and "started by the cap" on the [summary] line).
+- A swing you began during the recovery gets no timing share (scored as late - the perfect strike at its minimum if it wins).
+- The 107d questions stand (the counter-swing ignores his tiredness; ~0.9 s without a guard while he counter-swings; a shieldman's block-opened
+  hold staggering inside the immunity).
+- A stray empty folder `C:\ASUSRO~1` was created by a mistyped scratch path during this step (its one file removed; the folder removal was
+  refused by the safety check) - Toni can delete it.

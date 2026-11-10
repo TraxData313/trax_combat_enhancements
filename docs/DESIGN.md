@@ -3885,6 +3885,24 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     openings are live (95 (m)). (h) Step 107d (the review): the forced counter-swing's own wind-up is never rolled into a kick / bash / push by
     step 81 (a kick's guard, written after it, would cancel it) - it is always a swing; it overrides the Athletics pause, the brace and an empty
     swing stack like any forced input (open for Toni - AI_NOTES "107d - review").
+97. **Read the block, not the arrow** (step 108; Toni's training-field playtest 2026-11-10, AI_NOTES "Step 108"): (a) THE RECOVERY - from the
+    entry hit (or a shieldman's block) his attacks are held off and the forced guard pushed (a ready cancelled by the guard bit, never released;
+    a kick he had queued is not written over the forced guard) until his pose read-back (channel 1 in a defend stage in G) shows the guard - only
+    then the hold's clock starts; at most `OpeningHoldRecoveryCapSeconds` 1.0 (then the clock starts anyway; 0 = 96's clock from the hit). His
+    block during the recovery is a link (his guard is plainly up); your landed hit during it starts a fresh hold; a swing begun in it is judged at
+    its commit once the hold runs. (b) THE FIRST HOLD without a shield = (`OpeningHoldSwingSeconds` 1.0 + the reading margin
+    `OpeningHoldReadMarginAtSkill0` 0.15 → `...AtSkill200` 0.30 by YOUR skill in the weapon you hold - the timed block's lookup, clamped 0-200) x
+    96's weapon factor, capped; `OpeningHoldFirstSeconds` retired. A shield's 0.5 / 1.0 s unchanged, also from the visible guard; links unchanged.
+    (c) THE ARROW only from the visible guard to the hold's end (a link re-shows it), behind `OpeningHoldArrowShow` (on). (d) THE WORDS
+    (`OpeningHoldMessage`, on) in the feed when the hold starts, in the PLAYER's view - "Unbalanced <where his guard went as you see it> (hit from
+    <the arrow's side>)": DOWN / top down (your overhead), UP / below (your thrust), RIGHT / the left, LEFT / the right; a weapon winning on more
+    than one side "Unbalanced - guard HIGH / LOW / LEFT / RIGHT, hit any other side". The word follows the opening (the arrow), so it holds whatever
+    `OpeningSidesCrossed` maps. (e) THE LOG - the openings' per-event lines at Info up to `OpeningLogInfoLines` 5000 a battle (was 40 / 20); his
+    blows on you in a chain counted by phase (recovering / holding / after his forced counter-swing / after the hold on his own) with a line; the
+    recovery's seconds and the cap's starts on the [summary] line. (f) Toni's pic 2 (the cause, from his 2026-11-10 log): the hold's clock and
+    the arrow ran from the hit while his guard showed only 0.2-0.5 s later (106f's read-back: 14 of 30 weapon guards needed more than 0.2 s), so a
+    1.05 s first hold left ~0.5-0.8 s of visible guard; your swing queued on the arrow came after the hold ran out, when he counter-swung (30 % /
+    100 %) or attacked on his own in the link window - the summary's "ended by he hit you 6" against 11 counter-swings released. (a) is the fix.
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research

@@ -2276,6 +2276,32 @@ was lowered / his shield / his weapon, 'can defend' off / on)` - several with "h
 Claude. **Try 6:** against a shieldman, make him hold a few links, then step back and let his counter-swing come at you 3-4 times - is it a
 real swing (no kick or bash) that you can block?
 
+**D83. OPENINGS - READ THE BLOCK, NOT THE ARROW (step 108, ~15 min - the training field: a sparring partner WITHOUT a shield first, then one with a shield).**
+*What changed:* after your hit he can no longer attack, and his guard is pushed up - but the hold's clock, the red arrow and a line in the feed
+start only when his guard is VISIBLY up (at most 1 s after your hit; if it never shows the clock starts anyway). The first hold without a shield is
+your swing's time + a reading margin (0.15 s at skill 0 to 0.30 s at skill 200 in the weapon you hold) x the weapon factor - about 1.0 s with a
+fast sword at low skill, 1.3 s with a speed-95 weapon at 200. The feed says what you see: "Unbalanced DOWN (hit from top down)" (his guard went
+low - your overhead), "Unbalanced UP (hit from below)" (high guard - your thrust), "Unbalanced RIGHT (hit from the left)" / "Unbalanced LEFT (hit
+from the right)" (your swing from that side); with an axe or a mace "Unbalanced - guard HIGH, hit any other side". A shield keeps its 0.5 / 1.0 s,
+also from the visible guard. Two new Advanced switches (Impact group): `OpeningHoldArrowShow` (off = read his block alone) and `OpeningHoldMessage`.
+Every openings line is now written to the log in the training field (was cut after 40).
+**Try 1 - one hit, then WATCH:** hit the sparring partner once and do nothing. The arrow must NOT come while he is still in his hit flinch; it
+comes together with his guard, with the feed line. He must not attack during it. When the arrow goes, the hold is over (he may counter-swing).
+**Try 2 - read and strike:** hit, wait for the guard, strike the side the line names - he reels, OPENING!. Do it 5 times; note if you ever had
+too little time.
+**Try 3 - the arrow off:** Advanced > Impact > 'Openings: red arrow on a hold' off - read his block alone, strike from the side opposite his guard.
+**Try 4 - a shield:** a kite (0.5 s) and a small shield (1.0 s), now counted from his raised shield.
+**Log (the proof of A-C):** per hold `YOU: openings (hold-block): your right swing landed -> X HOLDS his guard in the high guard for 1.30 s FROM THE
+MOMENT IT SHOWS (his attacks held off and the guard pushed until then, at most 1.00 s) (your swing 1.00 + reading margin 0.30 at your skill 200; ...)`,
+then `X's guard in the high guard is VISIBLE 0.38 s after your hit - the hold's clock starts: 1.30 s; 'Unbalanced UP (hit from below)', the red arrow
+on your thrust` (or `NOT seen within 1.00 s of your hit (the recovery cap) - the hold's clock starts anyway`). Whenever HE hits YOU in a chain:
+`X's blow LANDED on you while he RECOVERED / while he HELD his forced guard / after his hold ran out - his FORCED counter-swing / his OWN attack ...;
+the forced guard ON / off`. The [summary] "openings - hold-block" line's new part: `STEP 108 - THE RECOVERY (hit -> his guard visible ...): waited
+N, guard SEEN N (mean 0.xx s, longest ...), started by the cap N, cut before it showed N; 'Unbalanced ...' shown N; HIS BLOWS ON YOU in a chain:
+while recovering N, while holding N, after the hold - his forced counter-swing N, his own attack N`. **Tell Claude:** the recovery's mean (is it
+~0.3-0.5 s, as the step-107 pose reads suggested?), how many were started by the cap, and the "HIS BLOWS ON YOU" split - "while recovering" and
+"while holding" should be 0; anything there means something still releases his attack under the forced guard.
+
 ---
 
 ## E. Your Athletics bar, the orders-menu strip and the ALT markers (20 min)
