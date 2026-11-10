@@ -3931,6 +3931,18 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     two. (g) ITS OWN LOOK every 0.25 s (tournaments and duels too - courage stands down there), ON and OFF (the OFF looks count would-back-offs and
     the waiting distance). (h) UNVERIFIED in game (PLAYTEST D84): the native AI standing and facing under the zero vector; how often a real pause
     lasts the wait; a line man's slot pull against the walk.
+99. **The training field: tired men keep their distance too, a fresh start every bout** (step 110; Toni 2026-11-10 in the training field: the
+    tired rookie trainer "kept creeping in my face, just looking at me from very close", and "upon resetting my health after a fight with a
+    training master, reset my [Athletics]"; AI_NOTES "Step 110"). (a) WAITING WIDENED - step 109 asked only "can he attack now?" (his pause, an
+    empty stack, a brace); the log showed the trainer almost always had swings stored (101 AI attacks with no pause), never braced, and was simply
+    passive (the game's Defensiveness 4 on the rookie). A man whose bar is at or below `KeepDistanceTiredBelowPercent` 50 now waits too, with the
+    same quiet 2-3 s; a keep begun while tired ends ready at the mark + `KeepDistanceTiredRecoverPercent` 15 (at most his wound cap − 2 points; a
+    man at his cap never starts one); 0 = step 109 exactly. (b) THE TRAINING FIELD'S FRESH START (`TrainingFieldRefill`, on) - in StoryMode's
+    `TrainingFieldMissionController` (by name) your health rising `TrainingFieldRefillHealthJumpPercent` 5 % or more in a tick (the controller's
+    reset), or the men hostile to you turning 0 → some / some → 0 (a bout began / ended - the controller moves its trainers between the teams),
+    gives every tracked fighter step 19's fresh start: the bar to his wound cap, the swing stack and the sprint full, pauses / step backs / braces
+    ended. Public reads only, no Harmony. (c) UNVERIFIED in game (PLAYTEST D85): the trainer standing off under the zero vector; the wider keep in
+    field battles.
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research

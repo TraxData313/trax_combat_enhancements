@@ -2325,6 +2325,26 @@ other ...`. **Tell Claude:** did he walk back FACING you (never turned his back)
 walked mean / p90, the ends (mostly "ready" is the hope; many "timeout" = braced men), and the waiting distance ON vs OFF if you play one fight
 with the switch off.
 
+**D85. THE TRAINING FIELD - TIRED MEN STAND OFF, EVERY BOUT FRESH (step 110, ~10 min - the training field's trainer fights, then one field battle).**
+*What changed:* (1) a TIRED man (his bar at half or less) who only stands and stares now also backs off after his quiet 2-3 s, even when he could
+swing, and keeps the gap until his bar is back to about two thirds (Advanced, Courage and cohesion: "Keep distance: tired men too, below (%)" 50,
+"... comes back after (+%)" 15; 0 = only men who cannot swing). (2) In the training field, whenever the game restores your health after a bout - and
+when a trainer's bout begins or ends - you AND the trainers refill: the Athletics bar, the stored swings and the sprint full, any pause ended
+(Advanced, Refill: "Training field: a fresh start for every bout", on).
+**Try 1 - the rookie trainer:** fight him until his bar is under half (ALT shows it), then stop and stand. After 2-3 s he should walk back ~2 m
+FACING you and stand there; walk up without swinging - he stands and defends; swing - he defends at once.
+**Try 2 - the fresh start:** finish a bout (win and lose one, and win one without being hit). The moment the game restores your health your bar,
+swing count and sprint jump full; the next bout's trainer is fresh too.
+**Try 3 - a field battle:** do lines thin because tired men step back? (They never go past the rest's 4 m behind their own front, shield walls never.)
+**Log:** `[keep] first TIRED man near his enemy who could swing (step 110) at ... s: Training Master - bar 32.0% ...`, `first man KEEPS HIS DISTANCE
+... (tired - bar 32.0%, he could swing (step 110) ...)`; `[athletics] training field mission (TrainingFieldMissionController): ...` at the start, then
+`[athletics] training field (step 110) at X s: the game reset your health (54% → 100%) - a fresh start for N men: YOU 22.0 → 110.0 of 110.0 (swings
+and sprint full); Training Master 32.0% → 100.0%` (and "a trainer's bout began" / "the trainer's bout ended"). The [summary] `keep distance (step
+109)` line's `step 110 - from tiredness alone (he could swing) N keeps, waits that ran out N, candidate looks by why: pause N, empty stack N, brace N,
+tired only N` and `training field fresh start (step 110) ON: moments - your health reset N, bouts began N, bouts ended N; fresh starts N ...`.
+**Tell Claude:** did the trainer back off and stand, or drift back in (his own AI fighting the zero vector)? Did every bout start fresh? In a battle,
+the "tired only" looks and whether lines felt thinner.
+
 ---
 
 ## E. Your Athletics bar, the orders-menu strip and the ALT markers (20 min)

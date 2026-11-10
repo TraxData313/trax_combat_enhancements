@@ -11052,3 +11052,71 @@ and the backpedal beat the keep's; its clamp takes a walk in out; never with its
 **DEPLOY**: `tools\deploy.ps1` ran normally (the game was not running): the build, the AssemblyGuard (OK), the offline smoke (all passed, 242 steps),
 installed as Modules\TraxCombatEnhancements.Dev "Trax Combat Enhancements (dev)". `tools\SmartAppControl\loadcheck.ps1`: both DLLs LOADED
 (`1.5.0+5bef3c1194a9a65979deebf920a5d40d3c44a577`). Not uploaded.
+
+## Step 110 — THE TRAINING FIELD: TIRED MEN KEEP THEIR DISTANCE TOO, A FRESH START EVERY BOUT (Toni 2026-11-10, playing; BUILT 2026-11-10)
+
+**Toni (2026-11-10, training_field_2, the trainer's melee fights)**: (1) "I made sure the noob training guy was tired, but he kept creeping in my face,
+just looking at me from very close." (2) "Upon resetting my health after a fight with a training master, reset my [Athletics] while I test more."
+
+### 1. Why step 109 never fired (the log, mission 19:31:49-19:41:18, the step-109 build 5bef3c1)
+- The look RAN and saw him: the [summary] `keep distance (step 109) ON: backed off 0 ... quiet spells broken by action 25 ... the distance to his enemy
+  while waiting (his pause or an empty stack): ON other 1.57 m (47 looks) ... cost: looks 25.87 ms (1005)`. Tracked (6 fighters), his target seen (the
+  controller moves the trainers onto `PlayerEnemyTeam` at "Defeat the trainer!", so `IsEnemyOf` holds), no mission-mode gate (the field stays in
+  StartUp - the keep has none).
+- He almost never COULD NOT attack: `attack rate - AI timer, not held: ... a stored swing left (step 32's swing stack) 101`; brace `0 of 4 AI fighters
+  braced` (no formation: floor 20 % ± 10 - he sat at 32-44 %). The few "cannot attack" windows (47 looks, about 12 s in ~9 min) were short pauses /
+  empty stacks that an action broke 25 times before the 2-3 s quiet ran out (the player's own swings and blocks count, as designed).
+- What Toni saw is a PASSIVE man: the rookie trainer has `agent.Defensiveness = 4` (StoryMode `TrainingFieldMissionController.BeginNPCFight`; vanilla's
+  `MakeTrainersPatrolling` resets only the veteran's to 0 - twice), stored swings, and his own AI chooses not to swing - it walks to strike range and
+  guards. Step 43's aggression (x0.45 → x0.15 as he tires) adds to it. So "cannot attack" was the wrong question.
+- DECIDED (decision 99 (a)): WAITING = cannot attack (step 109) OR TIRED - his bar (points ÷ FULL pool) at or below `KeepDistanceTiredBelowPercent` 50 -
+  with the SAME quiet wait (2-3 s with no swing, kick, bash, block or hit between them = "not attacking"). A keep begun while tired (`KeepMind.ForTired`,
+  also set when a pause-keep finds him tired) ends READY only at mark + `KeepDistanceTiredRecoverPercent` 15 = 65 %, at most his wound cap − 2 points; a
+  man already at his cap has nothing to gather and never starts one (no loop). The 10 s timeout, actions, a new target and the rest still end it.
+  Why the bar and not "his AI did not attack for X s": the bar is what Toni means by "tired", it is a managed read in the cheap gate, and the quiet wait
+  already is the "not attacking" clock. Why 50 %: below the full-strength line (75 %) a man is visibly slower; the rest (78c) takes men below 20-45 % in
+  battles and wins over the keep anyway. In field battles this widens the keep to every non-wall foot man at 50 % or less who stands quiet 2-3 s near his
+  enemy - within the rest's limit behind his front (unverified in a battle - PLAYTEST D85).
+- New proof lines: `[keep] first TIRED man near his enemy who could swing (step 110) ...` (the look reached him), the first KEEPS HIS DISTANCE line names
+  "tired - bar 32.0%, he could swing (step 110)", and the summary's `step 110 - from tiredness alone (he could swing) N keeps, waits that ran out N,
+  candidate looks by why: pause / empty stack / brace / tired only`. Toni's mission was still running when the diagnosis began (no summary yet); the
+  summary above was written when he left the field.
+
+### 2. The training field's fresh start (decision 99 (b))
+- How the game does it (StoryMode `TrainingFieldMissionController`, decompile in `%TEMP%\trax_decomp\full_StoryMode\Storymode.Missions\`):
+  `MakeAllAgentsImmortal` (MortalityState 2 - `Agent.HandleBlow` then takes NO health off anyone); the player's health lives in a private `_playerHealth`
+  (minus each unblocked blow's InflictedDamage in `OnScoreHit`) and is written onto `Agent.Main.Health` every tick of a bout (`_trainingProgress` 4 / 7);
+  the trainers' in `_advancedMeleeTrainerEasy/NormalHealth`. At a bout's start (`case 3/6`, after the 3-2-1) `_playerHealth = HealthLimit` and both
+  trainers `SetTeam(PlayerEnemyTeam)`; the rookie beaten → `OnEasyTrainerBeaten`: `Agent.Main.Health = HealthLimit` AT ONCE, the trainers back on
+  `PlayerAllyTeam`; a loss → health 1.1, then `MakeTrainersPatrolling` → the teams back, a `DelayedAction` of 1.5 s writes full health; the veteran beaten →
+  the same 1.5 s reset.
+- THE DETECTION (public reads only - no Harmony, no reflection): every tick in that mission (the controller found by type NAME at the first tick; the
+  module does not reference StoryMode) `TrainingFieldWatch.Observe(your health ÷ limit, men hostile to you)`: a health RISE of
+  `TrainingFieldRefillHealthJumpPercent` 5 % or more between two ticks = the reset (nothing heals you there); the hostile count 0 → some = a bout began,
+  some → 0 = it ended (this catches a win without a scratch, when your health never moves). The first reading is only the baseline; a health jump wins a
+  tick with both. A loss gives two moments (the bout's end at 1.1 health - a fresh start capped by that health - then the reset 1.5 s later, which refills
+  to full): harmless and needed, so there is no debounce.
+- THE REFILL = step 19's for every tracked active fighter in the field (you and the trainers, the bow NPC too - harmless): `AthleticsMath.FreshStart` (to
+  the wound cap), `ReleaseForFreshStart(st, now, hideout: false)` (it now returns how many it released; the hideout's counters only when asked),
+  `ResetPhases` (the swing stack full), `SprintFreshStart` (inside the release - the store full), `RetargetSpeed(exact)`. The trainers are immortal, so
+  their health - and their cap - stays full.
+- Settings (4; 662 → 666): `KeepDistanceTiredBelowPercent` 50 (0-100), `KeepDistanceTiredRecoverPercent` 15 (0-50) after `KeepDistanceReachMetres`
+  (Advanced, Courage and cohesion); `TrainingFieldRefill` true, `TrainingFieldRefillHealthJumpPercent` 5 (1-100) after `CrouchRefillForAi` (Advanced,
+  Refill). Gate: ModEnabled FIRST, AthleticsEnabled, TrainingFieldRefill - read at each moment, the moment logged either way. No config-format change.
+- Logging: `[athletics] training field mission (TrainingFieldMissionController): training field fresh start (step 110): ...` at the first tick; each
+  moment `[athletics] training field (step 110) at X s: the game reset your health (54% → 100%) - a fresh start for 3 men: YOU 22.0 → 110.0 of 110.0
+  (swings and sprint full); Training Master 32.0% → 100.0%` (Limited); the [summary] `training field fresh start (step 110) ON: moments - your health
+  reset N, bouts began N, bouts ended N; fresh starts N (men refilled N, you N), with a switch off N; your bar before them mean X%, lowest X%; released N`.
+- Cost: training field only - one health read and a loop over the ~6 tracked men a tick, no allocation (the line's StringBuilder only at a moment).
+
+**Tests** 1692 → 1703 (Step110Tests 11; the count pins 662 → 666, courage's group 130 → 132). **Smoke**: step 109's runs at `KeepDistanceTiredBelowPercent`
+0 (its men stand at 40 %); + `THE TRAINING FIELD (step 110)` (Program.Step110.cs): the tired man who could swing backs off after 2.5 s, holds ~2.9 m,
+waits at 60 %, ready at 66 %; 60 % never starts; the mark 0 = he stares; the fresh start fills you (to your health's cap), the trainer's bar and stack,
+your sprint, ends his pause; the switch off = nobody, logged; a `TrainingActiveOf` seam stands in for the native `Agent.IsActive()`. 243 smoke steps pass.
+
+**DEPLOY**: the game had been closed by the time the code was done (Get-Process found nothing) - `tools\deploy.ps1` ran normally (build, AssemblyGuard,
+smoke all passed), Modules\TraxCombatEnhancements.Dev; loadcheck LOADED `1.5.0+2919b2e`.
+
+**UNVERIFIED (PLAYTEST D85)**: the rookie trainer's keep in game (does his own AI, Defensiveness 4, stand under the zero vector?); the moments' order in a
+real bout; field battles with the wider keep - many men at 30-50 % backing off could thin a line's front; watch the summary's "tired only" looks and the
+rest's lines.
