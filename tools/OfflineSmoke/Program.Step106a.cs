@@ -35,6 +35,10 @@ namespace TraxCombat.Tools
                                                              || p.Key.StartsWith("PerfectStrike", StringComparison.Ordinal) || p.Key.StartsWith("ReelingHit", StringComparison.Ordinal)))
                     S.Set(p, p.Default, SettingSources.File);
                 S.Set(SettingsSchema.OpeningHoldsEnabled, false, SettingSources.File); // step 107: step 106's path (the hold-block openings off)
+                // step 113: these smokes check step 106's reel numbers (0.8 s + 0.3 a link, at most 2.0) - defaults.json ships 2.0 / 0.25 / 2.5
+                S.Set(SettingsSchema.OpeningReelBaseSeconds, 0.8, SettingSources.File);
+                S.Set(SettingsSchema.OpeningReelPerChainSeconds, 0.3, SettingSources.File);
+                S.Set(SettingsSchema.OpeningReelMaxSeconds, 2.0, SettingSources.File);
                 S.Set(SettingsSchema.TimedBlockSlowMo, false, SettingSources.File);
                 S.Set(SettingsSchema.ImpactMeetRulesEnabled, false, SettingSources.File);
                 Check(SettingsSchema.OpeningsEnabled.Default == 1 && SettingsSchema.OpeningsShadowLog.Default == 1,

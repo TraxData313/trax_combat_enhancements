@@ -260,7 +260,13 @@ namespace TraxCombat.Missions
                 _strike.NoteLanded(strike, w.Blocked, w.Score, k, damage, after);
                 _strike.NoteWeapon(weapon, relaxed);
                 if (w.Opening) _strike.OpeningLanded++;
-                if (!PerfectStrikeMath.Open(now, v.Impact.ReelingUntil, r.GraceSeconds)) _strike.FlightStrikesAfterReel++; // step 111: landed thanks to the flight
+                bool inReel = PerfectStrikeMath.Open(now, v.Impact.ReelingUntil, r.GraceSeconds);
+                if (!inReel) _strike.FlightStrikesAfterReel++; // step 111: landed thanks to the flight
+                if (w.Opening) // step 113: during his reel or after it
+                {
+                    if (inReel) _strike.OpeningLandedInReel++;
+                    else _strike.OpeningLandedAfterReel++;
+                }
                 if (w.Rider) _strike.NoteRiderLanded(w.Score, k, damage, after, attackerMounted);
                 else if (attackerMounted) _strike.FootLandedFromHorseback++;
                 var c = CultureInfo.InvariantCulture;

@@ -125,6 +125,7 @@ namespace TraxCombat.Core
             ShieldBigSize = Math.Max(ShieldSmallSize + 1, Pos(s.OpeningHoldShieldBigLength));
             EndsWhenYouReel = s.OpeningHoldEndsWhenYouReel;
             ArrowSwingMax = Pos(s.OpeningArrowSwingHoldMaxSeconds);
+            HoldOnParry = s.OpeningHoldOnParry;
         }
 
         public static OpeningHoldRules From(TraxSettings s) => new OpeningHoldRules(s);
@@ -198,6 +199,10 @@ namespace TraxCombat.Core
         /// <summary>Step 111: the red arrow keeps its direction through your swing (wind-up to contact / miss) at most this long (s;
         /// <c>OpeningArrowSwingHoldMaxSeconds</c>; 0 = no latch - step 108's arrow).</summary>
         public double ArrowSwingMax { get; }
+
+        /// <summary>Step 113 (Toni 2026-11-11: "even if he blocks me"): his PARRY of your attack, or his WRONG-side shield block, with no hold on him
+        /// starts a hold like a landed hit (<c>OpeningHoldOnParry</c>; off = step 107: only a shieldman's correct shield block does).</summary>
+        public bool HoldOnParry { get; }
 
         public string Describe()
         {
@@ -683,6 +688,10 @@ namespace TraxCombat.Core
         /// attempts cut when a forced guard began on him.</summary>
         public int ArrowSwingsHeld, MessagesDeferred, KickRollsRefused, KicksCut;
 
+        /// <summary>Step 113: holds STARTED by his parry of your attack / by his wrong-side shield block (<c>OpeningHoldOnParry</c>); such blocks that
+        /// started none because the switch is off.</summary>
+        public int HoldsByParry, HoldsByWrongBlock, BlocksNoHoldSwitchOff;
+
         public void NoteRefused(HoldRefusal r, bool byBlock)
         {
             if (r == HoldRefusal.None || (int)r >= 4) return;
@@ -785,6 +794,9 @@ namespace TraxCombat.Core
              .Append("); your swings whose arrow change was held until they resolved ").Append(ArrowSwingsHeld.ToString(c)).Append(", 'Unbalanced' lines deferred past your swing ")
              .Append(MessagesDeferred.ToString(c)).Append("; kick / bash rolls refused for a held man ").Append(KickRollsRefused.ToString(c)).Append(", his running kick / bash cut by the forced guard ")
              .Append(KicksCut.ToString(c)).Append(" (both must stay the only way: a held man never kicks)");
+            t.Append("; STEP 113 - holds started by his block of your attack: his parry ").Append(HoldsByParry.ToString(c)).Append(", his wrong-side shield block ")
+             .Append(HoldsByWrongBlock.ToString(c)).Append(", his correct shield block ").Append(ShieldHoldsByBlock.ToString(c)).Append(" (")
+             .Append(r.HoldOnParry ? "on" : "OFF - OpeningHoldOnParry; blocks that started none " + BlocksNoHoldSwitchOff.ToString(c)).Append(')');
             t.Append("; ended by");
             for (int i = 0; i < (int)HoldEnd.Count; i++)
                 t.Append(i == 0 ? " " : ", ").Append(OpeningHoldMath.EndName((HoldEnd)i)).Append(' ').Append(Ends[i].ToString(c));

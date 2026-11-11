@@ -187,6 +187,11 @@ namespace TraxCombat.Core
         /// <c>TimedBlockPerfectSeconds</c> / <c>TimedBlockWindowSeconds</c>).</summary>
         public double GuardSkill;
         public bool HasGuardSkill;
+
+        /// <summary>Step 113: a perfect-strike swing of the attacker begun while a window on the defender was open (step 111's flight) is the blow
+        /// - step 105 counts him as REELING for it even when his reel ended while it was in the air (at most <c>PerfectStrikeFlightSeconds</c> past
+        /// the window). Only step 105's roll reads it: his reel, the stagger immunity and the reeling bonus are untouched.</summary>
+        public bool DefenderInStrikeFlight;
     }
 
     /// <summary>
@@ -1303,8 +1308,11 @@ namespace TraxCombat.Core
             }
             // step 105: a LANDED hit on a man who reels - knocked down at ReelingHitKnockdownPercent whatever his tiredness, the brace, the
             // immunity or the halving (the usual roll stands only when it came up / was higher); never a rider (step 104's seam), never down
-            d.ReelingHit = ReelingHitMath.Decide(r.ReelingHit, f.Event, f.Thrust, IsLanded(f.Event), false, reelingNow, defender.ReelCause, f.DefenderMounted, down,
+            // step 113: a perfect-strike swing begun in his reel still meets a reeling man (step 111's flight; never a rider's reel)
+            bool byFlight = !reelingNow && f.DefenderInStrikeFlight && !f.DefenderMounted && defender.ReelCause != ReelCause.RiderReel;
+            d.ReelingHit = ReelingHitMath.Decide(r.ReelingHit, f.Event, f.Thrust, IsLanded(f.Event), false, reelingNow || byFlight, defender.ReelCause, f.DefenderMounted, down,
                 f.DefenderIsPlayer, r.OnPlayer, ref d.Knockdown, dice);
+            d.ReelingHit.ByFlight = byFlight && d.ReelingHit.Asked;
             if (d.ReelingHit.Happens && !d.ReelingHit.UsualStood) braced = false; // he fell: no brace (the knock-back not refused, no braced reel)
             // shield dropped (needs a shield in his hand; step 65: never a braced man)
             if (sdCeil > 0)

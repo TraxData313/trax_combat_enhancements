@@ -184,12 +184,16 @@ namespace TraxCombat.Tools
                 Check(!v1.Impact.Reeling(Now()) && logic.PerfectStrikeWindowsOpen == 1 && Arrow().Mask == finish
                       && (Frame(v1, Fwd | OpeningForceMath.DefendUp | OpeningForceMath.DefendBlock) & OpeningForceMath.GuardBits) == 0 && body.NoDefend.Contains(v1.AgentIndex),
                     "after his reel the flight did not keep the window, the arrow and his guard down");
+                // step 113: step 105 still counts him REELING for this swing (the flight's end on his record, his reel itself over)
+                Check(ReelingHitMath.InStrikeFlight(Now(), v1.StrikeFlightReelUntil) && !v1.Impact.Reeling(Now()), "step 113: the flight did not keep him counted reeling for step 105");
                 //      it lands after the reel: a PERFECT STRIKE, the flight over, his guard his own, NO hold (he is not recovered)
                 float got = Strike(you, v1, finishDir);
                 Check(got > 20f + 1e-3 && ps.FlightsLanded == 1 && ps.FlightStrikesAfterReel == 1 && ps.FlightsOutlasted == 1 && Free(v1) && logic.PerfectStrikeFlightVictim < 0,
                     "the flight's strike after the reel was not a perfect strike / not let go: " + got + " landed " + ps.FlightsLanded + " after " + ps.FlightStrikesAfterReel + " outlasted " + ps.FlightsOutlasted
                     + " free " + Free(v1) + " victim " + logic.PerfectStrikeFlightVictim + " immune " + (v1.Impact.StaggerImmuneUntil - Now()) + " hold " + logic.OpeningHold.Phase + " reel " + (v1.Impact.ReelingUntil - Now()));
                 Check(!logic.OpeningHold.Active && !logic.OpeningArrowLatch.Active, "a hold started from the perfect strike / the latch kept after the contact");
+                Check(ps.OpeningLandedAfterReel == 1 && ps.OpeningLandedInReel == 0 && v1.StrikeFlightReelUntil <= Now() + 1e-9,
+                    "step 113: the perfect strike after the reel was not counted after it / the flight's reeling outlived the contact: " + ps.OpeningLandedAfterReel + " / " + ps.OpeningLandedInReel);
                 Tick(3);
 
                 // ---- 2. PIC 4-5: the overhead met by his shield anyway once the reel ran out - NO new hold, the arrow never turned, his guard back

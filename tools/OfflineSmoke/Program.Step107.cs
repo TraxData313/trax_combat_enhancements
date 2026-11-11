@@ -44,6 +44,10 @@ namespace TraxCombat.Tools
                 S.Set(SettingsSchema.OpeningHoldSwingSeconds, 1.2, SettingSources.File);
                 S.Set(SettingsSchema.OpeningHoldReadMarginAtSkill0, 0, SettingSources.File);
                 S.Set(SettingsSchema.OpeningHoldReadMarginAtSkill200, 0, SettingSources.File);
+                // step 113: these smokes check step 106's reel numbers (0.8 s + 0.3 a link, at most 2.0) - defaults.json ships 2.0 / 0.25 / 2.5
+                S.Set(SettingsSchema.OpeningReelBaseSeconds, 0.8, SettingSources.File);
+                S.Set(SettingsSchema.OpeningReelPerChainSeconds, 0.3, SettingSources.File);
+                S.Set(SettingsSchema.OpeningReelMaxSeconds, 2.0, SettingSources.File);
                 Check(SettingsSchema.OpeningHoldsEnabled.Default == 1 && OpeningHoldRules.From(S).On, "the hold-block openings are not ON by default");
                 Check((uint)Agent.MovementControlFlag.AttackLeft == OpeningHoldMath.AttackLeft && (uint)Agent.MovementControlFlag.AttackRight == OpeningHoldMath.AttackRight
                       && (uint)Agent.MovementControlFlag.AttackUp == OpeningHoldMath.AttackUp && (uint)Agent.MovementControlFlag.AttackDown == OpeningHoldMath.AttackDown,
@@ -352,7 +356,9 @@ namespace TraxCombat.Tools
                 Lands(you, e3, OpeningMath.AttackRight);
                 Tick(0.2);
                 Parried(you, other, OpeningMath.AttackRight);
-                Check(!logic.OpeningHold.Active && Free(e3) && hs.Ends[(int)HoldEnd.TargetSwitch] >= 1, "a blow on another man did not end the hold");
+                Check(!(logic.OpeningHold.Active && logic.OpeningHold.Target == e3.AgentIndex) && Free(e3) && hs.Ends[(int)HoldEnd.TargetSwitch] >= 1, "a blow on another man did not end the hold");
+                // step 113: that other man's PARRY of your blow starts his own hold (OpeningHoldOnParry)
+                Check(logic.OpeningHold.Active && logic.OpeningHold.Target == other.AgentIndex && hs.HoldsByParry >= 1, "step 113: his parry did not start a hold on him");
                 Tick(3);
                 //      removed: the next tick lets go without an engine call
                 var e4 = Man();

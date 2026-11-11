@@ -61,6 +61,11 @@ namespace TraxCombat.Missions
         /// immunities, his recent outcomes; in shadow mode what WOULD have happened.</summary>
         public ImpactState Impact;
 
+        /// <summary>Step 113: while YOUR perfect-strike swing begun in his reel is in the air at him (step 111's flight), the flight's end (mission s;
+        /// 0 = none) - step 105 counts him as reeling for that blow (Core <see cref="ReelingHitMath.InStrikeFlight"/>). Not his reel: the immunity,
+        /// the hold gate and the reeling bonus never read it.</summary>
+        public double StrikeFlightReelUntil;
+
         /// <summary>Step 100b: his guard clock (Core <see cref="GuardClock"/>) - when his guard went up. Fed every tick for YOU only (the AI's
         /// timing is read at contact from his defend action).</summary>
         public GuardClock Guard;

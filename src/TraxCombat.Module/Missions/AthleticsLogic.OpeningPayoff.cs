@@ -97,6 +97,7 @@ namespace TraxCombat.Missions
                 Source = TimingSource.None, GuardAge = double.NaN, Perfect = double.NaN,
             };
             _open.LiveAsked++;
+            _open.NoteReelAsked(reel); // step 113
             LastOpeningReelAsked = reel;
             return true;
         }

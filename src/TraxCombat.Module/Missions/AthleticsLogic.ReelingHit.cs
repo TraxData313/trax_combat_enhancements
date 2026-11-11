@@ -32,6 +32,11 @@ namespace TraxCombat.Missions
             var h = d.ReelingHit;
             bool reached = h.Happens && applied && knockDown;
             _reelingHits.Note(in h, reached, d.DefenderIsPlayer, d.AttackerIsPlayer);
+            if (h.Asked && h.Cause == ReelCause.Opening && d.AttackerIsPlayer) _strike.NoteOpeningReelHit(reached, h.ByFlight); // step 113
+            if (h.ByFlight && d.AttackerIsPlayer)
+                OpeningLine("perfect strike: your blow on " + Name(v) + " came after his reel ended, from a swing begun in it - still counted reeling (step 113): "
+                            + (h.Refusal != ReelingHitRefusal.None ? "refused - " + ReelingHitMath.RefusalName(h.Refusal) : reached ? "KNOCKED DOWN" : h.Happens ? "down NOT applied" : "stays up")
+                            + " (" + Pct0(h.Chance) + ")");
             if (reached && !_reelingFirstDown)
             {
                 _reelingFirstDown = true;

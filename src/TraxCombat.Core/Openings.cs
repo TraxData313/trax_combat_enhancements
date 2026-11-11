@@ -913,12 +913,23 @@ namespace TraxCombat.Core
         public double LiveAskedSum, LiveMeasuredSum;
         public int LiveMeasured;
 
+        /// <summary>Step 113: every opening reel ASKED (seconds sum / longest - the measured ones above are a part of them).</summary>
+        public double ReelAskedSum, ReelAskedMax, LiveMeasuredMax;
+
+        public void NoteReelAsked(double seconds)
+        {
+            if (double.IsNaN(seconds)) return;
+            ReelAskedSum += seconds;
+            if (seconds > ReelAskedMax) ReelAskedMax = seconds;
+        }
+
         public void NoteLiveMeasured(double asked, double measured)
         {
             if (double.IsNaN(measured)) return;
             LiveMeasured++;
             LiveAskedSum += double.IsNaN(asked) ? 0 : asked;
             LiveMeasuredSum += measured;
+            if (measured > LiveMeasuredMax) LiveMeasuredMax = measured;
         }
 
         public int StatesTotal
@@ -1103,6 +1114,12 @@ namespace TraxCombat.Core
              .Append(" / already down ").Append(LiveAlreadyDown.ToString(c)).Append(" / the impact system's riposte not live ").Append(LiveNotLive.ToString(c))
              .Append("; perfect-strike windows opened ").Append(LiveWindows.ToString(c)).Append(", OPENING! shown ").Append(OpeningShown.ToString(c))
              .Append(", GUARD BROKEN shown ").Append(GuardBrokenShown.ToString(c));
+            t.Append("; STEP 113 - HIS REEL from an opening (").Append(r.ReelBase.ToString("0.0#", c)).Append(" s + ").Append(r.ReelPerChain.ToString("0.0#", c))
+             .Append(" a link, at most ").Append(r.ReelMax.ToString("0.0#", c)).Append(" s): asked ").Append(LiveAsked.ToString(c));
+            if (LiveAsked > 0) t.Append(" (mean ").Append((ReelAskedSum / LiveAsked).ToString("0.00", c)).Append(" s, longest ").Append(ReelAskedMax.ToString("0.00", c)).Append(" s)");
+            t.Append(", measured ").Append(LiveMeasured.ToString(c));
+            if (LiveMeasured > 0) t.Append(" (mean ").Append((LiveMeasuredSum / LiveMeasured).ToString("0.00", c)).Append(" s, longest ").Append(LiveMeasuredMax.ToString("0.00", c)).Append(" s)");
+            t.Append("; the perfect strikes in / after it and its knockdowns: the [summary] \"perfect strike\" line's STEP 113 part");
             t.Append("; THE SIDE PAIRING (your attack -> his guard at contact: high / low / left / right / unread):");
             for (int a = 0; a < 4; a++)
             {

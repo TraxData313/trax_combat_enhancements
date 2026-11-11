@@ -178,14 +178,14 @@ public class Step106dTests
     [Fact]
     public void Format_30_turns_the_openings_on_once_and_drops_the_flat_multipliers()
     {
-        Assert.Equal(30, ConfigFile.FormatVersion);
+        Assert.Equal(31, ConfigFile.FormatVersion);
         Assert.Contains("\"OpeningsEnabled\": true,", DefaultsFile.ReadEmbeddedText(), StringComparison.Ordinal);
         Assert.DoesNotContain("PerfectStrikeMinMultiplier", DefaultsFile.ReadEmbeddedText(), StringComparison.Ordinal);
         var read = ConfigFile.Read("{ \"ConfigVersion\": 29, \"OpeningsEnabled\": false, \"PerfectStrikeMinMultiplier\": 2.5, \"PerfectStrikeMaxMultiplier\": 3 }");
         var notes = ConfigFile.Migrate(read, Shipped);
         Assert.Equal(1, read.Values["OpeningsEnabled"], 9);
-        Assert.Contains(notes, n => n.StartsWith("OpeningsEnabled: false → true (format 29 → 30, the old default; step 106d", StringComparison.Ordinal));
-        Assert.Contains(notes, n => n.StartsWith("PerfectStrikeMinMultiplier 2.5 dropped (format 29 → 30; step 106d", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("OpeningsEnabled: false → true (format 29 → 31, the old default; step 106d", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("PerfectStrikeMinMultiplier 2.5 dropped (format 29 → 31; step 106d", StringComparison.Ordinal));
         Assert.Contains(notes, n => n.StartsWith("PerfectStrikeMaxMultiplier 3 dropped", StringComparison.Ordinal));
         Assert.DoesNotContain(read.Unknown, u => u.Key.StartsWith("PerfectStrikeM", StringComparison.Ordinal));
         // a format-30 file keeps whatever it holds (turned off by hand stays off)

@@ -97,6 +97,9 @@ namespace TraxCombat.Core
 
         public ReelingHitRefusal Refusal;
 
+        /// <summary>Step 113: asked only because a perfect-strike swing begun in his reel was the blow (his reel itself had ended).</summary>
+        public bool ByFlight;
+
         public static ReelingHitResult None => new ReelingHitResult { Chance = double.NaN, Die = double.NaN };
     }
 
@@ -159,6 +162,10 @@ namespace TraxCombat.Core
         };
 
         /// <summary>The cause a reel set by the model gets: a kick / bash event's reel, a clean hit's stagger, a blocker's stagger.</summary>
+        /// <summary>Step 113: a perfect-strike swing begun in his reel (step 111's flight, ending at <paramref name="flightUntil"/>; 0 = none) is still
+        /// the blow at <paramref name="now"/> - inclusive, so the contact's own frame counts.</summary>
+        public static bool InStrikeFlight(double now, double flightUntil) => flightUntil > 0 && now <= flightUntil;
+
         public static ReelCause CauseOfDefenderReel(ImpactEvent e) => e switch
         {
             ImpactEvent.Kick => ReelCause.Kick,
@@ -265,6 +272,10 @@ namespace TraxCombat.Core
         public readonly int[] Refused = new int[ReelingHitMath.RefusalCount];
         public int Rolled, RolledUp, UsualStood, OnYou, OnYouDown, ByYou, ByYouDown;
 
+        /// <summary>Step 113: hits asked only by a perfect-strike swing begun in his reel (step 111's flight - his reel had ended), and how many of
+        /// them knocked him down.</summary>
+        public int FlightHits, FlightDowns;
+
         public int HitsTotal => Hits[0] + Hits[1] + Hits[2] + Hits[3];
         public int DownsTotal => Downs[0] + Downs[1] + Downs[2] + Downs[3];
 
@@ -275,6 +286,7 @@ namespace TraxCombat.Core
             int k = (int)h.Kind, c = Math.Min((int)h.Cause, ReelingHitMath.CauseCount - 1);
             Hits[k]++;
             HitsByCause[c]++;
+            if (h.ByFlight) FlightHits++;
             if (youVictim) OnYou++;
             if (youAttacker) ByYou++;
             if (h.Refusal != ReelingHitRefusal.None)
@@ -296,6 +308,7 @@ namespace TraxCombat.Core
             }
             Downs[k]++;
             DownsByCause[c]++;
+            if (h.ByFlight) FlightDowns++;
             if (youVictim) OnYouDown++;
             if (youAttacker) ByYouDown++;
         }
@@ -347,6 +360,8 @@ namespace TraxCombat.Core
             t.Append("; on you ").Append(OnYouDown.ToString(c)).Append('/').Append(OnYou.ToString(c))
              .Append(", by you ").Append(ByYouDown.ToString(c)).Append('/').Append(ByYou.ToString(c))
              .Append(" (knocked down / landed; the engine's own falls and our backup blow: the [summary] \"falls\" line)");
+            t.Append("; STEP 113 - a perfect-strike swing begun in his reel that landed after it ended (still counted reeling) ").Append(FlightHits.ToString(c))
+             .Append(", KNOCKED DOWN ").Append(FlightDowns.ToString(c));
             return t.ToString();
         }
     }

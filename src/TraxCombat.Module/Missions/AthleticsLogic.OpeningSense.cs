@@ -182,6 +182,7 @@ namespace TraxCombat.Missions
             if (!(until > 0)) return;
             bool fresh = _flightVictim != b.Victim || !(b.FlightUntil > 0);
             b.FlightUntil = until;
+            man.StrikeFlightReelUntil = until; // step 113: step 105 counts him reeling for this swing (the window record goes with the strike)
             _flightVictim = b.Victim;
             if (fresh) _strike.Flights++;
             bool forced = false;
@@ -217,6 +218,9 @@ namespace TraxCombat.Missions
             var v = GetByIndex(victim);
             int i = _strikeBook.IndexOf(victim);
             if (i >= 0) _strikeBook[i].FlightUntil = 0;
+            // step 113: at the contact (landed / met) the blow's own decision may still come in this frame (OnMeleeHit decides a blocked or
+            // undecided blow after the contact) - kept to now; a miss or a run-out ends it
+            if (v != null) v.StrikeFlightReelUntil = how <= 1 ? Math.Min(v.StrikeFlightReelUntil, now) : 0;
             bool outlasted = v != null && PerfectStrikeMath.Outlasted(now, v.Impact.ReelingUntil, pr.GraceSeconds);
             if (outlasted) _strike.FlightsOutlasted++;
             switch (how)

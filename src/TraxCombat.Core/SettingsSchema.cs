@@ -2414,6 +2414,11 @@ namespace TraxCombat.Core
             "Arrow colour: the perfect strike",
             "The colour of the arrow at your crosshair while he staggers and it shows the side for a PERFECT STRIKE (after an OPENING, a timed block's riposte, a rider's reel). A hex colour RRGGBB or RRGGBBAA (# optional), for example FFD700 (gold, like the PERFECT STRIKE line); anything else = the default. The colour changes only with the arrow's role, never while your swing is in the air.");
 
+        // Step 113: the opening must make him reel - his parry or block of your hit unbalances him too.
+        public static readonly ParamDef OpeningHoldOnParry = Bool("OpeningHoldOnParry", ImpactGroup,
+            "Openings: his parry or block unbalances him too",
+            "On: when he parries your attack with his weapon, or his shield takes it on the wrong side, he is thrown off balance just as if it had landed - he holds his block in one place and the red arrow shows the side to hit. Off: only a hit that lands (or a shieldman's clean shield block) does it.");
+
         public static readonly ParamDef ImpactMismatchWeight = Float("ImpactMismatchWeight", 0, 2, ImpactGroup,
             "Mismatch weight (pressure per doubling)",
             "How much an outmatched man suffers: every doubling of the mismatch beyond the even band adds this to the pressure on him (0.25: an enemy four times stronger counts as much as being about a third tired). 0 = only tiredness counts.");
@@ -3154,7 +3159,7 @@ namespace TraxCombat.Core
             OpeningHoldsEnabled, OpeningHoldSwingSeconds, OpeningHoldReadMarginAtSkill0, OpeningHoldReadMarginAtSkill200, OpeningHoldRecoveryCapSeconds, OpeningHoldSpeedReference, OpeningHoldSpeedFactorMin, OpeningHoldSpeedFactorMax,
             OpeningHoldPerLinkSeconds, OpeningHoldChainBonusSeconds, OpeningHoldChainBonusFullSeconds, OpeningHoldChainBonusZeroSeconds, OpeningHoldCapSeconds,
             OpeningHoldShieldSmallSeconds, OpeningHoldShieldBigSeconds, OpeningHoldShieldSmallLength, OpeningHoldShieldBigLength, OpeningCounterSwingFirstPercent, OpeningCounterSwingLaterPercent, PerfectStrikeDefensiveMin, PerfectStrikeDefensiveMax,
-            OpeningHoldArrowShow, OpeningHoldMessage, OpeningLogInfoLines, OpeningHoldEndsWhenYouReel, OpeningArrowSwingHoldMaxSeconds, PerfectStrikeFlightSeconds, OpeningArrowColor, PerfectStrikeArrowColor,
+            OpeningHoldArrowShow, OpeningHoldMessage, OpeningLogInfoLines, OpeningHoldEndsWhenYouReel, OpeningArrowSwingHoldMaxSeconds, PerfectStrikeFlightSeconds, OpeningArrowColor, PerfectStrikeArrowColor, OpeningHoldOnParry,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
             ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,

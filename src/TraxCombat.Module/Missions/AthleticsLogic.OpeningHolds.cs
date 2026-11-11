@@ -146,7 +146,8 @@ namespace TraxCombat.Missions
         /// <summary>
         /// From <see cref="OpeningShadowBlock"/>: a block of YOUR attack by an AI man on foot (a parry, a right- or wrong-side shield block). True = the
         /// holds took it (step 106's off balance skipped): a LINK when a hold is on him (or ran out within the link window); a shieldman's correct shield
-        /// block = a fresh (short) hold; an unshielded man's parry with no hold = nothing (106's entry replaced).
+        /// block = a fresh (short) hold; step 113: his parry or wrong-side shield block with no hold = a fresh hold too (<c>OpeningHoldOnParry</c>;
+        /// off = nothing, step 107). Step 111's gate first, for every route.
         /// </summary>
         private bool HoldOnBlock(TrackedAgent a, TrackedAgent v, in ImpactFacts f, in ImpactDecision d, double now)
         {
@@ -188,12 +189,27 @@ namespace TraxCombat.Missions
                                 + F2(hr.BonusFull) + "-" + F2(hr.BonusZero) + " s adds up to " + F2(hr.BonusMax) + " s, at most " + F2(hr.Cap) + " s)");
                     return true;
                 }
-                if (shieldBlock || SafeShield(v))
+                bool shieldman = shieldBlock || SafeShield(v);
+                if (d.Event == ImpactEvent.RightBlock)
                 {
-                    if (d.Event == ImpactEvent.RightBlock) BeginHold(a, v, now, true, true, in hr, "his shield blocked your attack");
-                    return true; // a wrong-side shield block with no hold: nothing (the shield did its job)
+                    BeginHold(a, v, now, true, true, in hr, "his shield blocked your attack");
+                    return true;
                 }
-                _openHoldStats.BlocksNoHold++;
+                // step 113 (Toni 2026-11-11: "even if he blocks me"): his PARRY, or his WRONG-side shield block, unbalances him like a landed hit -
+                // the same gate (above), a fresh hold; a shieldman's hold by his shield's size, a parry's by your swing + the reading margin
+                if (!hr.HoldOnParry)
+                {
+                    if (!shieldman) _openHoldStats.BlocksNoHold++;
+                    _openHoldStats.BlocksNoHoldSwitchOff++;
+                    return true;
+                }
+                bool wrongBlock = d.Event == ImpactEvent.WrongBlock;
+                BeginHold(a, v, now, shieldman, false, in hr, wrongBlock ? "his shield took your attack on the wrong side" : "his parry blocked your attack");
+                if (_hold.Active && _hold.Target == v.AgentIndex && _hold.HitAt == now)
+                {
+                    if (wrongBlock) _openHoldStats.HoldsByWrongBlock++;
+                    else _openHoldStats.HoldsByParry++;
+                }
                 return true;
             }
             catch (Exception e)

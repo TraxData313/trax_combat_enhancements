@@ -145,8 +145,11 @@ namespace TraxCombat.Core
         /// inside format 28 while nothing was built; a switch's hand-set value is not told apart from the old default, so a format-28 false is moved once), 30 = step 106d
         /// (the openings' payoff built - DESIGN decision 95): OpeningsEnabled false → true in a format-29 file (steps 106a-106c shipped the switch OFF inside
         /// format 29 while the payoff was not built; a switch's hand-set value is not told apart, so a format-29 false is moved once); step 100g's flat
-        /// PerfectStrikeMinMultiplier / PerfectStrikeMaxMultiplier retired for the weapon-direction multipliers (<c>DropRetiredPerfectStrikeKeys</c>).</summary>
-        public const int FormatVersion = 30;
+        /// PerfectStrikeMinMultiplier / PerfectStrikeMaxMultiplier retired for the weapon-direction multipliers (<c>DropRetiredPerfectStrikeKeys</c>), 31 = step 113
+        /// (Toni's training field 2026-11-11: "now he doesn't reel" - the opening's reel ran out before the perfect strike landed): OpeningReelBaseSeconds
+        /// 0.8 → 2.0, OpeningReelPerChainSeconds 0.3 → 0.25, OpeningReelMaxSeconds 2.0 → 2.5 in a format 29-30 file still holding them (step 106a2's keys);
+        /// a tuned value kept and noted; OpeningHoldOnParry is a new key.</summary>
+        public const int FormatVersion = 31;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
         public const string VersionKey = "ConfigVersion";
@@ -658,6 +661,17 @@ namespace TraxCombat.Core
                 // built); the payoff is built now - on (no older file has the key: a missing key takes the default like any other)
                 MoveOrKeepIfMoved(read, SettingsSchema.OpeningsEnabled, 0,
                     "step 106d: openings are built - a man who blocks your attack correctly is thrown off balance; hit him then and he staggers, open for a PERFECT STRIKE", from, defaultOf);
+            }
+            if (from < 31 && from >= 29)
+            {
+                // step 113 (Toni's training field 2026-11-11, vs the Training Master: "now he doesn't reel"): the opening's reel 0.8 s read as a flinch
+                // and ran out before the perfect strike landed (all 3 landed 1.2-1.45 s in - step 105's knockdown never rolled); step 106a2's keys
+                // (format 29) OpeningReelBaseSeconds 0.8 → 2.0, OpeningReelPerChainSeconds 0.3 → 0.25, OpeningReelMaxSeconds 2.0 → 2.5; a hand-set
+                // value is kept and said once
+                const string reel = "step 113, Toni's training field: the opening makes him REEL long enough for the perfect strike to knock him down";
+                MoveOrKeepIfMoved(read, SettingsSchema.OpeningReelBaseSeconds, 0.8, reel + " - his reel from an opening 2 s", from, defaultOf);
+                MoveOrKeepIfMoved(read, SettingsSchema.OpeningReelPerChainSeconds, 0.3, reel + " - + 0.25 s for every earlier link", from, defaultOf);
+                MoveOrKeepIfMoved(read, SettingsSchema.OpeningReelMaxSeconds, 2.0, reel + " - at most 2.5 s", from, defaultOf);
             }
             // format 17 (step 78b) moved the lull's LullRecover*Percent 10 / 15 / 20 → 20 / 25 / 30; step 78c removed the lull and its keys, so a
             // format 16 file's are dropped below with the rest of them - nothing to move any more (78c kept format 17; step 80 made it 18)

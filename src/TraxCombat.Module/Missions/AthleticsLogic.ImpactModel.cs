@@ -364,6 +364,7 @@ namespace TraxCombat.Missions
             if (f.Event == ImpactEvent.Kick) f.AttackerSkill = a!.AthleticsSkill;
             if (f.Event == ImpactEvent.Kick || f.Event == ImpactEvent.Bash || f.Event == ImpactEvent.CleanHit) f.DefenderSkill = v.AthleticsSkill;
             f.AttackerIsPlayer = IsPlayer(a!);
+            f.DefenderInStrikeFlight = f.AttackerIsPlayer && ReelingHitMath.InStrikeFlight(now, v.StrikeFlightReelUntil); // step 113
             f.DefenderIsPlayer = IsPlayer(v);
             if (r.ToughnessWeight > 0) // step 62: both men's toughness (courage's measure) in the mismatch
             {

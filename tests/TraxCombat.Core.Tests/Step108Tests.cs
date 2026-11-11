@@ -148,9 +148,9 @@ public class Step108Tests
         Assert.False(SettingsSchema.TryGet("OpeningHoldFirstSeconds", out _));
         var read = ConfigFile.Read("{ \"ConfigVersion\": 30, \"OpeningHoldFirstSeconds\": 1.5 }");
         var notes = ConfigFile.Migrate(read, p => p.Default);
-        Assert.Contains(notes, n => n.StartsWith("OpeningHoldFirstSeconds 1.5 dropped (format 30 → 30; step 108", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("OpeningHoldFirstSeconds 1.5 dropped (format 30 → 31; step 108", StringComparison.Ordinal));
         Assert.DoesNotContain(read.Unknown, u => u.Key == "OpeningHoldFirstSeconds");
-        Assert.Equal(30, ConfigFile.FormatVersion);
+        Assert.Equal(31, ConfigFile.FormatVersion);
     }
 
     [Fact]

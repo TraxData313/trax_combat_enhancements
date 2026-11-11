@@ -2966,15 +2966,15 @@
   // How long he reels when your hit lands while he is off balance (or from behind), on the
   // first link of a chain. The perfect-strike arrow shows all that time.
   // (range 0.2 to 3.0)
-  "OpeningReelBaseSeconds": 0.8,
+  "OpeningReelBaseSeconds": 2.0,
 
   // Added to his reel for every earlier link of the chain.
   // (range 0.0 to 1.0)
-  "OpeningReelPerChainSeconds": 0.3,
+  "OpeningReelPerChainSeconds": 0.25,
 
   // His reel from an opening never lasts longer than this.
   // (range 0.2 to 3.0)
-  "OpeningReelMaxSeconds": 2.0,
+  "OpeningReelMaxSeconds": 2.5,
 
   // Against a shield the balance side is shown from the first block, but his shield can still
   // block it until this link of the chain (2: the second block opens him for real).
@@ -3209,6 +3209,13 @@
   // your swing is in the air.
   // (an item id (letters, digits, _ . -; empty = none))
   "PerfectStrikeArrowColor": "FFD700",
+
+  // On: when he parries your attack with his weapon, or his shield takes it on the wrong side,
+  // he is thrown off balance just as if it had landed - he holds his block in one place and the
+  // red arrow shows the side to hit. Off: only a hit that lands (or a shieldman's clean shield
+  // block) does it.
+  // (true or false)
+  "OpeningHoldOnParry": true,
 
   // How much an outmatched man suffers: every doubling of the mismatch beyond the even band
   // adds this to the pressure on him (0.25: an enemy four times stronger counts as much as

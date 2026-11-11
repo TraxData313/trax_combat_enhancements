@@ -499,6 +499,20 @@ namespace TraxCombat.Core
         /// reel thanks to the flight.</summary>
         public int Flights, FlightsOutlasted, FlightsLanded, FlightsBlocked, FlightsMissed, FlightsExpired, FlightStrikesAfterReel;
 
+        /// <summary>Step 113 (Toni 2026-11-11: "now he doesn't reel"): perfect strikes after an OPENING that landed while he still reeled / after his
+        /// reel (the flight); your landed blows on a man reeling from an opening (step 105 asked - the flight's included), how many KNOCKED HIM DOWN,
+        /// and of those the ones counted reeling only by the flight.</summary>
+        public int OpeningLandedInReel, OpeningLandedAfterReel, OpeningReelHits, OpeningReelDowns, OpeningReelDownsByFlight;
+
+        /// <summary>Step 113: one of your landed blows on a man reeling from an opening (step 105's verdict).</summary>
+        public void NoteOpeningReelHit(bool down, bool byFlight)
+        {
+            OpeningReelHits++;
+            if (!down) return;
+            OpeningReelDowns++;
+            if (byFlight) OpeningReelDownsByFlight++;
+        }
+
         /// <summary>Step 106d: perfect strikes by the striker's weapon's directions (2 or fewer / 3 / 4 → 0 / 1 / 2).</summary>
         public readonly int[] ByDirections = new int[3];
 
@@ -653,6 +667,10 @@ namespace TraxCombat.Core
              .Append(FlightsLanded.ToString(c)).Append(", blocked / not on his body ").Append(FlightsBlocked.ToString(c)).Append(", missed ").Append(FlightsMissed.ToString(c))
              .Append(", the flight ran out ").Append(FlightsExpired.ToString(c)).Append("; perfect strikes landed after his reel thanks to the flight ")
              .Append(FlightStrikesAfterReel.ToString(c));
+            t.Append("; STEP 113 - perfect strikes after an OPENING landed during his reel ").Append(OpeningLandedInReel.ToString(c)).Append(", after it (the flight) ")
+             .Append(OpeningLandedAfterReel.ToString(c)).Append("; your blows on a man reeling from an opening ").Append(OpeningReelHits.ToString(c))
+             .Append(", KNOCKED HIM DOWN ").Append(OpeningReelDowns.ToString(c)).Append(" (counted reeling by the flight ").Append(OpeningReelDownsByFlight.ToString(c))
+             .Append("; his reel asked / measured: the [summary] \"openings\" line's STEP 113 part)");
             if (OpeningWrongSide > 0) t.Append("; wrong-side hits on a man reeling from an opening ").Append(OpeningWrongSide.ToString(c));
             if (BlockedUnknown > 0) t.Append("; your hits after a blocked attack of unknown direction (nothing counts) ").Append(BlockedUnknown.ToString(c));
             if (NotOnBody > 0) t.Append("; your hits on a window man that did not land on his body (blocked, shield, kick / bash, 0 damage) ").Append(NotOnBody.ToString(c));

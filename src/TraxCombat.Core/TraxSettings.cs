@@ -734,6 +734,7 @@ namespace TraxCombat.Core
         public float PerfectStrikeFlightSeconds => GetFloat(SettingsSchema.PerfectStrikeFlightSeconds); // step 111
         public string OpeningArrowColor => TextValues.Get(Get(SettingsSchema.OpeningArrowColor)); // step 112
         public string PerfectStrikeArrowColor => TextValues.Get(Get(SettingsSchema.PerfectStrikeArrowColor)); // step 112
+        public bool OpeningHoldOnParry => GetBool(SettingsSchema.OpeningHoldOnParry); // step 113
         public int OpeningHoldSpeedReference => GetInt(SettingsSchema.OpeningHoldSpeedReference); // step 107
         public float OpeningHoldSpeedFactorMin => GetFloat(SettingsSchema.OpeningHoldSpeedFactorMin); // step 107
         public float OpeningHoldSpeedFactorMax => GetFloat(SettingsSchema.OpeningHoldSpeedFactorMax); // step 107
