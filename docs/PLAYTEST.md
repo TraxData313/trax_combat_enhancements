@@ -2378,6 +2378,24 @@ in the air. Both colours are settings (Advanced, Impact: "Arrow colour: the open
 STRIKE, colour FFD700`; the [summary] `hud: opening arrow ... colour by role (step 112): ..., the colour changed N times`.
 **Tell Claude:** does the gold read clearly gold (not brown / pale) on the arrow? Is the red still right?
 
+**D88. THE OPENING MAKES HIM REEL (step 113, ~10 min - the training field's Training Master, a sword).**
+*What changed:* (1) the stagger from an OPENING lasts 2.0 s (2.25 s after a link, at most 2.5 s; was 0.8 s) - the animation is slowed to fit, like
+your timed block's 2 s riposte, so he reels in place rather than flinching; (2) a PERFECT STRIKE you begin while he reels still counts as a blow
+on a reeling man even if it lands just after the reel - step 105's 80 % knockdown rolls; (3) his PARRY of your swing (or his shield taking it on
+the wrong side) throws him off balance too: he holds his block in one place and the red arrow shows the side to hit (Advanced, Impact: "Openings:
+his parry or block unbalances him too", on). Your config.json's 0.8 / 0.3 / 2.0 are moved to 2.0 / 0.25 / 2.5 once (config format 31) - your own
+tuned values are kept.
+**Try 1:** swing at him; whether it lands OR he parries it, the red arrow appears with his guard ("Unbalanced ..."). Strike the arrow's side: OPENING!
+**Try 2:** watch him reel - about 2 s, steady, not a quick flinch, and not sliding far out of reach. The arrow turns GOLD.
+**Try 3:** swing the gold side during the reel (even a slow overhead started near its end): PERFECT STRIKE - and most times he goes DOWN.
+**Log:** the [summary] `openings ... STEP 113 - HIS REEL from an opening (2.0 s + 0.25 a link, at most 2.5 s): asked N (mean ~2.0 s), measured M (mean ~2.0 s)`;
+`perfect strike ... STEP 113 - perfect strikes after an OPENING landed during his reel A, after it (the flight) B; your blows on a man reeling from an
+opening C, KNOCKED HIM DOWN D (counted reeling by the flight E)`; `openings - hold-block ... STEP 113 - holds started by his block of your attack:
+his parry P, his wrong-side shield block W, his correct shield block S (on)`; `hits on reeling men ... STEP 113 - ...`; the `[config]` lines
+`OpeningReelBaseSeconds: 0.8 → 2.0 (format 30 → 31, ...)`.
+**Tell Claude:** does the 2 s reel read as a reel (or too long / a slide)? Does he go down after the perfect strike? Do his parries now start the
+arrow, and is that too generous?
+
 ---
 
 ## E. Your Athletics bar, the orders-menu strip and the ALT markers (20 min)

@@ -11238,3 +11238,55 @@ DESIGN decision 101. Answers step 111's open point (pic 7: the perfect-strike ar
   the latch holding a role change mid-swing, no allocation. Offline smoke all green (the prefab binding). No smoke step of its own - the role
   choice is pure Core.
 - UNVERIFIED in game (PLAYTEST D87): that FFD700 multiplied onto the crosshair sprite reads gold (106c's caveat for the red too). Not deployed.
+
+## Step 113 — THE OPENING MUST MAKE HIM REEL (Toni's training field 2026-11-11, vs the Training Master: "now he doesn't reel"; BUILT 2026-11-11)
+
+DESIGN decision 102. Toni's chain: (a) his hit - EVEN ONE THE ENEMY BLOCKS / PARRIES - unbalances him (the hold, red arrow); (b) the right place =
+OPENING; (c) the opening hit makes him REEL for a few seconds; (d) while he reels the GOLD arrow shows the PERFECT STRIKE, and it knocks him down
+(step 105's 80 %).
+
+### What the log said (trax_combat.log 2026-11-11 08:46, training field, the Training Master)
+- Every opening reel was 0.80 s (link 1) / 1.10 s (link 2): `LIVE: he reels 0.80 s`, played as act_stagger_backward at speed 1.13 - a flinch.
+- The perfect strikes after an opening landed 1.2-1.45 s into the stagger, e.g. 08:46:13.670 "1.40 s into his stagger ... LANDED after his reel
+  ended (the flight kept his guard down)" - so step 105 (`ImpactState.Reeling(now)`, before `ReelingUntil`) never asked: no knockdown. The timed
+  block's 2.0 s riposte reel in the same battle did knock him down.
+- Step 111's flight kept the window / multiplier / his guard down but never extended what step 105 reads.
+- A parried hit started nothing: `HoldOnBlock` had `_openHoldStats.BlocksNoHold++` for an unshielded parry and "nothing (the shield did its job)" for
+  a WRONG-side shield block - only a shieldman's correct shield block began a hold.
+- 08:29 (another battle): two openings were "carried by the impact system's own stagger (0.95 s)" - that path keeps the impact stagger's length
+  (see Open).
+
+### What was built (commit 20c1e40)
+- **A. The reel**: defaults.json `OpeningReelBaseSeconds` 2.0, `OpeningReelPerChainSeconds` 0.25, `OpeningReelMaxSeconds` 2.5 (2.0 / 2.25 / 2.5 s by
+  link). Config FORMAT 31: a format 29-30 file's untouched 0.8 / 0.3 / 2.0 moved once (`MoveOrKeepIfMoved`, a tuned value kept and said) - Toni's
+  config.json holds 0.8 / 0.3 / 2.0, so he gets the new values. The stagger's speed is natural / asked (`ImpactBlockMath.StaggerSpeed`, natural
+  ~1.0 s measured): 2.0 s = x0.5 (the timed block's 2 s riposte speed), 2.5 s = x0.4, above the 0.25 floor. THE TRAVEL: the backward root motion is
+  the animation's, so a slowed animation covers the SAME distance over more time - he does not slide farther out of reach than at 0.8 s (only
+  slower). The measured end (`ImpactWatchPurpose.Opening` -> `EndReel`) keeps the record honest if the engine cuts it short.
+- **B. The flight counts as reeling for step 105**: `StrikeFlightBegan` writes the flight's end on the victim (`TrackedAgent.StrikeFlightReelUntil`
+  = the window's end + `PerfectStrikeFlightSeconds`); `ImpactDecide` fills `ImpactFacts.DefenderInStrikeFlight` (YOUR blow, `ReelingHitMath.InStrikeFlight`
+  - inclusive); `ImpactMath.Decide` asks step 105 with `reelingNow || byFlight` (never a rider / a rider's reel) and marks `ReelingHitResult.ByFlight`.
+  Why a field and not `ReelingUntil`: extending his reel would move the stagger immunity, the hold gate, the reeling bonus, the AI's punish window
+  and the window itself, and the opening watch's `EndReel` would overwrite it; and the window record is REMOVED by the damage decorator's perfect
+  strike BEFORE the knockdown seam asks. `ResolveFlight` keeps the field until the contact's own frame (a blocked / undecided blow is decided in
+  OnMeleeHit AFTER the contact), clears it on a miss / run-out.
+- **C. A parry or a block unbalances him** (`OpeningHoldOnParry`, on, Advanced Impact after `PerfectStrikeArrowColor` - placed after the arrow
+  colours, not beside `OpeningHoldEndsWhenYouReel`, because Step111/112Tests pin those keys' positions): in `HoldOnBlock` with no hold on him, a
+  PARRY = `BeginHold(a, v, now, shield: false, byBlock: false, ..)` (the first hold = your swing + the reading margin, x the weapon factor; `byBlock`
+  only feeds the shieldmen's count), a WRONG-side shield block = `BeginHold(.., shield: true, byBlock: false, ..)` (his shield's size). Step 111's
+  `HoldGate` is still first for every route (you / he reel, his immunity, his riposte on you). Off = step 107 (counted `BlocksNoHoldSwitchOff`).
+- **D. The log**: the openings [summary] line's "STEP 113 - HIS REEL from an opening (2.0 s + 0.25 a link, at most 2.5 s): asked N (mean, longest),
+  measured M (mean, longest)"; the perfect-strike line's "STEP 113 - perfect strikes after an OPENING landed during his reel / after it (the flight);
+  your blows on a man reeling from an opening, KNOCKED HIM DOWN (counted reeling by the flight)"; the hold-block line's "STEP 113 - holds started by
+  his block of your attack: his parry, his wrong-side shield block, his correct shield block (on / OFF)"; the reeling-hits line's "STEP 113 - a
+  perfect-strike swing begun in his reel that landed after it ended ..., KNOCKED DOWN ..."; a YOU line for each such blow.
+- Settings 672 (+1). Tests: Step113Tests 7 methods (1730 green); the format bump moved every migration test's "→ 30" to "→ 31". Smoke all green:
+  the 106a / 106d / 107 smokes pin step 106's reel numbers (0.8 / 0.3 / 2.0 - they check those lengths); the 107 smoke's target switch is now a
+  PARRY by the other man, which starts HIS hold (checked); the 111 smoke checks the flight keeps him counted reeling after his reel and the strike
+  is counted "after it".
+
+### Open / unproven (PLAYTEST D88)
+- That 2 s of act_stagger_backward at x0.5 reads as a reel, not a slow-motion slide (the timed block's 2 s riposte already plays so).
+- An opening carried by the impact system's OWN stagger on the same hit keeps that stagger's length (~0.95 s, 08:29 log) - not lengthened here
+  (its watch re-times the record to its measured end); if Toni sees short reels there, queue our stagger over it or lengthen the impact one.
+- A parry hold may be generous against skilled parriers (every parry of yours = a hold); the switch turns it off.
