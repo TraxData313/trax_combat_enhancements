@@ -29,6 +29,10 @@ namespace TraxCombat.Missions
 
         private bool _openShowOpening, _openShowGuardBroken, _openFirstLive, _openFirstPlayed;
 
+        /// <summary>Step 113b: the man whose impact stagger on THIS hit the opening's longer reel replaced (ApplyHit, right after, skips its flinch
+        /// watch for him); null otherwise. Set and read inside one impact decision.</summary>
+        private TrackedAgent? _openTookImpactStagger;
+
         /// <summary>The last opening stagger's asked seconds (NaN none; the smoke reads it).</summary>
         internal double LastOpeningReelAsked { get; private set; } = double.NaN;
 
@@ -62,7 +66,17 @@ namespace TraxCombat.Missions
                 return " - LIVE: not played - the impact system's riposte is not live (" + ir.ModeText() + ")";
             }
             string how;
-            if (modStagger && hitsLive && v.Impact.Reeling(now))
+            double impactReel = Math.Max(0, v.Impact.ReelingUntil - now);
+            if (modStagger && hitsLive && v.Impact.Reeling(now) && OpeningMath.OpeningOutlastsImpact(reel, impactReel) && QueueOpeningStagger(a, v, reel, now))
+            {
+                // step 113b: the impact system's own stagger on this hit is SHORTER than the opening's reel - ONE stagger, ours (act_stagger_backward
+                // slowed to the opening's length from the tick); ApplyHit skips its flinch watch for him (no second animation, no early EndReel)
+                _openTookImpactStagger = v;
+                _open.LiveLengthenedImpact++;
+                _open.LiveLengthenedFromSum += impactReel;
+                how = " - LIVE: he reels " + F2(reel) + " s (the opening's reel outlasts the impact system's own " + F2(impactReel) + " s stagger on this hit - ours replaces it, from the next tick)";
+            }
+            else if (modStagger && hitsLive && v.Impact.Reeling(now))
             {
                 _open.LiveOnModStagger++;
                 how = " - LIVE: the impact system's own stagger carries it (" + F2(v.Impact.ReelingUntil - now) + " s)";

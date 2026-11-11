@@ -487,6 +487,11 @@ namespace TraxCombat.Core
             return Math.Max(0, Math.Min(1, (1 - s) * LinkFactor(in r, k)));
         }
 
+        /// <summary>Step 113b: the opening's reel (s) outlasts the impact system's own stagger on the same hit (s) - the opening's then replaces it
+        /// (one stagger, the longer). A tie (within 0.05 s) or a longer impact stagger = the impact system's carries it.</summary>
+        public static bool OpeningOutlastsImpact(double openingReel, double impactReel) =>
+            !double.IsNaN(openingReel) && openingReel > (double.IsNaN(impactReel) ? 0 : impactReel) + 0.05;
+
         /// <summary>The reel a hit off balance gives (s): base + per link x (k − 1), at most <c>OpeningReelMaxSeconds</c>.</summary>
         public static double ReelSeconds(in OpeningRules r, int k)
         {
@@ -916,6 +921,11 @@ namespace TraxCombat.Core
         /// <summary>Step 113: every opening reel ASKED (seconds sum / longest - the measured ones above are a part of them).</summary>
         public double ReelAskedSum, ReelAskedMax, LiveMeasuredMax;
 
+        /// <summary>Step 113b: the impact system's own stagger on the same hit was SHORTER than the opening's reel - ours replaced it (counted also in
+        /// <see cref="LiveAsked"/>); the replaced staggers' seconds (sum).</summary>
+        public int LiveLengthenedImpact;
+        public double LiveLengthenedFromSum;
+
         public void NoteReelAsked(double seconds)
         {
             if (double.IsNaN(seconds)) return;
@@ -1119,6 +1129,9 @@ namespace TraxCombat.Core
             if (LiveAsked > 0) t.Append(" (mean ").Append((ReelAskedSum / LiveAsked).ToString("0.00", c)).Append(" s, longest ").Append(ReelAskedMax.ToString("0.00", c)).Append(" s)");
             t.Append(", measured ").Append(LiveMeasured.ToString(c));
             if (LiveMeasured > 0) t.Append(" (mean ").Append((LiveMeasuredSum / LiveMeasured).ToString("0.00", c)).Append(" s, longest ").Append(LiveMeasuredMax.ToString("0.00", c)).Append(" s)");
+            t.Append("; the impact system's own shorter stagger on the same hit LENGTHENED to the opening's ").Append(LiveLengthenedImpact.ToString(c));
+            if (LiveLengthenedImpact > 0) t.Append(" (from ").Append((LiveLengthenedFromSum / LiveLengthenedImpact).ToString("0.00", c)).Append(" s on average)");
+            t.Append(", carried by a longer one of its own ").Append(LiveOnModStagger.ToString(c));
             t.Append("; the perfect strikes in / after it and its knockdowns: the [summary] \"perfect strike\" line's STEP 113 part");
             t.Append("; THE SIDE PAIRING (your attack -> his guard at contact: high / low / left / right / unread):");
             for (int a = 0; a < 4; a++)

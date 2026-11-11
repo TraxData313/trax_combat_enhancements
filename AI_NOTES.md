@@ -11287,6 +11287,24 @@ OPENING; (c) the opening hit makes him REEL for a few seconds; (d) while he reel
 
 ### Open / unproven (PLAYTEST D88)
 - That 2 s of act_stagger_backward at x0.5 reads as a reel, not a slow-motion slide (the timed block's 2 s riposte already plays so).
-- An opening carried by the impact system's OWN stagger on the same hit keeps that stagger's length (~0.95 s, 08:29 log) - not lengthened here
-  (its watch re-times the record to its measured end); if Toni sees short reels there, queue our stagger over it or lengthen the impact one.
+- (closed by 113b below) an opening carried by the impact system's OWN shorter stagger kept that stagger's length.
 - A parry hold may be generous against skilled parriers (every parry of yours = a hold); the switch turns it off.
+
+### 113b - the longer reel wins when the impact system staggers him on the same hit (BUILT 2026-11-11)
+- The gap: with the impact system's own clean-hit stagger on the opening's hit (`modStagger`), 106d let IT carry the opening - its length (~0.95 s in
+  the 08:29 log), not the opening's 2.0 / 2.25 / 2.5 s. That stagger is the engine's own FLINCH slowed (step 52, `ImpactHitMath.FlinchFactor` - a
+  ~0.45 s flinch, the slow-down capped well short of 2 s), watched as `HitFlinch`, whose measured end calls `EndReel` - so "extend the existing one"
+  was not clean: the flinch cannot be slowed to 2 s, and its watch would cut a lengthened `ReelingUntil` at the flinch's end (the window and step 105
+  would close with it).
+- The pick: ONE stagger, ours. `OpeningPayoff` (inside the same `ImpactDecide`, BEFORE `ApplyHit`) compares the opening's reel with the impact's
+  (`ReelingUntil - now` after the decision; Core `OpeningMath.OpeningOutlastsImpact` - longer by more than 0.05 s): the opening's longer = it queues
+  ITS act_stagger_backward slowed to the opening's length (`QueueOpeningStagger` - `Reel(now + reel, .., Opening)` moves the end, the cause and the
+  immunity to the longer reel, never stacked) and marks `_openTookImpactStagger`; `ApplyHit` then skips the `HitFlinch` watch for that man (counted
+  applied, `staggered` kept so the shrug-off is still refused - the engine's flinch plays for a tick and our stagger replaces it, exactly the normal
+  opening path). The impact's own is longer or equal = it carries it as before. The forced-stagger lever off / a full queue = the old carry.
+- The gold arrow, the perfect-strike window (it follows `ReelingUntil` + the grace) and step 105 (`Reeling(now)`, cause Opening) follow the longer
+  reel; the opening watch's measured end re-times it.
+- Log: the openings [summary] STEP 113 part adds "the impact system's own shorter stagger on the same hit LENGTHENED to the opening's N (from X s on
+  average), carried by a longer one of its own M"; the YOU line says "the opening's reel outlasts the impact system's own X s stagger".
+- Tests: Step113Tests + 2 (8 cases; 1738 green). Smoke green, but no smoke step drives a hit where the impact system AND the opening both stagger
+  (the 106d / 107 smokes' hits never roll the impact stagger) - the module wiring is proven only in game (PLAYTEST D88).

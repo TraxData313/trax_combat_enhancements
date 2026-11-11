@@ -139,6 +139,13 @@ namespace TraxCombat.Missions
                 }
                 else v.Impact.GotUp(now, 0); // not on the ground after all: no ground time, no immunity from it
             }
+            else if (d.Stagger.Happens && ReferenceEquals(_openTookImpactStagger, v))
+            {
+                // step 113b: the opening's longer reel took this stagger over (our act_stagger_backward from the tick, watched as the opening's) -
+                // no flinch watch (one animation; its measured end would cut the longer reel); the flinch must still play, so no shrug-off
+                staggered = true;
+                _hits.NoteApplied(cls, d.Bar, 1);
+            }
             else if (d.Stagger.Happens)
             {
                 double factor = ImpactHitMath.FlinchFactor(d.StaggerSeconds, _flinchNatural.Seconds);

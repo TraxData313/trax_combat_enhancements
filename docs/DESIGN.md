@@ -3979,7 +3979,9 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     his reel, the stagger immunity, the hold gate and the reeling bonus are NOT lengthened. (c) A PARRY OR A BLOCK UNBALANCES HIM TOO
     (`OpeningHoldOnParry`, on): his parry or wrong-side shield block with no hold on him starts a hold like a landed hit (before: nothing); a
     shieldman's correct shield block already did (step 107); step 111's gate first. (d) UNVERIFIED in game (PLAYTEST D88): a 2 s reel read as a
-    reel, not a slide; a reel carried by the impact system's OWN stagger on the same hit keeps that stagger's length (~0.95 s), not 2 s.
+    reel, not a slide. (e) THE LONGER REEL WINS (113b): when the impact system's own stagger on the same hit is shorter than the opening's
+    reel, the opening's replaces it - one stagger (ours, act_stagger_backward slowed to the opening's length; the impact's flinch not watched), the
+    reel's end / cause / immunity moved to the longer one, never stacked; a longer impact stagger still carries it.
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research

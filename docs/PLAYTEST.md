@@ -2386,7 +2386,7 @@ the wrong side) throws him off balance too: he holds his block in one place and 
 his parry or block unbalances him too", on). Your config.json's 0.8 / 0.3 / 2.0 are moved to 2.0 / 0.25 / 2.5 once (config format 31) - your own
 tuned values are kept.
 **Try 1:** swing at him; whether it lands OR he parries it, the red arrow appears with his guard ("Unbalanced ..."). Strike the arrow's side: OPENING!
-**Try 2:** watch him reel - about 2 s, steady, not a quick flinch, and not sliding far out of reach. The arrow turns GOLD.
+**Try 2:** watch him reel - about 2 s, steady, not a quick flinch, and not sliding far out of reach. The arrow turns GOLD. Also when the hit itself staggers him (the impact system's own stagger): still ~2 s (113b).
 **Try 3:** swing the gold side during the reel (even a slow overhead started near its end): PERFECT STRIKE - and most times he goes DOWN.
 **Log:** the [summary] `openings ... STEP 113 - HIS REEL from an opening (2.0 s + 0.25 a link, at most 2.5 s): asked N (mean ~2.0 s), measured M (mean ~2.0 s)`;
 `perfect strike ... STEP 113 - perfect strikes after an OPENING landed during his reel A, after it (the flight) B; your blows on a man reeling from an

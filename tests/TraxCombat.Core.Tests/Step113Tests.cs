@@ -172,6 +172,34 @@ public class Step113Tests
         Assert.False(OpeningHoldRules.From(s).HoldOnParry);
     }
 
+    // ------------------------------------------------------------------ 113b. the impact system's own stagger on the same hit: the longer wins
+
+    [Theory]
+    [InlineData(2.0, 0.95, true)]   // Toni's 08:29 log: 0.95 s carried the opening - ours (2 s) replaces it
+    [InlineData(2.25, 2.0, true)]
+    [InlineData(2.0, 2.0, false)]   // a tie: the impact system's carries it (no second stagger)
+    [InlineData(2.0, 1.97, false)]  // within 0.05 s: no swap for nothing
+    [InlineData(2.0, 2.4, false)]   // its own is longer: it carries it
+    [InlineData(2.0, double.NaN, true)]
+    [InlineData(double.NaN, 1.0, false)]
+    public void The_longer_of_the_opening_reel_and_the_impact_stagger_wins(double opening, double impact, bool openingTakesOver) =>
+        Assert.Equal(openingTakesOver, OpeningMath.OpeningOutlastsImpact(opening, impact));
+
+    [Fact]
+    public void Lengthening_his_reel_moves_its_end_and_its_immunity_and_the_cause_is_the_opening()
+    {
+        // the impact decision's own 0.95 s stagger, then the opening's 2.0 s on the same hit (QueueOpeningStagger's Reel): the end, the cause
+        // (step 105 / the window read it) and the immunity after it follow the longer reel - never stacked (2.0, not 2.95)
+        var s = default(ImpactState);
+        s.Reel(100 + 0.95, 2, ReelCause.HitStagger);
+        s.Reel(100 + 2.0, 2, ReelCause.Opening);
+        Assert.Equal(102.0, s.ReelingUntil, 9);
+        Assert.Equal(ReelCause.Opening, s.ReelCause);
+        Assert.Equal(104.0, s.StaggerImmuneUntil, 9);
+        Assert.True(s.Reeling(101.9));
+        Assert.True(PerfectStrikeMath.Open(101.9, s.ReelingUntil, 0.15));
+    }
+
     // ------------------------------------------------------------------ D. the [summary] lines
 
     [Fact]
@@ -185,7 +213,11 @@ public class Step113Tests
         open.NoteReelAsked(2.0);
         open.NoteReelAsked(2.25);
         open.NoteLiveMeasured(2.0, 1.95);
+        open.LiveLengthenedImpact = 1;
+        open.LiveLengthenedFromSum = 0.95;
+        open.LiveOnModStagger = 2;
         string line = open.SummaryLine(OpeningRules.From(s));
+        Assert.Contains("the impact system's own shorter stagger on the same hit LENGTHENED to the opening's 1 (from 0.95 s on average), carried by a longer one of its own 2", line, StringComparison.Ordinal);
         Assert.Contains("STEP 113 - HIS REEL from an opening (2.0 s", line, StringComparison.Ordinal);
         Assert.Contains("asked 2 (mean 2.13 s, longest 2.25 s), measured 1 (mean 1.95 s, longest 1.95 s)", line, StringComparison.Ordinal);
 
