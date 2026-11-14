@@ -20,13 +20,13 @@
     </GetItem>
     <UpdateItem>
         <ModuleFolder Value="C:\Users\Asus ROG\Documents\BannerlordMods\trax_combat_enhancements\dist\TraxCombatEnhancements"/>
-        <ChangeNotes Value="v1.3.1 - Small units keep a wide line: a unit stands at most floor(sqrt(men/2)) ranks deep, never deeper than its tier's minimum (20 recruits: 3 ranks of 7, not 6 of 4), and the drag preview stops at the same width. New Advanced setting LineMinWidthToDepthRatio (default 2, 0 = off)." />
+        <ChangeNotes Value="v1.6.0 - Works on game v1.5.7 (v1.5.0 does not load on it). Openings: your hit makes him hold a block, strike the side the red arrow shows and he reels; a gold arrow for the PERFECT STRIKE, up to x4. A hit on a reeling man knocks him down. Timed blocks against riders. Tired men keep their distance." />
         <Tags>
             <Tag Value="Utility" />
             <Tag Value="UI" />
             <Tag Value="Native" />
             <Tag Value="Singleplayer" />
-            <Tag Value="v1.4.8" />
+            <Tag Value="v1.5.7" />
         </Tags>
     </UpdateItem>
 </Tasks>

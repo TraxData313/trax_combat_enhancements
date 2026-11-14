@@ -4,7 +4,7 @@
 
 **Men tire. Lines hold. A fresh charge at the right moment breaks them.**
 
-A combat mod for Mount & Blade II: Bannerlord (v1.4.8): slower battles, where timing, rest and defence decide
+A combat mod for Mount & Blade II: Bannerlord (v1.5.7): slower battles, where timing, rest and defence decide
 the fight — and heroes matter.
 
 **Counter Strike** — block just in time and the attacker staggers while the game slows down; strike him back
@@ -69,13 +69,23 @@ line folds. Into a fresh line the same charge only trades blows.
 
 **Timed blocks and the counter strike.** Raise your guard — the right side, or a parry — just as the blow lands
 and the attacker reels, up to 2 seconds; a guard held up the whole time is an ordinary block. A perfect block
-always staggers a man on foot (riders not yet), and the perfect moment grows with your skill in the weapon you
+always staggers a man on foot, and the perfect moment grows with your skill in the weapon you
 hold: a tenth of a second at skill 0, a quarter at 300. Your best blocks drop the game to a quarter speed for
 about 2 seconds, and your shield or weapon punches out as the blow lands. While he reels, hit him from the
 **opposite side** for a **PERFECT STRIKE** at 2-3x damage, more for a sharper block: blocked at your left, swing
 from your right (and the other way round); a blocked overhead is answered by a thrust from below, a blocked thrust
 by an overhead. Perfect strikes are yours alone; the AI times its blocks too, at half strength, and never staggers
 you for longer than 1.2 s.
+
+**Openings.** Attack works too. Land a hit on a man on foot and he is forced to hold a block; a red arrow at
+your crosshair shows the side he leaves open. Strike there before his guard recovers — a sword must hit exactly
+that side, any other weapon any side his guard does not cover — and his guard breaks: **OPENING!** He reels for
+about 2 seconds and a gold arrow shows the side for a PERFECT STRIKE, x2-x4 by your weapon (x1.5-x2 with a
+spear). Any hit on a man who still reels — a swing, a kick, a bash — knocks him down 8 times in 10, and that
+works on you too.
+
+**Riders.** A well-timed block makes a rider reel in his saddle, his horse slowed to half speed; a sharp block
+can make the horse rear, a perfect one can knock him off. While he reels, a hit from any side is a PERFECT STRIKE.
 
 **Duels and tournaments.** A long bout is won by stamina and timing. The tournament champion who never misses a
 block starts guessing when he is spent; your kick that bounces off a fresh king floors an empty one. Tire him
@@ -106,7 +116,7 @@ ways.
 - **Not an overhaul.** Vanilla troops, weapons and AI — it changes how a fight feels, not what is in it. Nothing
   in your save: add or remove it mid-campaign. The one change to troops: tier-1 recruits are handed a cheap
   shield of their culture, so green troops last longer (*Give Tier 1 units shields* on the short page).
-- Game v1.4.8, singleplayer. No requirements, no Harmony. Works beside RTS Camera and War Sails.
+- Game v1.5.7, singleplayer. No requirements, no Harmony. Works beside RTS Camera and War Sails.
 - **Not with Realistic Battle Mod (RBM)** — the deep, much-loved overhaul with its own stamina. This is the light
   road on vanilla's troops; use one or the other (the mod warns at the main menu if it sees RBM).
 

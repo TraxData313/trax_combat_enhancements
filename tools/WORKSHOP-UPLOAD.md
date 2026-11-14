@@ -74,7 +74,7 @@ version is stamped once, on release day.
 2. Bump `<Version>` in `module\SubModule.xml` once, commit.
 3. `powershell -ExecutionPolicy Bypass -File tools\package.ps1`
 4. `tools\WorkshopUpdate.xml`: set `<ChangeNotes Value="…"/>` — short, for players (a `"` inside is
-   written `&quot;`). Bump the `v1.4.8` tag if the supported game version moved (ground truth:
+   written `&quot;`). Bump the `v1.5.7` tag if the supported game version moved (ground truth:
    `<game>\bin\Win64_Shipping_Client\Version.xml`).
 5. Steam open, then:
    ```powershell
