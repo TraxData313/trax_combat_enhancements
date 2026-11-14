@@ -5,7 +5,7 @@ Guidance for Claude Code when working in this repository.
 ## What this is
 
 **Trax Combat Enhancements** (working title) — a combat mod for *Mount & Blade II:
-Bannerlord* v1.4.8 that makes fights a bit more fun: every landed hit rolls ±50% damage and then lands 25% lighter (step 25, `DamageReductionPercent`, Anton:
+Bannerlord* v1.5.7 (built on v1.4.8 - the notes below that name v1.4.8 are from then; 370a1a6 moved it to v1.5.7) that makes fights a bit more fun: every landed hit rolls ±50% damage and then lands 25% lighter (step 25, `DamageReductionPercent`, Anton:
 slower fights - AFTER the roll, on people, horses and shields, whatever the roll's switches; falls and objects never;
 Core `DamageReduction`),
 and every fighter has an **Athletics** bar — his stamina, 100 points plus half his Athletics skill (step 94, `AthleticsPoolBase` 100 + `AthleticsPoolPerSkill` 0.5; the bar was the skill itself until then) —
@@ -2749,7 +2749,7 @@ line.
 
 ## Release
 
-Live: Workshop item **3817259431** (v1.5.0 uploaded 2026-11-09 ("Uploading done!") + GitHub release + Nexus 1.5.0; v1.4.0 uploaded 2026-11-06 ("Uploading done!") + GitHub release; v1.3.2 uploaded 2026-10-24 ("Uploading done!"), v1.3.1 uploaded 2026-10-23 ("Uploading done!"), v1.3.0 2026-10-22, v1.2.0 2026-10-18, v1.1.1 2026-10-14, v1.1.0 2026-10-12, v1.0.0 2026-10-10; on 2026-10-22 the page said "awaiting approval by moderators" - hidden from others until Valve approves the latest version; the YouTube video attached to its gallery), Nexus Mods **mods/14198** (v1.3.1 since 2026-10-23 - the main file updated in place, 1.3.0 archived; v1.3.0 published 2026-10-22 with tools/NEXUS-DESCRIPTION.bbcode, the gallery and the YouTube video), GitHub releases v1.0.0 to v1.3.1 with the zips.
+Live: Workshop item **3817259431** (v1.6.0 uploaded 2026-11-14 ("Uploading done!") for game v1.5.7 + GitHub release + Nexus 1.6.0 - v1.5.0 and older do not load on game v1.5.7; v1.5.0 uploaded 2026-11-09 ("Uploading done!") + GitHub release + Nexus 1.5.0; v1.4.0 uploaded 2026-11-06 ("Uploading done!") + GitHub release; v1.3.2 uploaded 2026-10-24 ("Uploading done!"), v1.3.1 uploaded 2026-10-23 ("Uploading done!"), v1.3.0 2026-10-22, v1.2.0 2026-10-18, v1.1.1 2026-10-14, v1.1.0 2026-10-12, v1.0.0 2026-10-10; on 2026-10-22 the page said "awaiting approval by moderators" - hidden from others until Valve approves the latest version; the YouTube video attached to its gallery), Nexus Mods **mods/14198** (v1.3.1 since 2026-10-23 - the main file updated in place, 1.3.0 archived; v1.3.0 published 2026-10-22 with tools/NEXUS-DESCRIPTION.bbcode, the gallery and the YouTube video), GitHub releases v1.0.0 to v1.3.1 with the zips.
 The whole loop is **`tools/WORKSHOP-UPLOAD.md`** — read it before any release. **Publishing is
 Anton's decision, after his playtest**: Claude never runs the uploader, and never posts or
 uploads anything, without his yes for that release. **The release rhythm** (the sibling's, Anton
