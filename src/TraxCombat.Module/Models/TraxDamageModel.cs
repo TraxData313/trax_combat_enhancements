@@ -78,8 +78,9 @@ namespace TraxCombat.Models
         public override float CalculateAlternativeAttackDamage(in AttackInformation attackInformation, in AttackCollisionData collisionData, WeaponComponentData weapon)
             => BaseModel.CalculateAlternativeAttackDamage(in attackInformation, in collisionData, weapon);
 
-        public override float CalculatePassiveAttackDamage(BasicCharacterObject attackerCharacter, in AttackCollisionData collisionData, float baseDamage)
-            => BaseModel.CalculatePassiveAttackDamage(attackerCharacter, in collisionData, baseDamage);
+        // v1.5.7 (the update of 2026-11-11): the first parameter became the AttackInformation (was the attacker's BasicCharacterObject).
+        public override float CalculatePassiveAttackDamage(in AttackInformation attackInformation, in AttackCollisionData collisionData, float baseDamage)
+            => BaseModel.CalculatePassiveAttackDamage(in attackInformation, in collisionData, baseDamage);
 
         public override MeleeCollisionReaction DecidePassiveAttackCollisionReaction(Agent attacker, Agent defender, bool isFatalHit)
             => BaseModel.DecidePassiveAttackCollisionReaction(attacker, defender, isFatalHit);
